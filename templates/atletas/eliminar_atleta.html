@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan -->
+  <div class="mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+         <li class="breadcrumb-item">
+          <a href="{% url 'lista_atletas' %}" class="text-dark">Atletas</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'detalle_atleta' atleta.id %}" class="text-dark">Detalle</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Eliminar</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="card border-primary shadow rounded-4">
+    <div class="card-header bg-primary text-white text-center rounded-top-4">
+      <h4 class="mb-0">¿Eliminar Atleta?</h4>
+    </div>
+
+    <div class="card-body text-center bg-light rounded-bottom-4">
+      {% if is_admin %}
+        <p class="fs-6">¿Estás seguro que deseas eliminar a <strong>{{ atleta.nombre }} {{ atleta.apellido }}</strong>?</p>
+
+        <form method="post" class="mt-4 d-flex justify-content-center gap-3">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger" ><i class="fas fa-trash-alt"></i>  Eliminar</button>
+          <a href="{% url 'detalle_atleta' atleta.id %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </form>
+      {% else %}
+        <div class="alert alert-danger mt-4">
+          No tienes permiso para acceder a esta sección.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

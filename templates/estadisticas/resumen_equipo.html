@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-3">
+  <div class="row align-items-center mb-4">
+    <div class="col-md-6">
+      <!-- Migas de pan -->
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+              <i class="fa-solid fa-house"></i>
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'ver_estadisticas_equipos' %}">
+              Estadísticas
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'ver_estadisticas_equipo_detalle' equipo.id %}">
+              Equipo
+            </a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Resumen
+          </li>
+        </ol>
+      </nav>
+    </div>
+    
+    <!-- Botón Ver Gráficos -->
+    <div class="col-md-6 d-flex justify-content-md-end">
+      <a href="{% url 'resumen_estadisticas_equipo_grafico' equipo.id %}" class="btn" style="background: #06b6d4;">
+        📈 Gráficos
+      </a>
+    </div>
+  </div>
+</div>
+
+
+<div class="card shadow border border-primary">
+  <div class="card-header bg-primary text-white text-center fw-bold fs-4">
+    📊 Resumen de Estadísticas de {{ equipo.nombre }}
+  </div>
+
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped text-center align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Atleta</th>
+            <th>🏐 Puntos</th>
+            <th>🎯 Saques</th>
+            <th>💥 Remates</th>
+            <th>🧱 Bloqueos</th>
+            <th>🎯 Armadas</th>
+            <th>👐 Recepciones</th>
+            <th class="text-danger">❌ Errores</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in resumen_por_atleta %}
+          <tr>
+            <td class="fw-semibold">
+              {{ item.atleta.nombre }} {{ item.atleta.apellido }}
+            </td>
+            <td>{{ item.totales.puntos|default:0 }}</td>
+            <td>{{ item.totales.saques|default:0 }}</td>
+            <td>{{ item.totales.remates|default:0 }}</td>
+            <td>{{ item.totales.bloqueos|default:0 }}</td>
+            <td>{{ item.totales.armadas|default:0 }}</td>
+            <td>{{ item.totales.recepciones|default:0 }}</td>
+            <td class="text-danger">{{ item.totales.errores|default:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">No hay estadísticas registradas para este equipo.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

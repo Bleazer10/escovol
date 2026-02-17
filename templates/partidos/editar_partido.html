@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+         <li class="breadcrumb-item">
+          <a href="{% url 'lista_partidos' %}" class="text-dark">Partidos</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'detalle_partido' partido.id %}" class="text-dark">Detalle</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Editar</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header text-white fw-bold text-center fs-4 rounded-top-4">
+      Editar Partido
+    </div>
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+
+        <!-- Campos generales (excluyendo sets) -->
+        {% for field in form %}
+          {% if "set" not in field.name %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">{{ field.label }}</label>
+              {{ field|add_class:"form-control shadow-sm" }}
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        <!-- CARD de sets con diseño mejorado -->
+        <div class="col-12 mt-4">
+          <div class="card border border-primary shadow rounded-4">
+            <div class="card-header bg-danger text-white fw-bold text-center rounded-top-4 fs-5">
+              Resultados por Set
+            </div>
+            <div class="card-body" id="contenedor-sets">
+
+              <!-- Set 1 -->
+              <div class="row align-items-center mb-3 set-row d-none" id="set-row-1">
+                <div class="col-md-5">
+                  <label class="form-label">Set 1 - Local</label>
+                  {{ form.set1_local|add_class:"form-control shadow-sm" }}
+                  {% if form.set1_local.errors %}
+                    <div class="text-danger small">{{ form.set1_local.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-2 text-center fw-bold">VS</div>
+                <div class="col-md-5">
+                  <label class="form-label">Set 1 - Externo</label>
+                  {{ form.set1_externo|add_class:"form-control shadow-sm" }}
+                  {% if form.set1_externo.errors %}
+                    <div class="text-danger small">{{ form.set1_externo.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Set 2 -->
+              <div class="row align-items-center mb-3 set-row d-none" id="set-row-2">
+                <div class="col-md-5">
+                  <label class="form-label">Set 2 - Local</label>
+                  {{ form.set2_local|add_class:"form-control shadow-sm" }}
+                  {% if form.set2_local.errors %}
+                    <div class="text-danger small">{{ form.set2_local.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-2 text-center fw-bold">VS</div>
+                <div class="col-md-5">
+                  <label class="form-label">Set 2 - Externo</label>
+                  {{ form.set2_externo|add_class:"form-control shadow-sm" }}
+                  {% if form.set2_externo.errors %}
+                    <div class="text-danger small">{{ form.set2_externo.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+
+              <!-- Set 3 -->
+              <div class="row align-items-center mb-3 set-row d-none" id="set-row-3">
+                <div class="col-md-5">
+                  <label class="form-label">Set 3 - Local</label>
+                  {{ form.set3_local|add_class:"form-control shadow-sm" }}
+                  {% if form.set3_local.errors %}
+                    <div class="text-danger small">{{ form.set3_local.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-2 text-center fw-bold">VS</div>
+                <div class="col-md-5">
+                  <label class="form-label">Set 3 - Externo</label>
+                  {{ form.set3_externo|add_class:"form-control shadow-sm" }}
+                  {% if form.set3_externo.errors %}
+                    <div class="text-danger small">{{ form.set3_externo.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Set 4 -->
+              <div class="row align-items-center mb-3 set-row d-none" id="set-row-4">
+                <div class="col-md-5">
+                  <label class="form-label">Set 4 - Local</label>
+                  {{ form.set4_local|add_class:"form-control shadow-sm" }}
+                  {% if form.set4_local.errors %}
+                    <div class="text-danger small">{{ form.set4_local.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-2 text-center fw-bold">VS</div>
+                <div class="col-md-5">
+                  <label class="form-label">Set 4 - Externo</label>
+                  {{ form.set4_externo|add_class:"form-control shadow-sm" }}
+                  {% if form.set4_externo.errors %}
+                    <div class="text-danger small">{{ form.set4_externo.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Set 5 -->
+              <div class="row align-items-center mb-3 set-row d-none" id="set-row-5">
+                <div class="col-md-5">
+                  <label class="form-label">Set 5 - Local</label>
+                  {{ form.set5_local|add_class:"form-control shadow-sm" }}
+                  {% if form.set5_local.errors %}
+                    <div class="text-danger small">{{ form.set5_local.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-2 text-center fw-bold">VS</div>
+                <div class="col-md-5">
+                  <label class="form-label">Set 5 - Externo</label>
+                  {{ form.set5_externo|add_class:"form-control shadow-sm" }}
+                  {% if form.set5_externo.errors %}
+                    <div class="text-danger small">{{ form.set5_externo.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Botón añadir set -->
+              <div class="d-flex justify-content-center mt-3">
+                <button type="button" id="btn-add-set" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+                  ➕ Añadir Set
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones Guardar y Cancelar -->
+        <div class="d-flex justify-content-center gap-3 mt-4">
+          <button type="submit" class="btn" style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'detalle_partido' partido.id  %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script> const setsConDatos = {{ sets_con_datos }}; </script>
+
+<!-- SCRIPT para mostrar sets dinámicamente -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const formatoSelect = document.getElementById("id_formato_partido");
+    const btnAddSet = document.getElementById("btn-add-set");
+    let setIndex = 1;
+    let maxSets = 5;
+
+    // Mostrar sets que ya tienen datos
+    for (let i = 1; i <= 5; i++) {
+      const setLocal = document.getElementById(`id_set${i}_local`);
+      const setExterno = document.getElementById(`id_set${i}_externo`);
+      const row = document.getElementById(`set-row-${i}`);
+      if (setLocal && setExterno && (setLocal.value || setExterno.value)) {
+        row.classList.remove('d-none');
+        setIndex = i + 1;  // empieza desde el siguiente
+      } else {
+        row.classList.add('d-none');
+      }
+    }
+
+    function actualizarLimite() {
+      const formato = formatoSelect.value;
+      maxSets = (formato === "3-2") ? 3 : 5;
+      ajustarVisibilidadSets();
+    }
+
+    function ajustarVisibilidadSets() {
+      for (let i = 1; i <= 5; i++) {
+        const row = document.getElementById(`set-row-${i}`);
+        if (i < setIndex && i <= maxSets) {
+          row.classList.remove('d-none');
+        } else {
+          row.classList.add('d-none');
+        }
+      }
+      btnAddSet.style.display = setIndex > maxSets ? "none" : "block";
+    }
+
+    function mostrarSiguienteSet() {
+      if (setIndex <= maxSets) {
+        const row = document.getElementById(`set-row-${setIndex}`);
+        if (row) row.classList.remove('d-none');
+        setIndex++;
+      }
+      if (setIndex > maxSets) {
+        btnAddSet.style.display = "none";
+      }
+    }
+
+    btnAddSet.addEventListener('click', mostrarSiguienteSet);
+    formatoSelect.addEventListener('change', () => {
+      actualizarLimite();
+    });
+
+    actualizarLimite();
+  });
+</script>
+
+
+{% endblock %}

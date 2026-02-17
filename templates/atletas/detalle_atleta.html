@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Migas de pan (ocultas para atletas) -->
+{% if is_admin or is_trainer %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <nav aria-label="breadcrumb" class="mb-0">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'menu_principal' %}" class="text-dark">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'lista_atletas' %}" class="text-dark">Atletas</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+</div>
+{% endif %}
+
+
+<div class="container mt-4"></div>
+
+<div class="card shadow border border-primary">
+  <div class="card-header bg-danger text-white text-center fw-bold fs-3">
+    Detalle del Atleta
+  </div>
+  <div class="card-body p-5">
+    <div class="row g-3">
+      <div class="col-md-6"><p><strong>Nombre:</strong> {{ atleta.nombre }}</p></div>
+      <div class="col-md-6"><p><strong>Apellido:</strong> {{ atleta.apellido }}</p></div>
+
+      <div class="col-md-6"><p><strong>Sexo:</strong> {{ atleta.get_sexo_display }}</p></div>
+      <div class="col-md-6"><p><strong>Fecha de nacimiento:</strong> {{ atleta.fecha_nacimiento|date:"d/m/Y" }}</p></div>
+
+      <div class="col-md-6"><p><strong>Edad:</strong> {{ atleta.calcular_edad }}</p></div>
+      <div class="col-md-6"><p><strong>Categoría:</strong> {{ atleta.categoria }}</p></div>
+
+      <div class="col-md-6"><p><strong>Turno:</strong> {{ atleta.get_turno_display }}</p></div>
+      <div class="col-md-6"><p><strong>Posición:</strong> {{ atleta.get_posicion_display }}</p></div>
+
+      <div class="col-md-6"><p><strong>Cédula:</strong> {{ atleta.cedula }}</p></div>
+      <div class="col-md-6"><p><strong>Teléfono:</strong> {{ atleta.telefono }}</p></div>
+
+      <div class="col-md-6"><p><strong>Número de camisa:</strong> {{ atleta.numero_camisa }}</p></div>
+      <div class="col-md-6"><p><strong>Fecha de registro:</strong> {{ atleta.fecha_registro|date:"d/m/Y" }}</p></div>
+
+      <div class="col-md-12"><p><strong>Dirección:</strong> {{ atleta.direccion }}</p></div>
+    </div>
+
+    <!-- Mini card del representante si el atleta es menor de 18 -->
+    {% if atleta.calcular_edad < 18 %}
+    <div class="card mt-4 border border-primary shadow-sm rounded-4">
+      <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center rounded-top-4">
+        👤 DATOS DEL REPRESENTANTE
+      </div>
+      <div class="card-body row g-3 px-4">
+        <div class="col-md-6"><p><strong>Nombre:</strong> {{ atleta.representante_nombre }}</p></div>
+        <div class="col-md-6"><p><strong>Apellido:</strong> {{ atleta.representante_apellido }}</p></div>
+        <div class="col-md-6"><p><strong>Cédula:</strong> {{ atleta.representante_cedula }}</p></div>
+        <div class="col-md-6"><p><strong>Teléfono:</strong> {{ atleta.representante_telefono }}</p></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Card de Datos Antropométricos -->
+    <div class="card mt-4 border border-primary shadow-sm">
+      <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center">
+        🧍‍♂️ DATOS ANTROPOMÉTRICOS
+      </div>
+      <div class="card-body row g-3 px-4">
+        <div class="col-md-6"><p><strong>Estatura:</strong> {{ atleta.estatura|default:"0" }} m</p></div>
+        <div class="col-md-6"><p><strong>Peso:</strong> {{ atleta.peso|default:"0" }} kg</p></div>
+        <div class="col-md-6"><p><strong>Salto:</strong> {{ atleta.salto|default:"0" }} m</p></div>
+        <div class="col-md-6"><p><strong>Alcance:</strong> {{ atleta.alcance|default:"0" }} m</p></div>
+        <div class="col-md-12"><p><strong>Despegue:</strong> {{ despegue|default:"0" }} cm</p></div>
+      </div>
+    </div>
+
+    <!-- Card del Usuario (solo admin) -->
+    {% if user.is_staff or is_admin %}
+    <div class="card mt-4 border border-primary shadow-sm rounded-4">
+      <div class="card-header bg-dark text-white fw-semibold fs-5 text-center rounded-top-4">
+        🔑 DATOS DEL USUARIO
+      </div>
+      <div class="card-body row g-3 px-4">
+        <div class="col-md-6"><p><strong>Usuario:</strong> {{ atleta.user.username }}</p></div>
+        <div class="col-md-6"><p><strong>Correo:</strong> {{ atleta.user.email }}</p></div>
+        <div class="col-md-6"><p><strong>Estado:</strong> {% if atleta.user.is_active %} <span class="badge bg-success">Activo</span> {% else %} <span class="badge bg-danger">Inactivo</span> {% endif %}</p></div>
+        <div class="col-md-6"><p><strong>Contraseña:</strong> ********</p></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Botones -->
+    <div class="mt-5 d-flex justify-content-center gap-3">
+        {% if is_admin %}
+        <a href="{% url 'editar_atleta' atleta.id %}" class="btn" style="background: #4caf50;">
+          <i class="fas fa-edit"></i> Editar
+        </a>
+        <a href="{% url 'eliminar_atleta' atleta.id %}" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Eliminar
+        </a>
+        {% endif %}
+        {% if is_admin or is_trainer %}
+        <a href="{% url 'lista_atletas' %}" class="btn" style="background: #f8b100;">
+          <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+        {% endif %}
+        {% if is_athlete %}
+        <a href="{% url 'menu_principal' %}" class="btn" style="background: #f8b100;">
+          <i class="fa-solid fa-arrow-left"></i> Volver 
+        </a>
+        {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

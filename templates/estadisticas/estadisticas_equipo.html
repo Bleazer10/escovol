@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- 🧭 Migas de pan -->
+<div class="container mt-3">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Estadísticas</li>
+    </ol>
+  </nav>
+</div>
+
+<!-- 📋 Card principal -->
+<div class="container">
+  <div class="card shadow border border-primary">
+    <div class="card-header text-white fw-bold text-center fs-4">
+      📋 Estadísticas por Equipo
+    </div>
+
+    <div class="card-body">
+
+      <!-- 🔍 Filtro por equipo -->
+      <form method="get" class="row g-3 mb-4 align-items-end ">
+        <div class="col-lg-4 col-md-6 ">
+          <label class="form-label fw-semibold">Equipo</label>
+          <select name="equipo" class="form-select">
+            <option value="">-- Todos --</option>
+            {% for eq in todos_equipos %}
+              <option value="{{ eq.id }}" {% if request.GET.equipo == eq.id|stringformat:"s" %}selected{% endif %}>{{ eq.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-lg-2 col-6">
+          <button type="submit" class="btn btn-outline-dark w-100 shadow">
+            <i class="fas fa-search"></i> Filtrar
+          </button>
+        </div>
+
+        <div class="col-lg-2 col-6">
+          <a href="{% url 'ver_estadisticas_equipos' %}" class="btn btn-secondary w-100 shadow">
+            <i class="fas fa-trash-alt"></i> Limpiar
+          </a>
+        </div>
+      </form>
+
+      <!-- 📊 Tabla de estadísticas -->
+      {% if page_obj %}
+        <div class="table-responsive">
+          <table class="table table-striped text-center align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Equipo</th>
+                <th>🏐 Puntos</th>
+                <th>🎯 Saques</th>
+                <th>💥 Remates</th>
+                <th>🧱 Bloqueos</th>
+                <th>🎯 Armadas</th>
+                <th>👐 Recepciones</th>
+                <th class="text-danger">❌ Errores</th>
+                <th>Consultar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in page_obj %}
+              <tr>
+                <td class="fw-bold">{{ item.equipo.nombre }}</td>
+                <td>{{ item.totales.puntos|default:0 }}</td>
+                <td>{{ item.totales.saques|default:0 }}</td>
+                <td>{{ item.totales.remates|default:0 }}</td>
+                <td>{{ item.totales.bloqueos|default:0 }}</td>
+                <td>{{ item.totales.armadas|default:0 }}</td>
+                <td>{{ item.totales.recepciones|default:0 }}</td>
+                <td class="text-danger">{{ item.totales.errores|default:0 }}</td>
+                <td>
+                  <a href="{% url 'ver_estadisticas_equipo_detalle' item.equipo.id %}" class="btn" style="background: #06b6d4;">
+                    <i class="fas fa-search"></i>
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="9">No hay estadísticas disponibles.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 🔄 Paginación -->
+        <div class="d-flex justify-content-center mt-4">
+          <nav>
+            <ul class="pagination pagination-sm">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">← Anterior</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">← Anterior</span>
+                </li>
+              {% endif %}
+
+              {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                  <li class="page-item active">
+                    <span class="page-link px-3 py-1">{{ num }}</span>
+                  </li>
+                {% else %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ num }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">{{ num }}</a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">Siguiente →</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">Siguiente →</span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+
+      {% else %}
+        <div class="alert alert-info text-center mt-4">
+          No hay estadísticas de equipos disponibles.
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,378 @@
+{% extends 'base_publica.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  :root{
+    /* OLYMPO Palette */
+    --primary:#158EFF;
+    --primary-2:#2A73B6;
+    --accent:#00B7FF;
+
+    --ink:#0B1220;
+    --muted:#516173;
+
+    --bg:#F3F7FF;
+    --card:#FFFFFF;
+
+    --stroke:rgba(11,18,32,.10);
+    --shadow:0 10px 32px rgba(21,142,255,.16);
+
+    /* Gradient fijo que usas en cards/nav */
+    --brand-gradient: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);
+  }
+
+  body {
+    background: linear-gradient(135deg, #F3F7FF 0%, #FFFFFF 100%);
+    min-height: 100vh;
+    color: var(--ink);
+  }
+
+  .hero {
+    background:
+      linear-gradient(90deg, rgba(42,115,182,0.90) 55%, rgba(21,142,255,0.80) 100%),
+      url("{% static 'img/escovol_familia.jpeg' %}") center/cover no-repeat;
+    color: #fff;
+    padding: 90px 20px 70px 20px;
+    border-radius: 30px 30px 0 0;
+    text-align: center;
+    text-shadow: 0 10px 24px rgba(0,0,0,.22);
+    margin-top: 30px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    background-blend-mode: multiply;
+    border: 1px solid rgba(255,255,255,.18);
+  }
+
+  .hero h1 {
+    font-size: 3.2rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 18px;
+    color: #fff;
+    background: none;
+    display: inline-block;
+  }
+
+  .hero p {
+    font-size: 1.5rem;
+    margin-top: 10px;
+    color: rgba(255,255,255,.92);
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 30px;
+  }
+
+  .hero .cta-btn {
+    background: var(--brand-gradient);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 30px;
+    padding: 14px 38px;
+    box-shadow: 0 10px 26px rgba(21,142,255,.22);
+    transition: transform 0.2s, filter 0.2s, box-shadow 0.2s;
+    margin-top: 18px;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .hero .cta-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.05);
+    box-shadow: 0 14px 36px rgba(21,142,255,.30);
+    text-decoration: underline;
+  }
+
+  .trusted-bar {
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(8px);
+    padding: 18px 0;
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--primary-2);
+    letter-spacing: 1px;
+    border-bottom: 2px solid rgba(21,142,255,.35);
+    margin-bottom: 30px;
+  }
+
+  .trusted-bar span {
+    margin: 0 18px;
+    font-weight: 800;
+    opacity: 0.9;
+  }
+
+  .section-block {
+    background: var(--card);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(11,18,32,.08);
+    border: 1px solid var(--stroke);
+    margin-bottom: 40px;
+    padding: 40px 30px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .section-block.reverse {
+    flex-direction: row-reverse;
+  }
+  .section-block .section-img {
+    flex: 1;
+    max-width: 340px;
+    min-width: 220px;
+    text-align: center;
+  }
+  .section-block .section-img img,
+  .section-block .section-img video {
+    width: 100%;
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(11,18,32,.12);
+    border: 1px solid rgba(21,142,255,.18);
+  }
+  .section-block .section-content {
+    flex: 2;
+    min-width: 260px;
+    color: var(--ink);
+  }
+  .section-block .section-content h2 {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary-2);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+  }
+  .section-block .section-content p,
+  .section-block .section-content ul {
+    font-size: 1.13rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .section-block .section-content ul {
+    padding-left: 1.2em;
+  }
+  .section-block .section-content li {
+    margin-bottom: 7px;
+    list-style: disc;
+  }
+
+  .contact-card {
+    padding: 50px 30px 40px 30px;
+    margin-top: 40px;
+    background: var(--brand-gradient);
+    border-radius: 22px;
+    box-shadow: 0 14px 40px rgba(21,142,255,.22);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.20);
+    text-align: center;
+  }
+  .contact-card h3 {
+    font-size: 2.1rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    text-shadow: 0 8px 22px rgba(0,0,0,.22);
+    animation: none;
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+  .contact-card .fs-5 {
+    color: rgba(255,255,255,.92) !important;
+    font-weight: 600;
+    margin-bottom: 30px;
+  }
+  .contact-card .row.justify-content-center {
+    gap: 0 24px;
+  }
+
+  .contact-box {
+    background: rgba(255,255,255,.96);
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(11,18,32,.10);
+    text-align: center;
+    padding: 18px 10px 10px 10px;
+    margin: 10px 12px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    border: 2px solid rgba(21,142,255,.20);
+    display: inline-block;
+    min-width: 170px;
+  }
+  .contact-box:hover {
+    transform: translateY(-8px) scale(1.04);
+    box-shadow: 0 18px 42px rgba(11,18,32,.14);
+    border-color: rgba(0,183,255,.55);
+  }
+  .contact-box i {
+    font-size: 2.1rem;
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+  .contact-box a {
+    text-decoration: none;
+    color: var(--ink);
+    font-weight: 800;
+    font-size: 1.1rem;
+    transition: color 0.2s;
+  }
+  .contact-box a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+  }
+
+  .gallery-row {
+    background: rgba(255,255,255,.85);
+    border-radius: 22px;
+    border: 1px solid var(--stroke);
+    box-shadow: 0 10px 30px rgba(11,18,32,.08);
+    padding: 30px 10px 10px 10px;
+    margin-top: 40px;
+  }
+  .gallery-img {
+    border-radius: 20px;
+    transition: transform 0.4s cubic-bezier(.4,2,.6,1), box-shadow 0.3s;
+    box-shadow: 0 10px 22px rgba(11,18,32,.10);
+    margin-bottom: 18px;
+    border: 1px solid rgba(21,142,255,.14);
+  }
+  .gallery-img:hover {
+    transform: scale(1.07) rotate(-2deg);
+    box-shadow: 0 18px 44px rgba(11,18,32,.16);
+  }
+
+  @media (max-width: 900px) {
+    .section-block, .section-block.reverse {
+      flex-direction: column !important;
+      gap: 20px;
+      padding: 30px 8px;
+    }
+    .section-img, .section-content {
+      max-width: 100%;
+      padding: 0;
+    }
+    .hero h1 { font-size: 2.2rem; }
+    .hero { padding: 60px 10px 50px 10px; }
+    .contact-card .row.justify-content-center {
+      gap: 16px 0;
+    }
+    .contact-box {
+      margin: 10px 0;
+    }
+  }
+</style>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Bienvenidos a OLYMPO 🏐</h1>
+    <p>Formación, valores y deporte para transformar vidas desde El Tocuyo.</p>
+    <a href="#contacto" class="cta-btn">¡Quiero saber más!</a>
+  </div>
+
+  <!-- TRUSTED BAR -->
+  <div class="trusted-bar">
+    <span>Escuela líder en El Tocuyo</span>
+    <span>Desde 2026</span>
+    <span>+100 atletas formados</span>
+    <span>Valores y deporte</span>
+  </div>
+
+  <!-- QUIÉNES SOMOS -->
+  <div class="section-block">
+    <div class="section-img">
+      <img src="{% static 'img/voli.jpeg' %}" alt="Entrenamientos ESCOVOL">
+    </div>
+    <div class="section-content">
+      <h2>¿Quiénes somos?</h2>
+      <p>OLYMPO es más que una escuela deportiva: es un espacio de formación y superación a través del voleibol.</p>
+      <p>Desde 2026, formamos a jóvenes con disciplina, pasión y compromiso.</p>
+      <p>🏠 Entrenamos en el Parque Hedilio Lozada con esfuerzo y alegría.</p>
+    </div>
+  </div>
+
+  <!-- QUÉ HACEMOS -->
+  <div class="section-block reverse">
+    <div class="section-img">
+      <video autoplay muted loop playsinline style="width: 60%; border-radius: 18px;">
+        <source src="{% static 'video/entrenamiento.mp4' %}" type="video/mp4">
+        Tu navegador no soporta el video.
+      </video>
+    </div>
+    <div class="section-content">
+      <h2>¿Qué hacemos en OLYMPO?</h2>
+      <ul>
+        <p>✔️ Enseñamos voleibol desde cero, con entrenadores capacitados.</p>
+        <p>✔️ Desarrollamos talento con metas reales: participar en campeonatos estadales y nacionales.</p>
+        <p>✔️ Formamos ciudadanos responsables con valores como el respeto, el esfuerzo y la constancia.</p>
+        <p>✔️ Creamos un ambiente sano donde se hacen amistades, se aprenden reglas y se cultiva el amor por el deporte.</p>
+      </ul>
+    </div>
+  </div>
+
+  <!-- LOGROS -->
+  <div class="section-block">
+    <div class="section-img">
+      <img src="{% static 'img/logros_voleibol.jpg' %}" alt="Logros ESCOVOL">
+    </div>
+    <div class="section-content">
+      <h2>🏆 Nuestros logros</h2>
+      <p>Hemos representado con orgullo a nuestra comunidad en múltiples torneos, incluyendo campeonatos regionales y un bicampeonato en la categoría libre masculina, donde se obtuvo dos trofeos para nuestra escuela.</p>
+      <p>Cada vez mas se sigue participando en los torneos y ligas en nuestras diferentes categorias, donde nuestros atletas continúan destacándose y logrando grandes resultados.</p>
+      <p>Cada logro es resultado del trabajo en equipo, la dedicación y el espíritu de nuestros atletas.</p>
+    </div>
+  </div>
+
+  <!-- VISIÓN Y MISIÓN -->
+  <div class="section-block reverse">
+    <div class="section-img">
+      <img src="{% static 'img/logo-olympo.jpeg' %}" alt="Logo OLYMPO" class="img-fluid">
+    </div>
+    <div class="section-content">
+      <h2>🌟 Nuestra visión</h2>
+      <p>Ser una escuela integral con atletas destacados en la cancha y en la vida.</p>
+      <h4 style="color:#00B7FF;font-weight:800;margin-top:18px;margin-bottom:8px;">🎯 Nuestra misión</h4>
+      <p>Ofrecer una oportunidad, una familia y un camino al futuro a través del deporte.</p>
+    </div>
+  </div>
+
+  <!-- CONTACTO -->
+  <div class="contact-card text-center" id="contacto">
+    <h3>💬 ¿Te interesa saber más?</h3>
+    <p class="fs-5">¡Habla con nuestros entrenadores o ven a una práctica!</p>
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-3 contact-box">
+        <i class="bi bi-telephone-fill"></i>
+        <p><a href="https://wa.me/584126764591" target="_blank">+58 412 676 4591</a></p>
+        <p><a href="tel:+584120545183">+58 412 054 5183</a></p>
+      </div>
+      <div class="col-md-3 contact-box">
+        <i class="bi bi-instagram"></i>
+        <p><a href="https://www.instagram.com/_olympovoleyclub_" target="_blank">@_Olympo_</a></p>
+      </div>
+      <div class="col-md-3 contact-box">
+        <i class="bi bi-geo-alt-fill"></i>
+        <p><a href="https://maps.google.com/?q=Parque+Hedilio+Lozada,+El+Tocuyo" target="_blank">Parque Hedilio Lozada</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALERÍA -->
+  <div class="gallery-row row text-center mt-5">
+    <div class="col-md-4 mb-4">
+      <img src="{% static 'img/escovol_masculino.jpeg' %}" class="img-fluid gallery-img" alt="Equipo masculino">
+    </div>
+    <div class="col-md-4 mb-4">
+      <img src="{% static 'img/escovol_femenino.jpeg' %}" class="img-fluid gallery-img" alt="Equipo femenino">
+    </div>
+    <div class="col-md-4 mb-4">
+      <img src="{% static 'img/escovol_familia.jpeg' %}" class="img-fluid gallery-img" alt="Familia ESCOVOL">
+    </div>
+  </div>
+
+</div>
+{% endblock %}

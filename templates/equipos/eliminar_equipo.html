@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'menu_principal' %}"><i class="fa-solid fa-house"></i></a></li>
+      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'listar_equipos' %}">Equipos</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Eliminar</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-danger text-white text-center fw-bold fs-4 rounded-top-4">
+      Eliminar Equipo
+    </div>
+    <div class="card-body bg-light p-4 rounded-bottom-4">
+      <p class="fs-6 text-center">
+        ¿Estás seguro de que deseas eliminar el equipo <strong>{{ equipo.nombre }}</strong>?
+      </p>
+      <p class="text-center text-muted">Esta acción no se puede deshacer.</p>
+
+      <form method="post" class="text-center mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Eliminar
+        </button>
+        <a href="{% url 'detalle_equipo' equipo.id %}" class="btn" style="background: #f8b100;">
+          <i class="fas fa-arrow-left"></i> Cancelar
+        </a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

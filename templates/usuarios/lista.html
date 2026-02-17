@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Usuarios</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Gestión de Usuarios</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+
+      <!-- Filtros -->
+      <form method="get" class="row g-3 mb-4 align-items-end">
+        <div class="col-lg-3 col-md-6">
+          <label class="form-label fw-semibold">Rol</label>
+          <select name="rol" class="form-select">
+            <option value="">Todos</option>
+            <option value="Entrenador" {% if rol_filtro == "Entrenador" %}selected{% endif %}>Entrenador</option>
+            <option value="Atleta" {% if rol_filtro == "Atleta" %}selected{% endif %}>Atleta</option>
+            <option value="Administrador" {% if rol_filtro == "Administrador" %}selected{% endif %}>Administrador</option>
+          </select>
+        </div>
+
+        <div class="col-lg-2 col-md-6">
+          <label class="form-label fw-semibold">Estado</label>
+          <select name="estado" class="form-select">
+            <option value="">Todos</option>
+            <option value="Activo" {% if estado_filtro == "Activo" %}selected{% endif %}>Activo</option>
+            <option value="Inactivo" {% if estado_filtro == "Inactivo" %}selected{% endif %}>Inactivo</option>
+          </select>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <label class="form-label fw-semibold">Nombre</label>
+          <input type="text" name="nombre" value="{{ nombre_filtro }}" class="form-control"
+                 placeholder="Buscar por nombre">
+        </div>
+
+        <div class="col-lg-4 col-md-6 d-flex gap-2">
+          <button type="submit" class="btn btn-outline-dark w-100 shadow">
+            <i class="fas fa-search"></i> Filtrar
+          </button>
+          <a href="{% url 'lista_usuarios' %}" class="btn btn-secondary w-100 shadow"> <i class="fas fa-trash-alt"></i>
+            Limpiar
+          </a>
+        </div>
+      </form>
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-center">
+          <thead class="table-dark">
+            <tr>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Usuario</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for usuario in page_obj %}
+              <tr>
+                <td>{{ usuario.nombre }}</td>
+                <td>{{ usuario.apellido }}</td>
+                <td>{{ usuario.usuario }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>
+                  {{ usuario.rol }}
+                </td>
+                <td>
+                  {% if usuario.estado == "Activo" %}
+                    <span class="badge" style="background:#00a896;">Activo</span>
+                  {% else %}
+                    <span class="badge bg-danger">Inactivo</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="6" class="text-center">No se encontraron usuarios</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación SIEMPRE visible -->
+      <div class="d-flex justify-content-center mt-4">
+        <nav>
+          <ul class="pagination pagination-sm">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">← Anterior</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link px-3 py-1">← Anterior</span>
+              </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active">
+                  <span class="page-link px-3 py-1">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ num }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">Siguiente →</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link px-3 py-1">Siguiente →</span>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan + botón -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Administradores</li>
+      </ol>
+    </nav>
+    <a href="{% url 'agregar_administrador' %}" class="btn" style="background: #f97316;">
+      ➕ Agregar
+    </a>
+  </div>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Listado de Administradores</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+
+      {% if administradores %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle text-center">
+            <thead class="table-dark">
+              <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Edad</th>
+                <th>Teléfono</th>
+                <th>Consultar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for admin in administradores %}
+              <tr>
+                <td>{{ admin.cedula }}</td>
+                <td>{{ admin.nombre }}</td>
+                <td>{{ admin.apellido }}</td>
+                <td>{{ admin.edad }}</td>
+                <td>{{ admin.telefono }}</td>
+                <td>
+                  <a href="{% url 'detalle_administrador' admin.id %}" 
+                     class="btn btn-sm" style="background:#06b6d4">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info text-center">No hay administradores registrados.</div>
+      {% endif %}
+
+      <!-- 🔄 Paginación SIEMPRE visible -->
+      <div class="d-flex justify-content-center mt-4">
+        <nav>
+          <ul class="pagination pagination-sm">
+            {% if page_obj.has_previous %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">← Anterior</a></li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">← Anterior</span></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+              {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+              {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente →</a></li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">Siguiente →</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

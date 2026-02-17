@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-3">
+  <div class="row align-items-center mb-4">
+
+    <!-- Migas de pan -->
+    <div class="col-md-6">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+              <i class="fa-solid fa-house"></i>
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'ver_estadisticas_equipos' %}">
+              Estadísticas
+            </a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Equipo
+          </li>
+        </ol>
+      </nav>
+    </div>
+
+    <!-- Botón Resumen -->
+    <div class="col-md-6 d-flex justify-content-md-end">
+      {% if is_admin or is_trainer %}
+        <a href="{% url 'resumen_estadisticas_equipo' equipo.id %}" class="btn " style="background: #06b6d4;">
+          📊 Resumen
+        </a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<div class="card shadow border border-primary">
+  <div class="card-header bg-primary text-white text-center fw-bold fs-3">
+    Estadísticas del equipo {{ equipo.nombre }}
+  </div>
+
+  <div class="card-body">
+
+    <!-- Filtros -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 mb-4 align-items-end">
+      <!-- Campo Partido -->
+      <div class="col-lg-4 col-md-6">
+        <label class="form-label fw-semibold">Partido</label>
+        <select name="partido" class="form-select">
+          <option value="">-- Todos --</option>
+          {% for part in partidos_disponibles %}
+            <option value="{{ part.id }}" {% if request.GET.partido == part.id|stringformat:"s" %}selected{% endif %}>
+              {{ part }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Campo Mes -->
+      <div class="col-lg-4 col-md-6">
+        <label class="form-label fw-semibold">Mes</label>
+        <select name="mes" class="form-select">
+          <option value="">-- Todos --</option>
+          {% for numero, nombre in meses %}
+            <option value="{{ numero }}" {% if request.GET.mes == numero|stringformat:"s" %}selected{% endif %}>
+              {{ nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Botón Filtrar -->
+      <div class="col-lg-2 col-6">
+        <button type="submit" class="btn btn-outline-dark w-100 shadow">
+          <i class="fas fa-search"></i> Filtrar
+        </button>
+      </div>
+
+      <!-- Botón Limpiar -->
+      <div class="col-lg-2 col-6">
+        <a href="{% url 'ver_estadisticas_equipo_detalle' equipo.id %}" class="btn btn-secondary w-100 shadow">
+          <i class="fas fa-trash-alt"></i> Limpiar
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- Tabla de Estadísticas por Partido -->
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>Partido</th>
+            <th>🏐 Puntos</th>
+            <th>🎯 Saques</th>
+            <th>💥 Remates</th>
+            <th>🧱 Bloqueos</th>
+            <th>🎯 Armadas</th>
+            <th>👐 Recepciones</th>
+            <th class="text-danger">❌ Errores</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in page_obj %}
+          <tr>
+            <td>{{ item.partido }}</td>
+            <td>{{ item.resumen.puntos|default:0 }}</td>
+            <td>{{ item.resumen.saques|default:0 }}</td>
+            <td>{{ item.resumen.remates|default:0 }}</td>
+            <td>{{ item.resumen.bloqueos|default:0 }}</td>
+            <td>{{ item.resumen.armadas|default:0 }}</td>
+            <td>{{ item.resumen.recepciones|default:0 }}</td>
+            <td class="text-danger">{{ item.resumen.errores|default:0 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8">No hay estadísticas registradas para este equipo.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 🔄 Paginación -->
+<div class="d-flex justify-content-center mt-4">
+  <nav>
+    <ul class="pagination pagination-sm">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if request.GET.partido %}&partido={{ request.GET.partido }}{% endif %}{% if request.GET.mes %}&mes={{ request.GET.mes }}{% endif %}">
+            ← Anterior
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link px-3 py-1">← Anterior</span>
+        </li>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <li class="page-item active">
+            <span class="page-link px-3 py-1">{{ num }}</span>
+          </li>
+        {% else %}
+          <li class="page-item">
+            <a class="page-link px-3 py-1" href="?page={{ num }}{% if request.GET.partido %}&partido={{ request.GET.partido }}{% endif %}{% if request.GET.mes %}&mes={{ request.GET.mes }}{% endif %}">
+              {{ num }}
+            </a>
+          </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if request.GET.partido %}&partido={{ request.GET.partido }}{% endif %}{% if request.GET.mes %}&mes={{ request.GET.mes }}{% endif %}">
+            Siguiente →
+          </a>
+        </li>
+      {% else %}
+        <li class="page-item disabled">
+          <span class="page-link px-3 py-1">Siguiente →</span>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+
+
+
+    <!-- Totales -->
+    <div class="card shadow-sm mt-5">
+      <div class="card-header bg-secondary text-white text-center fw-bold">
+        Totales Acumulados
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-bordered text-center mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>🏐 Puntos</th>
+              <th>🎯 Saques</th>
+              <th>💥 Remates</th>
+              <th>🧱 Bloqueos</th>
+              <th>🎯 Armadas</th>
+              <th>👐 Recepciones</th>
+              <th class="text-danger">❌ Errores</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ totales.puntos|default:"0" }}</td>
+              <td>{{ totales.saques|default:"0" }}</td>
+              <td>{{ totales.remates|default:"0" }}</td>
+              <td>{{ totales.bloqueos|default:"0" }}</td>
+              <td>{{ totales.armadas|default:"0" }}</td>
+              <td>{{ totales.recepciones|default:"0" }}</td>
+              <td class="text-danger">{{ totales.errores|default:"0" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

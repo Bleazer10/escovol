@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{% url 'menu_principal' %}" class="text-dark">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'lista_partidos' %}" class="text-dark"> Partidos</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header text-white fw-bold text-center fs-4 rounded-top-4">
+      Detalle del Partido
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+      <div class="row g-3 mb-3">
+        <div class="col-md-6"><strong>Fecha:</strong> {{ partido.fecha|date:"d/m/Y" }}</div>
+        <div class="col-md-6"><strong>Hora:</strong> {{ partido.hora }}</div>
+        <div class="col-md-6"><strong>Equipo Local:</strong> {{ partido.equipo_local.nombre }}</div>
+        <div class="col-md-6"><strong>Equipo Externo:</strong> {{ partido.equipo_externo }}</div>
+        <div class="col-md-6"><strong>Lugar:</strong> {{ partido.lugar }}</div>
+        <div class="col-md-6"><strong>Campeonato:</strong> {{ partido.campeonato.nombre }}</div>
+        <div class="col-md-6"><strong>Estado:</strong> {{ partido.estado|capfirst }}</div>
+        <div class="col-md-6"><strong>Formato:</strong> {{ partido.formato_partido }}</div>
+        {% if partido.estado == "finalizado" %}
+          <div class="col-md-6"><strong>Ganador:</strong> 
+            {% if partido.ganador == "local" %}
+              Local
+            {% elif partido.ganador == "externo" %}
+              Equipo Externo
+            {% else %}
+              —
+            {% endif %}
+          </div>
+        {% endif %}
+        <div class="col-12">
+          <strong>Observaciones:</strong>
+          <div class="border rounded p-2 mt-1 bg-white" style="min-height: 80px; font-size: 0.95rem;">
+            {{ partido.observaciones|linebreaksbr }}
+          </div>
+        </div>
+      </div>
+
+      {% if sets %}
+      <hr>
+      <h5 class="text-center fw-bold mb-3">Resultado por Sets</h5>
+      <table class="table table-bordered text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>Set</th>
+            <th>Local</th>
+            <th>Externo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for num, local, externo in sets %}
+          <tr>
+            <td>{{ num }}</td>
+            <td>{{ local }}</td>
+            <td>{{ externo }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <div class="d-flex justify-content-center gap-3 mt-4">
+        <a href="{% url 'editar_partido' partido.id %}" class="btn" style="background: #4caf50;">
+          <i class="fas fa-edit"></i> Editar
+        </a>
+        <a href="{% url 'eliminar_partido' partido.id %}" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Eliminar
+        </a>
+        <a href="{% url 'lista_partidos' %}" class="btn" style="background: #f8b100;">
+          <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

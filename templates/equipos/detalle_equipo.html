@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'menu_principal' %}"><i class="fa-solid fa-house"></i></a></li>
+      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'listar_equipos' %}">Equipos</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header text-white text-center fw-bold fs-4">
+      Detalle del Equipo
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <strong>Nombre:</strong> {{ equipo.nombre }}
+        </div>
+        <div class="col-md-6">
+          <strong>Categoría:</strong> {{ equipo.categoria }}
+        </div>
+        <div class="col-md-6">
+          <strong>Entrenador:</strong> {{ equipo.entrenador.nombre }} {{ equipo.entrenador.apellido }}
+        </div>
+        <div class="col-md-6">
+          <strong>Sexo:</strong> {{ equipo.get_sexo_equipo_display }}
+        </div>
+      </div>
+
+      <hr>
+      <h5 class="text-center fw-bold">Atletas</h5>
+
+      {% if atletas %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Edad</th>
+                <th>Teléfono</th>
+                <th>Sexo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for atleta in atletas %}
+              <tr>
+                <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
+                <td>{{ atleta.cedula }}</td>
+                <td>{{ atleta.edad }} años</td>
+                <td>{{ atleta.telefono }}</td>
+                <td>{{ atleta.sexo|title }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info text-center">Este equipo no tiene atletas asignados.</div>
+      {% endif %}
+
+      <div class="d-flex justify-content-center gap-3 mt-4">
+        <a href="{% url 'editar_equipo' equipo.id %}" class="btn" style="background: #4caf50;">
+          <i class="fas fa-edit"></i> Editar
+        </a>
+        <a href="{% url 'eliminar_equipo' equipo.id %}" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Eliminar
+        </a>
+        <a href="{% url 'listar_equipos' %}" class="btn" style="background: #f8b100;">
+          <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

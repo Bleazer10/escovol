@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="text-dark" href="{% url 'menu_principal' %}"><i class="fa-solid fa-house"></i></a>
+      </li>
+      <li class="breadcrumb-item">
+        <a class="text-dark" href="{% url 'listar_equipos' %}">Equipos</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Registrar</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header text-white text-center fw-bold fs-4" >
+      Agregar Equipo
+    </div>
+    <div class="card-body p-4 bg-light rounded-bottom-4">
+
+      <!-- Formulario de filtrado -->
+      <form method="get" class="mb-4 row g-3 align-items-end border-bottom pb-3">
+        <div class="col-md-5">
+          <label for="edad_tope" class="form-label fw-semibold">Edad Tope</label>
+          <input type="number" name="edad_tope" id="edad_tope" value="{{ edad_tope|default:'' }}"
+                 class="form-control" placeholder="Ej. 15">
+        </div>
+
+        <div class="col-md-5">
+          <label for="sexo" class="form-label fw-semibold">Sexo del equipo</label>
+          <select name="sexo" id="sexo" class="form-select">
+            <option value="" {% if not sexo %}selected{% endif %}>-- Seleccionar --</option>
+            <option value="masculino" {% if sexo == 'masculino' %}selected{% endif %}>Masculino</option>
+            <option value="femenino" {% if sexo == 'femenino' %}selected{% endif %}>Femenino</option>
+            <option value="mixto" {% if sexo == 'mixto' %}selected{% endif %}>Mixto</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-sm w-100" style="background: #f97316;">
+            <i class="fas fa-search"></i> Buscar
+          </button>
+        </div>
+      </form>
+
+      {% if edad_tope and sexo %}
+      <!-- Formulario principal -->
+      <form method="post">
+        {% csrf_token %}
+
+        {% if error_msg %}
+        <div class="alert alert-danger text-center">{{ error_msg }}</div>
+        {% endif %}
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="nombre" class="form-label fw-semibold">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="entrenador" class="form-label fw-semibold">Entrenador</label>
+            {{ form.entrenador|add_class:"form-select" }}
+          </div>
+
+          <div class="col-md-6 mb-3">
+            <label for="categoria" class="form-label fw-semibold">Categoría</label>
+            {{ form.categoria|add_class:"form-control" }}
+          </div>
+
+        {% if atletas_disponibles %}
+        <!-- Tabla de atletas -->
+        <div class="mt-4">
+          <h5 class="text-center fw-bold mb-3">
+            Atletas disponibles ({{ sexo|title }}, menores e iguales a {{ edad_tope }} años)
+          </h5>
+          <div class="alert alert-warning text-center d-none" id="alerta-limite">
+            Solo se pueden seleccionar hasta 14 atletas.
+          </div>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle text-center">
+              <thead class="table-dark">
+                <tr>
+                  <th>Seleccionar</th>
+                  <th>Nombre</th>
+                  <th>Cédula</th>
+                  <th>Edad</th>
+                  <th>Sexo</th>
+                  <th>Categoria</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for atleta in atletas_disponibles %}
+                <tr>
+                  <td>
+                    <input type="checkbox" class="checkbox-atleta" name="atletas_seleccionados" value="{{ atleta.id }}"
+                      {% if atleta.id|stringformat:"s" in atletas_seleccionados %}checked{% endif %}>
+                  </td>
+                  <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
+                  <td>{{ atleta.cedula }}</td>
+                  <td>{{ atleta.edad }} años</td>
+                  <td>{{ atleta.sexo|title }}</td>
+                  <td>{{ atleta.categoria }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Botones -->
+        <div class="d-flex justify-content-center gap-3 mt-4">
+          <button type="submit" class="btn" style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar 
+          </button>
+          <a href="{% url 'listar_equipos' %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript para validar máximo 14 -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const checkboxes = document.querySelectorAll('.checkbox-atleta');
+  const alerta = document.getElementById('alerta-limite');
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+      const seleccionados = Array.from(checkboxes).filter(c => c.checked).length;
+
+      if (seleccionados > 14) {
+        cb.checked = false;
+        alerta.classList.remove('d-none');
+        setTimeout(() => alerta.classList.add('d-none'), 3000);
+      }
+    });
+  });
+});
+</script>
+
+{% endblock %}

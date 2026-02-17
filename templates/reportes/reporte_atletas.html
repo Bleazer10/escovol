@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Migas de pan -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="visually-hidden">Inicio</span>
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Reporte de Atletas</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white text-center fw-bold fs-4">
+            Reporte de Atletas
+        </div>
+        <div class="card-body">
+
+            <!-- Filtros -->
+            <form method="get" class="mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                <label for="cedula" class="form-label">Cédula</label>
+                <input type="text" class="form-control" id="cedula" name="cedula" value="{{ request.GET.cedula }}">
+                </div>
+                <div class="col-md-2">
+                <label for="nombre" class="form-label">Nombre o Apellido</label>
+                <input type="text" class="form-control" id="nombre" name="nombre" value="{{ request.GET.nombre }}">
+                </div>
+                <div class="col-md-2">
+                <label for="categoria" class="form-label">Categoría</label>
+                <select class="form-select" id="categoria" name="categoria">
+                    <option value="">Todas</option>
+                    {% for cat in categorias %}
+                    <option value="{{ cat }}" {% if request.GET.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <div class="col-md-2">
+                <label for="edad_min" class="form-label">Edad mín</label>
+                <input type="number" class="form-control" id="edad_min" name="edad_min" value="{{ request.GET.edad_min }}">
+                </div>
+                <div class="col-md-2">
+                <label for="edad_max" class="form-label">Edad máx</label>
+                <input type="number" class="form-control" id="edad_max" name="edad_max" value="{{ request.GET.edad_max }}">
+                </div>
+                <div class="col-md-2">
+                <label for="sexo" class="form-label">Sexo</label>
+                <select class="form-select" id="sexo" name="sexo">
+                    <option value="">Todos</option>
+                    <option value="Masculino" {% if request.GET.sexo == "Masculino" %}selected{% endif %}>Masculino</option>
+                    <option value="Femenino" {% if request.GET.sexo == "Femenino" %}selected{% endif %}>Femenino</option>
+                </select>
+                </div>
+            </div>
+
+            <!-- Botones debajo -->
+            <div class="row mt-3">
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-search"></i> Filtrar</button>
+                </div>
+                <div class="col-md-2 d-grid">
+                <a href="{% url 'reporte_atletas' %}"  class="btn btn-outline-secondary"> <i class="fas fa-trash-alt"></i> Limpiar
+                </a>
+                </div>
+            </div>
+            </form>
+
+            <!-- Botones de exportación -->
+            <div class="mb-3 d-flex justify-content-end gap-2">
+            <a href="{% url 'reporte_atletas_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-warning">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{% url 'reporte_atletas_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </a>
+            </div>
+
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre y Apellido</th>
+                            <th>Cédula</th>
+                            <th>Categoría</th>
+                            <th>Edad</th>
+                            <th>Sexo</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for atleta in atletas %}
+                        <tr>
+                            <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
+                            <td>{{ atleta.cedula }}</td>
+                            <td>{{ atleta.categoria }}</td>
+                            <td>{{ atleta.calcular_edad }}</td>
+                            <td>{{ atleta.sexo }}</td>
+                            <td>{{ atleta.telefono }}</td>
+                            <td>{{ atleta.direccion }}</td>
+
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No se encontraron atletas con los filtros aplicados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            {% if page_obj.has_other_pages %}
+                {% with request.GET.urlencode as query_params %}
+                    {% with query_params|cut:'page='|cut:'&page=' as base_query %}
+                        <div class="d-flex justify-content-center mt-4">
+                            <nav>
+                                <ul class="pagination pagination-sm">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}&{{ base_query }}">← Anterior</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link px-3 py-1">← Anterior</span>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link px-3 py-1">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link px-3 py-1" href="?page={{ num }}&{{ base_query }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}&{{ base_query }}">Siguiente →</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link px-3 py-1">Siguiente →</span>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                    {% endwith %}
+                {% endwith %}
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

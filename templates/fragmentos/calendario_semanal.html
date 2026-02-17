@@ -1,0 +1,40 @@
+<!-- fragmentos/calendario_semanal.html -->
+<div class="text-center mb-4">
+  <h5 class="fw-bold text-danger">📆 Calendario semanal de partidos</h5>
+  <p class="text-muted mb-2">Del {{ inicio_semana|date:"d/m" }} al {{ fin_semana|date:"d/m" }}</p>
+  <div class="d-flex justify-content-center gap-2">
+    <a href="?semana={{ semana_offset|add:"-1" }}" class="btn btn-outline-dark btn-sm">
+      <i class="fas fa-chevron-left"></i> Semana anterior
+    </a>
+    <a href="?semana=0" class="btn btn-outline-secondary btn-sm">Esta semana</a>
+    <a href="?semana={{ semana_offset|add:"1" }}" class="btn btn-outline-dark btn-sm">
+      Semana siguiente <i class="fas fa-chevron-right"></i>
+    </a>
+  </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-4 row-cols-lg-7 g-3">
+  {% for dia_completo, partidos in calendario.items %}
+  <div class="col">
+    <div class="border-start border-4 border-danger rounded-4 bg-white shadow-sm h-100 d-flex flex-column">
+      <div class="p-2 text-center fw-bold text-danger border-bottom">{{ dia_completo }}</div>
+      <div class="p-2 flex-grow-1">
+        {% if partidos %}
+          {% for partido in partidos %}
+            <div class="mb-3 p-2 bg-light rounded-3 shadow-sm border-start border-2 border-dark">
+              <div class="fw-semibold small">{{ partido.equipo_local.nombre }}</div>
+              <div class="text-muted small">vs {{ partido.equipo_externo }}</div>
+              <div class="text-muted small">📍 {{ partido.lugar }}</div>
+              <div class="mt-1">
+                <span class="badge bg-dark">{{ partido.hora|time:"H:i" }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted small text-center mt-3">Sin partidos</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>

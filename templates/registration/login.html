@@ -1,0 +1,44 @@
+{% extends 'base_publica.html' %}
+{% load static %}
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow border border-dark rounded-4 p-4">
+        <h2 class="text-center text-dark fw-bold mb-4">Iniciar Sesión</h2>
+
+        <!-- ⚠️ Error de usuario/contraseña incorrectos -->
+        {% if form.errors %}
+          <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="fa-solid fa-circle-xmark me-2"></i>
+            Usuario o contraseña incorrectos, o estado inactivo.
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="username" class="form-label">Usuario</label>
+            <input type="text" name="username" class="form-control" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Contraseña</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+
+          <!-- Botones -->
+          <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary rounded-pill w-50">
+              <i class="fa-solid fa-right-to-bracket"></i>  Entrar
+            </button>
+            <a href="{% url 'bienvenida' %}" class="btn btn-warning rounded-pill w-50">
+              <i class="fa-solid fa-arrow-left"></i>  Cancelar
+            </a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

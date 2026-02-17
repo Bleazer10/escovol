@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>OLYMPO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CSS desde CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Google Fonts y Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
+
+    <style>
+        html, body { height: 100%; margin: 0; display: flex; flex-direction: column; }
+        main { flex: 1; }
+        body { font-family: 'Roboto', sans-serif; background-color: #f8f9fa; color: #212529; }
+        .navbar-brand { font-weight: bold; color: #070303 !important; }
+        .bg-escovol { background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF); }
+        .text-escovol { color: #2A73B6; }
+        .btn-escovol { background-color: #2A73B6; color: white; }
+        .btn-escovol:hover { background-color: #5C9DCC; color: white; }
+        footer { margin-top: 40px; padding: 20px 0; background-color: #000000; color: white; text-align: center; }
+        .card-header {
+            background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);
+            color: #000000 !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Añadir sombra para mejor visibilidad */
+        }
+        .pagination .page-link {
+            color: #343434;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: #2A73B6;
+            border-color: #2A73B6;
+        }
+
+        .pagination .page-item .page-link {
+            border-color: #2A73B6;
+        }
+            
+    </style>
+
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg bg-escovol navbar-dark shadow-sm">
+        <div class="container-fluid px-4">
+
+            <!-- Logo -->
+            <a class="navbar-brand d-flex align-items-center">
+                <img src="{% static 'img/logo-olympo.jpeg' %}" alt="Logo Olympo" width="55" height="55" class="me-2 rounded-circle shadow">
+                <span class="fw-bold text-white">OLYMPO</span>
+            </a>
+
+            <!-- Botón móvil -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse justify-content-between" id="navbarMenu">
+
+               <!-- Menú central -->
+                <ul class="navbar-nav mx-auto gap-3">
+                    {% if is_admin or is_trainer %}
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'administracion' %}">Administración</a></li>
+
+                        <!-- Estadísticas -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Estadísticas</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'estadisticas_individuales' %}">Individuales</a></li>
+                                <li><a class="dropdown-item" href="{% url 'ver_estadisticas_equipos' %}">En Equipo</a></li>
+                            </ul>
+                        </li>
+
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_entrenadores' %}">Entrenador</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_campeonatos' %}">Campeonatos</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_partidos' %}">Partidos</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'listar_equipos' %}">Equipos</a></li>
+
+                        {% if is_admin %}
+                            <!-- Usuarios (solo Admin) -->
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Usuarios</a>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'lista_usuarios' %}">Usuarios</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'lista_administradores' %}">Administradores</a></li>
+                                </ul>
+                            </li>
+                        {% endif %}
+
+                        <!-- Reportes -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Reportes</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'reporte_atletas' %}">Atletas</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_campeonatos' %}">Campeonatos</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_equipos' %}">Equipos</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_entrenadores' %}">Entrenadores</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_estadisticas' %}">Estadísticas Individuales</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_estadisticas_equipo' %}">Estadísticas Equipo</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_pagos_view' %}">Pagos</a></li>
+                                <li><a class="dropdown-item" href="{% url 'reporte_partidos' %}">Partidos</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+
+                    {% if is_athlete %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'ver_estadisticas' atleta_id=atleta_id %}">Mis estadísticas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'detalle_atleta' atleta_id=atleta_id %}">Mi Perfil</a>
+                        </li>
+                    {% endif %}
+                </ul>
+
+                <!-- Usuario / Login -->
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center text-white" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-user-circle me-1"></i>
+                                {{ user.get_full_name|default:user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <form method="post" action="{% url 'logout' %}" style="margin: 0; padding: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-dark">
+                                            <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
+                                            Cerrar sesión
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'login' %}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Iniciar sesión
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+
+
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="container py-5">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        Escuela de Voleibol OLYMPO © {{ year|default:2025 }}
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

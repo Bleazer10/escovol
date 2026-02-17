@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+  <!-- Migas de pan + botón -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Entrenadores</li>
+      </ol>
+    </nav>
+    {% if is_admin %}
+      <a href="{% url 'registrar_entrenador' %}" class="btn " style="background: #f97316;">
+        ➕ Agregar 
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="container mt-4"></div>
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Listado de Entrenadores</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+
+      {% if entrenadores %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Teléfono</th>
+                <th style="width: 12%;">Edad</th>
+                {% if is_admin %}
+                  <th style="width: 20%;">Consultar</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for entrenador in entrenadores %}
+              <tr>
+                <td>{{ entrenador.nombre }} {{ entrenador.apellido }}</td>
+                <td>{{ entrenador.cedula }}</td>
+                <td>{{ entrenador.telefono }}</td>
+                <td>{{ entrenador.edad }}</td>
+                {% if is_admin %}
+                  <td>
+                    <a href="{% url 'detalle_entrenador' entrenador.id %}"
+                      class="btn btn-sm" style="background: #06b6d4;"
+                      title="Ver Detalles">
+                      <i class="fas fa-search"></i>
+                    </a>
+                  </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info text-center">No hay entrenadores registrados aún.</div>
+      {% endif %}
+
+      <!-- 🔄 Paginación SIEMPRE visible -->
+      <div class="d-flex justify-content-center mt-4">
+        <nav>
+          <ul class="pagination pagination-sm">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link px-3 py-1">← Anterior</span>
+              </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active">
+                  <span class="page-link px-3 py-1">{{ num }}</span>
+                </li>
+              {% else %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ num }}">{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}">Siguiente →</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link px-3 py-1">Siguiente →</span>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+
+    </div> <!-- CIERRE del card-body -->
+  </div>
+</div>
+{% endblock %}

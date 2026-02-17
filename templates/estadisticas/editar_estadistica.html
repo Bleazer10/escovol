@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block content %}
+
+    <!-- Migas de pan + título -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'estadisticas_individuales' %}" class="text-dark">Estadísticas</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'ver_estadisticas' estadistica.atleta.id %}" class="text-dark">Ver </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Editar </li>
+      </ol>
+    </nav>
+  </div>
+
+    <div class="container mt-4">
+
+  <div class="card shadow border border-primary">
+    <!-- Encabezado rojo con título -->
+    <div class="card-header text-white fw-bold text-center fs-4"
+         style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+       Editar Estadística de {{ estadistica.atleta.nombre }} {{ estadistica.atleta.apellido }}
+    </div>
+
+    <div class="card-body bg-light">
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            {{ form.partido.label_tag }}
+            {{ form.partido }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.puntos.label_tag }}
+            {{ form.puntos }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.saques.label_tag }}
+            {{ form.saques }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.remates.label_tag }}
+            {{ form.remates }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.bloqueos.label_tag }}
+            {{ form.bloqueos }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.armadas.label_tag }}
+            {{ form.armadas }}
+          </div>
+          <div class="col-md-6 mb-3">
+            {{ form.recepciones.label_tag }}
+            {{ form.recepciones }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label text-danger">{{ form.errores.label }}</label>
+            {{ form.errores }}
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-center mt-4 gap-3">
+          <button type="submit" class="btn" style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'ver_estadisticas' estadistica.atleta.id %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Reporte de Entrenadores</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow-sm rounded">
+    <div class="card-header bg-dark text-white text-center">
+      <span class="fw-bold fs-4">📋 Reporte de Entrenadores</span>
+    </div>
+
+    <div class="card-body">
+      <!-- Botones de exportación -->
+      <div class="d-flex justify-content-end mb-3 gap-2">
+        <a href="{% url 'reporte_entrenadores_pdf' %}" class="btn btn-outline-warning">
+          <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+        </a>
+        <a href="{% url 'reporte_entrenadores_excel' %}" class="btn btn-outline-success">
+          <i class="fa-solid fa-file-excel"></i> Exportar Excel
+        </a>
+      </div>
+
+      {% if page_obj and page_obj.object_list %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle text-center">
+            <thead class="table-dark">
+              <tr>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Cédula</th>
+                <th>Edad</th>
+                <th>Teléfono</th>
+                <th class="text-start">Equipos Dirigidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entrenador in page_obj %}
+              <tr>
+                <td>{{ entrenador.nombre }}</td>
+                <td>{{ entrenador.apellido }}</td>
+                <td>{{ entrenador.cedula }}</td>
+                <td>{{ entrenador.edad }}</td>
+                <td>{{ entrenador.telefono|default:"—" }}</td>
+                <td class="text-start">
+                  {% if entrenador.equipo_set.all %}
+                    <ul class="mb-0 ps-3">
+                      {% for equipo in entrenador.equipo_set.all %}
+                        <li>{{ equipo.nombre }} </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <span class="text-muted">Sin equipos</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación: SIEMPRE visible -->
+        <div class="d-flex justify-content-center mt-3">
+          <nav aria-label="Paginación entrenadores">
+            <ul class="pagination pagination-sm">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">← Anterior</span>
+                </li>
+              {% endif %}
+
+              {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                  <li class="page-item active"><span class="page-link px-3 py-1">{{ num }}</span></li>
+                {% else %}
+                  <li class="page-item"><a class="page-link px-3 py-1" href="?page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+              {% endfor %}
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}">Siguiente →</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">Siguiente →</span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+      {% else %}
+        <p class="text-center text-muted">No hay entrenadores registrados.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

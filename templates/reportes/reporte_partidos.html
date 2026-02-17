@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+  <!-- Migas de pan -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark"><i class="fa-solid fa-house"></i></a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Reporte de Partidos</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Reporte de Partidos</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+
+      <!-- Filtros -->
+        <form method="get" class="row g-3 align-items-end mb-4">
+        <div class="col-md-2">
+            <label class="form-label">Fecha desde</label>
+            <input type="date" name="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Fecha hasta</label>
+            <input type="date" name="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Campeonato</label>
+            <select name="campeonato" class="form-select">
+            <option value="">Todos</option>
+            {% for camp in campeonatos %}
+                <option value="{{ camp.id }}" {% if filtros.campeonato == camp.id|stringformat:"s" %}selected{% endif %}>
+                {{ camp.nombre }}
+                </option>
+            {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select">
+            <option value="">Todos</option>
+            {% for value,label in estados %}
+                <option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Equipo Local</label>
+            <select name="equipo" class="form-select">
+            <option value="">Todos</option>
+            {% for eq in equipos %}
+                <option value="{{ eq.id }}" {% if filtros.equipo == eq.id|stringformat:"s" %}selected{% endif %}>
+                {{ eq.nombre }}
+                </option>
+            {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Ganador</label>
+            <select name="ganador" class="form-select">
+            <option value="">Todos</option>
+            {% for g in ganadores %}
+                <option value="{{ g }}" {% if filtros.ganador == g %}selected{% endif %}>
+                {% if g == 'local' %}Local{% else %}{{ g }}{% endif %}
+                </option>
+            {% endfor %}
+            </select>
+        </div>
+
+        <!-- ✅ Botones alineados con Ganador -->
+        <div class="col-md-auto d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-danger px-4">
+            <i class="fas fa-search"></i> Filtrar
+            </button>
+            <a href="{% url 'reporte_partidos' %}" class="btn btn-outline-secondary px-4">
+            <i class="fas fa-trash-alt"></i> Limpiar
+            </a>
+        </div>
+        </form>
+
+
+      <!-- Botones Exportar -->
+        <div class="mb-3 d-flex gap-2 justify-content-end">
+            <a href="?{{ request.GET.urlencode }}&export=pdf" class="btn btn-outline-warning">📄 Exportar PDF</a>
+            <a href="?{{ request.GET.urlencode }}&export=excel" class="btn btn-outline-success">📊 Exportar Excel</a>
+        </div>
+
+
+      <!-- Tabla -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Local</th>
+              <th>Externo</th>
+              <th>Campeonato</th>
+              <th>Lugar</th>
+              <th>Estado</th>
+              <th>Ganador</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in page_obj %}
+            <tr>
+              <td>{{ p.fecha|date:"d/m/Y" }}</td>
+              <td>{{ p.hora|time:"H:i" }}</td>
+              <td>{{ p.equipo_local.nombre }}</td>
+              <td>{{ p.equipo_externo }}</td>
+              <td>{% if p.campeonato %}{{ p.campeonato.nombre }}{% else %}—{% endif %}</td>
+              <td>{{ p.lugar }}</td>
+              <td>{{ p.get_estado_display }}</td>
+              <td>
+                {% if p.ganador == 'local' %}Local{% elif p.ganador == 'externo' %}{{ p.equipo_externo }}{% else %}—{% endif %}
+              </td>
+              <td>{{ p.resultado_con_nombre|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="9" class="text-center text-muted">No hay resultados.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      {% with request.GET.urlencode as query_params %}
+      {% with query_params|cut:'page='|cut:'&page=' as base_query %}
+      <div class="d-flex justify-content-center mt-4">
+        <nav>
+          <ul class="pagination pagination-sm">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ base_query }}">← Anterior</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">← Anterior</span></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+              {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ num }}&{{ base_query }}">{{ num }}</a></li>
+              {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ base_query }}">Siguiente →</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">Siguiente →</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endwith %}
+      {% endwith %}
+    </div>
+  </div>
+</div>
+{% endblock %}

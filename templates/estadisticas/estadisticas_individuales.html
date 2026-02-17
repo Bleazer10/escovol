@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    {% if is_admin or is_trainer %}
+      <div class="d-flex gap-2">
+        <a href="{% url 'agregar_estadistica_general' %}" class="btn " style="background: #f97316;">
+          ➕ Agregar
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+<div class="container mt-3">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Estadísticas </li>
+    </ol>
+  </nav>
+</div>
+
+<div class="container">
+  <div class="card shadow border border-primary">
+    <div class="card-header text-white fw-bold text-center fs-4">
+      📋 Estadísticas Individuales
+    </div>
+
+    <div class="card-body">
+
+      <form method="get" class="row g-3 mb-4 align-items-end">
+        <div class="col-lg-4 col-md-6">
+          <label class="form-label fw-semibold">Categoría</label>
+          <select name="categoria" class="form-select">
+            <option value="">-- Todas --</option>
+            {% for cat in categorias %}
+              <option value="{{ cat }}" {% if valores.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+          <label class="form-label fw-semibold">Cédula</label>
+          <input type="text" name="cedula" class="form-control" placeholder="Buscar por cédula"
+                 value="{{ valores.cedula|default_if_none:'' }}">
+        </div>
+
+        <div class="col-lg-2 col-6">
+          <button type="submit" class="btn btn-outline-dark w-100 shadow">
+            <i class="fas fa-search"></i> Filtrar
+          </button>
+        </div>
+
+        <div class="col-lg-2 col-6">
+          <a href="{% url 'estadisticas_individuales' %}" class="btn btn-secondary w-100 shadow"> <i class="fas fa-trash-alt"></i>
+            Limpiar
+          </a>
+        </div>
+      </form>
+
+      {% if estadisticas %}
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover text-center align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Categoría</th>
+                <th>Puntos</th>
+                <th>Saques</th>
+                <th>Remates</th>
+                <th>Bloqueos</th>
+                <th>Recepciones</th>
+                <th>Armadas</th>
+                <th>Errores</th>
+                <th>Consultar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for est in estadisticas %}
+                <tr>
+                  <td>{{ est.atleta__nombre }} {{ est.atleta__apellido }}</td>
+                  <td>{{ est.atleta__cedula }}</td>
+                  <td>{{ est.atleta__categoria }}</td>
+                  <td>{{ est.puntos }}</td>
+                  <td>{{ est.saques }}</td>
+                  <td>{{ est.remates }}</td>
+                  <td>{{ est.bloqueos }}</td>
+                  <td>{{ est.recepciones }}</td>
+                  <td>{{ est.armadas }}</td>
+                  <td>{{ est.errores }}</td>
+                  <td>
+                    <a href="{% url 'ver_estadisticas' est.atleta__id %}" class="btn btn-sm" style="background: #06b6d4;">
+                      <i class="fas fa-chart-line"></i> Ver
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 🔄 Paginación -->
+        <div class="d-flex justify-content-center mt-4">
+          <nav>
+            <ul class="pagination pagination-sm">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if valores.categoria %}&categoria={{ valores.categoria }}{% endif %}{% if valores.cedula %}&cedula={{ valores.cedula }}{% endif %}">← Anterior</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">← Anterior</span>
+                </li>
+              {% endif %}
+
+              {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                  <li class="page-item active">
+                    <span class="page-link px-3 py-1">{{ num }}</span>
+                  </li>
+                {% else %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ num }}{% if valores.categoria %}&categoria={{ valores.categoria }}{% endif %}{% if valores.cedula %}&cedula={{ valores.cedula }}{% endif %}">{{ num }}</a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if valores.categoria %}&categoria={{ valores.categoria }}{% endif %}{% if valores.cedula %}&cedula={{ valores.cedula }}{% endif %}">Siguiente →</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link px-3 py-1">Siguiente →</span>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        </div>
+
+      {% else %}
+        <div class="alert alert-info text-center mt-4">
+          No hay atletas con estadísticas registradas por ahora.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

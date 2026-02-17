@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-4">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item">
+      <a class="link-body-emphasis" href="{% url 'estadisticas_individuales' %}">Estadísticas</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Agregar</li>
+  </ol>
+</nav>
+
+<div class="container">
+  <div class="card shadow border border-primary">
+    <div class="card-header text-white fw-bold text-center fs-4"
+         style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+      ➕ Agregar Estadística 
+    </div>
+
+    <div class="card-body">
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Paso 1: Buscar por Cédula -->
+      <form method="get" class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Cédula del Atleta</label>
+          <input type="text" name="cedula" class="form-control" placeholder="Ingrese la cédula"
+                 value="{{ cedula|default_if_none:'' }}" required>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" name="buscar" class="btn w-100" style="background: #f97316;">
+            <i class="fas fa-search"></i> Buscar
+          </button>
+        </div>
+      </form>
+
+      {% if atleta_encontrado %}
+        <!-- Paso 2: Confirmar Atleta -->
+        <div class="mb-4">
+          <h5 class="text-success fw-bold">✅ Atleta encontrado:</h5>
+          <ul class="list-group">
+            <li class="list-group-item"><strong>Nombre:</strong> {{ atleta_encontrado.nombre }} {{ atleta_encontrado.apellido }}</li>
+            <li class="list-group-item"><strong>Categoría:</strong> {{ atleta_encontrado.categoria }}</li>
+          </ul>
+        </div>
+
+        <!-- Paso 3: Formulario -->
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="atleta_id" value="{{ atleta_encontrado.id }}">
+          <div class="row">
+            {% for field in estadistica_form.visible_fields %}
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-semibold">{{ field.label }}</label>
+                {{ field }}
+                {% if field.name == "partido" and field.field.queryset.count == 0 %}
+                  <div class="form-text text-danger">
+                    Este atleta ya tiene estadísticas en todos los partidos disponibles.
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="d-flex justify-content-center gap-2 mt-3">
+          {% if estadistica_form.fields.partido.queryset.exists %}
+            <button type="submit" class="btn" style="background:#4caf50;color:#000;">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar
+            </button>
+          {% else %}
+            <button type="button" class="btn btn-secondary" style="color:#000;" disabled>
+              <i class="fa-solid fa-floppy-disk"></i> Guardar
+            </button>
+          {% endif %}
+            <a href="{% url 'estadisticas_individuales' %}" class="btn" style="background: #f8b100;">
+              <i class="fa-solid fa-arrow-left"></i> Cancelar
+            </a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

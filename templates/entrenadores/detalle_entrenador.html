@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3">
+      <li class="breadcrumb-item">
+        <a href="{% url 'menu_principal' %}" class="text-dark"><i class="fa-solid fa-house"></i></a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'lista_entrenadores' %}" class="text-dark">Entrenadores</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <div class="container mt-4">
+    <div class="card shadow border border-primary rounded-4 mb-4">
+      <div class="card-header bg-dark text-white text-center rounded-top-4">
+        <h4 class="mb-0">Entrenador: {{ entrenador.nombre }} {{ entrenador.apellido }}</h4>
+      </div>
+      <div class="card-body bg-light rounded-bottom-4">
+
+        <div class="row">
+          <div class="col-md-6 py-2">
+            <strong>Cédula:</strong> {{ entrenador.cedula }}
+          </div>
+          <div class="col-md-6 py-2">
+            <strong>Fecha de Nacimiento:</strong> {{ entrenador.fecha_nacimiento }}
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 py-2">
+            <strong>Teléfono:</strong> {{ entrenador.telefono }}
+          </div>
+          <div class="col-md-6 py-2">
+            <strong>Edad:</strong> {{ entrenador.edad }}
+          </div>
+        </div>
+        {% if usuario %}
+          <div class="row">
+            <div class="col-md-6 py-2"><strong>Usuario:</strong> {{ usuario.username }}</div>
+            <div class="col-md-6 py-2"><strong>Correo:</strong> {{ usuario.email }}</div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 py-2">
+              <strong>Estado:</strong>
+              {% if usuario.is_active %}
+                <span class="badge bg-success">Activo</span>
+              {% else %}
+                <span class="badge bg-danger">Inactivo</span>
+              {% endif %}
+            </div>
+            <div class="col-md-6 py-2"><strong>Contraseña:</strong> ********</div>
+          </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-center gap-3 mt-4">
+          <a href="{% url 'editar_entrenador' entrenador.id %}" class="btn" style="background: #4caf50;">
+            <i class="fas fa-edit"></i> Editar
+          </a>
+          <a href="{% url 'eliminar_entrenador' entrenador.id %}" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Eliminar
+          </a>
+          <a href="{% url 'lista_entrenadores' %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Volver
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}

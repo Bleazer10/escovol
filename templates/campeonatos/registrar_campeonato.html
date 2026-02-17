@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load form_filters %}
+
+{% block content %}
+
+
+    <!-- Migas de pan -->
+    <div class="col-md-6">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+              <i class="fa-solid fa-house"></i>
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'lista_campeonatos' %}">
+              Campeonatos
+            </a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">
+            Agregar
+          </li>
+        </ol>
+      </nav>
+    </div>
+
+  <div class="container mt-4"></div>
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Agregar Campeonato</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Tipo</label>
+            {{ form.tipo|add_class:"form-select" }}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Año</label>
+            {{ form.anio|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Fecha de Inicio</label>
+            {{ form.fecha_inicio|add_class:"form-control" }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Descripción</label>
+          {{ form.descripcion|add_class:"form-control" }}
+        </div>
+
+        <div class="d-flex justify-content-center gap-2 mt-3">
+          <button type="submit" class="btn " style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'lista_campeonatos' %}"  class="btn " style="background: #f8b100;"> <i class="fa-solid fa-arrow-left"></i>
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

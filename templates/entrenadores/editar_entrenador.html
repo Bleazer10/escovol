@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load form_filters %}
+
+{% block content %}
+
+  <!-- Migas de pan -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark"><i class="fa-solid fa-house"></i></a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'lista_entrenadores' %}" class="text-dark">Entrenadores</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'detalle_entrenador' entrenador.id %}" class="text-dark">Detalle</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Editar</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="container mt-4">
+    <div class="card shadow rounded-4">
+      <div class="card-header bg-dark text-white text-center rounded-top-4">
+        <h4 class="mb-0">Editar Entrenador</h4>
+      </div>
+      <div class="card-body bg-light rounded-bottom-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <!-- Datos Entrenador -->
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_nombre" class="form-label">Nombre</label>
+              {{ form.nombre|add_class:"form-control" }}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_apellido" class="form-label">Apellido</label>
+              {{ form.apellido|add_class:"form-control" }}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_telefono" class="form-label">Teléfono</label>
+              {{ form.telefono|add_class:"form-control" }}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_cedula" class="form-label">Cédula</label>
+              {{ form.cedula|add_class:"form-control" }}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+              {{ form.fecha_nacimiento|add_class:"form-control" }}
+            </div>
+          </div>
+
+          <!-- Solo Admin -->
+          {% if usuario_form %}
+            <div class="card shadow-sm border border-primary rounded-3 mt-4">
+              <div class="card-header bg-primary text-white text-center rounded-top-3">
+                <h5 class="mb-0">🔑 Datos de Usuario</h5>
+              </div>
+              <div class="card-body bg-light rounded-bottom-3">
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_username" class="form-label">Usuario</label>
+                    {{ usuario_form.username|add_class:"form-control" }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_email" class="form-label">Correo</label>
+                    {{ usuario_form.email|add_class:"form-control" }}
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6 mb-3">
+                    <label for="id_is_active" class="form-label">Estado</label>
+                    {{ usuario_form.is_active|add_class:"form-select" }}
+                  </div>
+                  <div class="col-md-6 mb-3">
+                    <label for="id_password" class="form-label">Contraseña</label>
+                    {{ usuario_form.password|add_class:"form-control" }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="d-flex justify-content-center gap-2 mt-4">
+            <button type="submit" class="btn" style="background: #4caf50;">
+              <i class="fa-solid fa-floppy-disk"></i> Guardar
+            </button>
+            <a href="{% url 'detalle_entrenador' entrenador.id %}" class="btn" style="background: #f8b100;">
+              <i class="fa-solid fa-arrow-left"></i> Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

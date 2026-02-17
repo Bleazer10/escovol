@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+    {% if is_admin %}
+      <div class="d-flex gap-2">
+        <a href="{% url 'agregar_atleta' %}" class="btn " style="background: #F97316;">
+          ➕ Agregar
+        </a>
+      </div>
+    {% endif %}
+  </div>
+  
+<div class="container mt-3">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="visually-hidden">Inicio</span>
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                Atletas
+            </li>
+        </ol>
+    </nav>
+</div>
+
+<div class="container mt-4">
+  {% if not is_admin and not is_entrenador %}
+    <div class="alert alert-danger text-center">
+        No tienes permiso para ver esta sección.
+    </div>
+  {% else %}
+
+  <div class="card shadow border border-primary">
+    <div class="card-header text-white text-center fw-bold fs-3">
+      Listado de Atletas
+    </div>
+    <div class="card-body">
+
+        <!-- Filtros -->
+        <div class="card-body">
+            <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Categoría</label>
+                <select name="categoria" class="form-select">
+                <option value="">-- Todas --</option>
+                {% for cat in categorias %}
+                    <option value="{{ cat }}" {% if valores.categoria == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Sexo</label>
+                <select name="sexo" class="form-select">
+                <option value="">-- Todos --</option>
+                {% for cod, label in sexos %}
+                    <option value="{{ cod }}" {% if valores.sexo == cod %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Posición</label>
+                <select name="posicion" class="form-select">
+                <option value="">-- Todas --</option>
+                {% for cod, label in posiciones %}
+                    <option value="{{ cod }}" {% if valores.posicion == cod %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Turno</label>
+                <select name="turno" class="form-select">
+                <option value="">-- Todos --</option>
+                {% for cod, label in turnos %}
+                    <option value="{{ cod }}" {% if valores.turno == cod %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Número de Camisa</label>
+                <input type="number" name="numero" class="form-control"
+                    value="{{ valores.numero|default_if_none:'' }}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Cédula</label>
+                <input type="text" name="cedula" class="form-control"
+                    placeholder="Buscar por cédula"
+                    value="{{ valores.cedula|default_if_none:'' }}">
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-dark w-100 shadow"><i class="fas fa-search"></i></a></td>
+                 Aplicar Filtros
+                </button>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <a href="{% url 'lista_atletas' %}" class="btn btn-secondary w-100 shadow"> <i class="fas fa-trash-alt"></i>
+                 Limpiar
+                </a>
+            </div>
+            </form>
+        </div>
+        </div>
+
+      {% if atletas %}
+      <div class="table-responsive p-3">
+        <table class="table table-hover table-bordered align-middle text-center">
+          <thead class="table-dark">
+            <tr>
+              <th>Nombre</th>
+              <th>Cédula</th>
+              <th>Sexo</th>
+              <th>Categoría</th>
+              <th>Teléfono</th>
+              <th>Número</th>
+              <th>Posición</th>
+              <th>Turno</th>
+              <th>Consultar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for atleta in atletas %}
+            <tr>
+              <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
+              <td>{{ atleta.cedula }}</td>
+              <td>{{ atleta.sexo }}</td>
+              <td>{{ atleta.categoria }}</td>
+              <td>{{ atleta.telefono }}</td>
+              <td>{{ atleta.numero_camisa }}</td>
+              <td>{{ atleta.get_posicion_display }}</td>
+              <td>{{ atleta.get_turno_display }}</td>
+              <td>
+                <a href="{% url 'detalle_atleta' atleta.id %}"
+                   class="btn btn-sm" style="background: #06b6d4;"
+                   title="Ver Detalles">
+                  <i class="fas fa-search"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <div class="alert alert-info text-center">
+            No hay atletas registrados por el momento.
+        </div>
+      {% endif %}
+
+      <!-- Paginación -->
+      {% with request.GET.urlencode as query_params %}
+        {% with query_params|cut:'page='|cut:'&page=' as base_query %}
+          <div class="d-flex justify-content-center mt-4">
+            <nav>
+              <ul class="pagination pagination-sm">
+                {% if atletas.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ atletas.previous_page_number }}&{{ base_query }}">← Anterior</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link px-3 py-1">← Anterior</span>
+                  </li>
+                {% endif %}
+
+                {% for num in atletas.paginator.page_range %}
+                  {% if atletas.number == num %}
+                    <li class="page-item active">
+                      <span class="page-link px-3 py-1">{{ num }}</span>
+                    </li>
+                  {% else %}
+                    <li class="page-item">
+                      <a class="page-link px-3 py-1" href="?page={{ num }}&{{ base_query }}">{{ num }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+
+                {% if atletas.has_next %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ atletas.next_page_number }}&{{ base_query }}">Siguiente →</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link px-3 py-1">Siguiente →</span>
+                  </li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+        {% endwith %}
+      {% endwith %}
+
+  {% endif %}
+</div>
+{% endblock %}

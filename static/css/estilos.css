@@ -1,0 +1,31 @@
+.card-header  {
+    background: linear-gradient(to right, #1A4B7D, #2A73B6, #5C9DCC);
+    color: #f8f4f4 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+.card-header h4 {
+    font-weight: bold;
+}
+
+.btn-success, .btn-danger, .btn-warning, .btn-secondary, .btn-info, .btn-primary, .btn {
+    padding: 8px 28px;
+    border-radius: 20px;
+    line-height: 24px;
+    font-weight: bold;
+    color: black;
+}
+
+.pagination .page-link {
+    color: #343434;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #2A73B6;
+    border-color: #2A73B6;
+}
+
+.pagination .page-item .page-link {
+    border-color: #2A73B6;
+}

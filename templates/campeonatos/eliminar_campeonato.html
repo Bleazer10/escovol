@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+  <!-- Migas de pan y título -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'lista_campeonatos' %}" class="text-dark">Campeonatos</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'detalle_campeonato' campeonato.id %}" class="text-dark">Detalle</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Eliminar</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="container mt-4"></div>
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-danger text-white text-center rounded-top-4">
+      <h4 class="mb-0">Eliminar Campeonato</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4 text-center">
+      <p>¿Estás seguro que deseas eliminar el campeonato <strong>{{ campeonato.nombre }}</strong> del año <strong>{{ campeonato.anio }}</strong>?</p>
+
+      <form method="post" class="d-flex justify-content-center gap-3 mt-4">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i>  Eliminar</button>
+        <a href="{% url 'detalle_campeonato' campeonato.id %}" class="btn" style="background: #f8b100;"><i class="fa-solid fa-arrow-left"></i>  Cancelar</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

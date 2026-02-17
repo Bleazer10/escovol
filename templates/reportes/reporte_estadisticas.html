@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+          <span class="visually-hidden">Inicio</span>
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Reporte de Estadísticas</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow-sm rounded">
+    <div class="card-header bg-dark text-white text-center fw-bold fs-4">
+      Reporte de Estadísticas por Atleta
+    </div>
+    <div class="card-body">
+
+        <!-- Filtros -->
+        <form method="get" class="row g-3 mb-4 align-items-end">
+        <div class="col-md-2">
+            <label for="cedula" class="form-label">Cédula</label>
+            <input type="text" id="cedula" name="cedula" class="form-control" placeholder="Buscar por cédula" value="{{ cedula }}">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_inicio" class="form-label">Fecha inicio</label>
+            <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha_fin" class="form-label">Fecha fin</label>
+            <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+        </div>
+        <div class="col-md-4 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-danger"><i class="fas fa-search"></i> Filtrar</button>
+            <a href="{% url 'reporte_estadisticas' %}"  class="btn btn-outline-secondary"> <i class="fas fa-trash-alt"></i> Limpiar</a>
+        </div>
+        </form>
+
+      <!-- Tabla -->
+      {% if page_obj.object_list %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle text-center">
+          <thead class="table-dark">
+            <tr>
+              <th>Nombre</th>
+              <th>Cédula</th>
+              <th>Categoría</th>
+              <th>Puntos</th>
+              <th>Saques</th>
+              <th>Remates</th>
+              <th>Bloqueos</th>
+              <th>Recepciones</th>
+              <th>Armadas</th>
+              <th>Errores</th>
+              <th>Exportar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in page_obj %}
+            <tr>
+              <td>{{ item.atleta.nombre }} {{ item.atleta.apellido }}</td>
+              <td>{{ item.atleta.cedula }}</td>
+              <td>{{ item.atleta.categoria }}</td>
+              <td>{{ item.puntos }}</td>
+              <td>{{ item.saques }}</td>
+              <td>{{ item.remates }}</td>
+              <td>{{ item.bloqueos }}</td>
+              <td>{{ item.recepciones }}</td>
+              <td>{{ item.armadas }}</td>
+              <td>{{ item.errores }}</td>
+              <td>
+                <a href="{% url 'exportar_estadisticas_pdf' item.atleta.id %}" class="btn btn-outline-warning btn-sm" title="Exportar PDF">
+                  <i class="fa-solid fa-file-pdf"></i> PDF
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      {% if page_obj.has_other_pages %}
+        {% with request.GET.urlencode as query_params %}
+          {% with query_params|cut:'page='|cut:'&page=' as base_query %}
+            <div class="d-flex justify-content-center mt-4">
+              <nav>
+                <ul class="pagination pagination-sm">
+                  {% if page_obj.has_previous %}
+                    <li class="page-item">
+                      <a class="page-link px-3 py-1" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.previous_page_number }}">← Anterior</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled">
+                      <span class="page-link px-3 py-1">← Anterior</span>
+                    </li>
+                  {% endif %}
+
+                  {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                      <li class="page-item active">
+                        <span class="page-link px-3 py-1">{{ num }}</span>
+                      </li>
+                    {% else %}
+                      <li class="page-item">
+                        <a class="page-link px-3 py-1" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ num }}">{{ num }}</a>
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if page_obj.has_next %}
+                    <li class="page-item">
+                      <a class="page-link px-3 py-1" href="?{% if base_query %}{{ base_query }}&{% endif %}page={{ page_obj.next_page_number }}">Siguiente →</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled">
+                      <span class="page-link px-3 py-1">Siguiente →</span>
+                    </li>
+                  {% endif %}
+                </ul>
+              </nav>
+            </div>
+          {% endwith %}
+        {% endwith %}
+      {% endif %}
+      {% else %}
+        <p class="text-center text-muted">No hay atletas con estadísticas registradas.</p>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

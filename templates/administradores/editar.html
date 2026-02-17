@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'menu_principal' %}" class="text-dark"><i class="fa-solid fa-house"></i></a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'lista_administradores' %}" class="text-dark">Administradores</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'detalle_administrador' administrador.id %}" class="text-dark">Detalle</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Editar</li>
+    </ol>
+  </nav>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <!-- 🔑 CARD USUARIO -->
+    <div class="card border border-primary shadow-sm mb-4 mt-4">
+      <div class="card-header bg-primary text-white fw-semibold text-center fs-5">
+        🔑 Datos de Usuario
+      </div>
+      <div class="card-body row g-3">
+        <div class="col-md-6">
+          <label for="{{ usuario_form.username.id_for_label }}" class="form-label fw-semibold">Usuario</label>
+          {{ usuario_form.username|add_class:"form-control" }}
+          {% for error in usuario_form.username.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6">
+          <label for="{{ usuario_form.email.id_for_label }}" class="form-label fw-semibold">Correo</label>
+          {{ usuario_form.email|add_class:"form-control" }}
+          {% for error in usuario_form.email.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6">
+          <label for="{{ usuario_form.password.id_for_label }}" class="form-label fw-semibold">Contraseña</label>
+          {{ usuario_form.password|add_class:"form-control" }}
+          {% for error in usuario_form.password.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6">
+          <label for="{{ usuario_form.is_active.id_for_label }}" class="form-label fw-semibold">Estado</label>
+          {{ usuario_form.is_active|add_class:"form-select" }}
+          {% for error in usuario_form.is_active.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 👤 CARD ADMINISTRADOR -->
+    <div class="card shadow border border-primary">
+      <div class="card-header bg-warning text-dark text-center">
+        <h4 class="mb-0">👤 Editar Administrador</h4>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="id_nombre" class="form-label fw-semibold">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+          </div>
+          <div class="col-md-6">
+            <label for="id_apellido" class="form-label fw-semibold">Apellido</label>
+            {{ form.apellido|add_class:"form-control" }}
+          </div>
+
+          <div class="col-md-6">
+            <label for="id_cedula" class="form-label fw-semibold">Cédula</label>
+            {{ form.cedula|add_class:"form-control" }}
+            {% if form.cedula.errors %}
+              <div class="text-danger small">{{ form.cedula.errors }}</div>
+            {% endif %}
+          </div>
+
+          <div class="col-md-6">
+            <label for="id_fecha_nacimiento" class="form-label fw-semibold">Fecha de Nacimiento</label>
+            {{ form.fecha_nacimiento|add_class:"form-control" }}
+          </div>
+
+          <div class="col-md-6">
+            <label for="id_telefono" class="form-label fw-semibold">Teléfono</label>
+            {{ form.telefono|add_class:"form-control" }}
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="mt-4 d-flex justify-content-center gap-3">
+          <button type="submit" class="btn" style="background:#4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'detalle_administrador' administrador.id %}" class="btn" style="background:#f8b100">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

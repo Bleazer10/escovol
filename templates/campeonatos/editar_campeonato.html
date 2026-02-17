@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+
+  <!-- Migas de pan -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'lista_campeonatos' %}" class="text-dark">Campeonatos</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'detalle_campeonato' campeonato.id %}" class="text-dark">Detalle</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Editar </li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="container mt-4"></div>
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center fw-bold rounded-top-4 fs-4">
+      Editar Campeonato
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+            {% for error in form.nombre.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6">
+            <label for="{{ form.tipo.id_for_label }}" class="form-label">Tipo</label>
+            {{ form.tipo|add_class:"form-select" }}
+            {% for error in form.tipo.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6">
+            <label for="{{ form.anio.id_for_label }}" class="form-label">Año</label>
+            {{ form.anio|add_class:"form-control" }}
+            {% for error in form.anio.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-md-6">
+            <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label">Fecha de Inicio</label>
+            {{ form.fecha_inicio|add_class:"form-control" }}
+            {% for error in form.fecha_inicio.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="col-12">
+            <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
+            {{ form.descripcion|add_class:"form-control" }}
+            {% for error in form.descripcion.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-3 mt-4">
+          <button type="submit" class="btn" style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'detalle_campeonato' campeonato.id %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

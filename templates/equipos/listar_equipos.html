@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan + botón -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+          <a href="{% url 'menu_principal' %}" class="text-dark">
+            <i class="fa-solid fa-house"></i>
+          </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Equipos</li>
+      </ol>
+    </nav>
+    <a href="{% url 'registrar_equipo' %}" class="btn" style="background: #f97316;">
+      ➕ Agregar
+    </a>
+  </div>
+
+  <div class="card shadow rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Listado de Equipos</h4>
+    </div>
+    <div class="card-body bg-light rounded-bottom-4">
+
+      <!-- Filtros -->
+      <form method="get" class="row g-3 mb-4 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Nombre del Equipo</label>
+          <input type="text" name="nombre" class="form-control form-control-sm"
+                placeholder="Buscar por nombre"
+                value="{{ valores.nombre|default_if_none:'' }}">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Entrenador</label>
+          <select name="entrenador" class="form-select form-select-sm">
+            <option value="">-- Todos --</option>
+            {% for ent in entrenadores %}
+              <option value="{{ ent.id }}" {% if valores.entrenador == ent.id|stringformat:"s" %}selected{% endif %}>
+                {{ ent.nombre }} {{ ent.apellido }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-outline-dark w-100 shadow">
+            <i class="fas fa-search"></i> Filtrar
+          </button>
+        </div>
+
+        <div class="col-md-2 d-grid">
+          <a href="{% url 'listar_equipos' %}" class="btn btn-secondary shadow">
+            <i class="fas fa-trash-alt"></i> Limpiar
+          </a>
+        </div>
+      </form>
+
+      {% if page_obj %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover text-center align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Nombre</th>
+              <th>Categoría</th>
+              <th>Entrenador</th>
+              <th>Sexo</th>
+              <th>Atletas</th>
+              <th style="width: 10%;">Consultar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for equipo in page_obj %}
+            <tr>
+              <td>{{ equipo.nombre }}</td>
+              <td>{{ equipo.categoria }}</td>
+              <td>{{ equipo.entrenador.nombre }} {{ equipo.entrenador.apellido }}</td>
+              <td>{{ equipo.get_sexo_equipo_display }}</td>
+              <td>{{ equipo.atletas.count }}</td>
+              <td>
+                <a href="{% url 'detalle_equipo' equipo.id %}" class="btn" style="background: #06b6d4;">
+                  <i class="fas fa-search"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación estilo atletas -->
+      {% with request.GET.urlencode as query_params %}
+        {% with query_params|cut:'page='|cut:'&page=' as base_query %}
+          <div class="d-flex justify-content-center mt-4">
+            <nav>
+              <ul class="pagination pagination-sm">
+                {% if page_obj.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}&{{ base_query }}">← Anterior</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link px-3 py-1">← Anterior</span>
+                  </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                  {% if page_obj.number == num %}
+                    <li class="page-item active">
+                      <span class="page-link px-3 py-1">{{ num }}</span>
+                    </li>
+                  {% else %}
+                    <li class="page-item">
+                      <a class="page-link px-3 py-1" href="?page={{ num }}&{{ base_query }}">{{ num }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                  <li class="page-item">
+                    <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}&{{ base_query }}">Siguiente →</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link px-3 py-1">Siguiente →</span>
+                  </li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+        {% endwith %}
+      {% endwith %}
+
+      {% else %}
+      <div class="alert alert-info text-center">No hay equipos registrados aún.</div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

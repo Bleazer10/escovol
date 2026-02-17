@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item">
+        <a href="{% url 'menu_principal' %}" class="text-dark">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'lista_administradores' %}" class="text-dark">Administradores</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+    </ol>
+  </nav>
+
+  <!-- Card principal -->
+  <div class="card shadow border border-primary rounded-4">
+    <div class="card-header bg-dark text-white text-center rounded-top-4">
+      <h4 class="mb-0">Administrador: {{ administrador.nombre }} {{ administrador.apellido }}</h4>
+    </div>
+
+    <div class="card-body bg-light rounded-bottom-4">
+
+      <!-- Datos del Administrador -->
+      <div class="row mb-3">
+        <div class="col-md-6"><strong>Cédula:</strong> {{ administrador.cedula }}</div>
+        <div class="col-md-6"><strong>Teléfono:</strong> {{ administrador.telefono }}</div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6"><strong>Fecha de nacimiento:</strong> {{ administrador.fecha_nacimiento|date:"d/m/Y" }}</div>
+        <div class="col-md-6"><strong>Edad:</strong> {{ administrador.edad }}</div>
+      </div>
+
+      <!-- Datos del Usuario asociado -->
+      <div class="row mb-3">
+        <div class="col-md-6"><strong>Usuario:</strong> {{ administrador.usuario.username }}</div>
+        <div class="col-md-6"><strong>Correo:</strong> {{ administrador.usuario.email }}</div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <strong>Estado:</strong>
+          {% if administrador.usuario.is_active %}
+            <span class="badge bg-success">Activo</span>
+          {% else %}
+            <span class="badge bg-danger">Inactivo</span>
+          {% endif %}
+        </div>
+        <div class="col-md-6"><strong>Contraseña:</strong> ********</div>
+      </div>
+
+
+      <!-- Botones dentro de la card -->
+      <div class="d-flex justify-content-center gap-3 mt-4">
+        <a href="{% url 'editar_administrador' administrador.id %}" class="btn" style="background:#4caf50">
+          <i class="fas fa-edit"></i> Editar
+        </a>
+        <a href="{% url 'eliminar_administrador' administrador.id %}" class="btn btn-danger">
+          <i class="fas fa-trash-alt"></i> Eliminar
+        </a>
+        <a href="{% url 'lista_administradores' %}" class="btn" style="background:#f8b100;">
+          <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+
+
+  <!-- Migas de pan -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'estadisticas_individuales' %}">
+          Estadísticas
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a class="link-body-emphasis" href="{% url 'ver_estadisticas' estadistica.atleta.id %}">
+          Ver
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        Eliminar
+      </li>
+    </ol>
+  </nav>
+
+  <div class="container mt-4"></div>
+  <!-- Card de confirmación -->
+  <div class="card shadow border border-primary">
+    <div class="card-header text-white fw-bold text-center fs-4"
+         style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+      Eliminar Estadística
+    </div>
+
+    <div class="card-body text-center">
+      <p class="fs-6 mb-4">
+        ¿Estás seguro que deseas eliminar la estadística del atleta
+        <strong>{{ estadistica.atleta.nombre }} {{ estadistica.atleta.apellido }}</strong>
+        del día <strong>{{ estadistica.fecha_partido|date:"d/m/Y" }}</strong>?
+      </p>
+
+      <form method="post" class="d-flex justify-content-center gap-3">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i>  Eliminar</button>
+        <a href="{% url 'ver_estadisticas' estadistica.atleta.id %}" class="btn " style="background: #f8b100;"><i class="fa-solid fa-arrow-left"></i> Cancelar</a>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

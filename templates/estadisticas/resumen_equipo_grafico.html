@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-3">
+  <div class="row align-items-center mb-4">
+    
+    <!-- Migas de pan -->
+    <div class="col-md-6">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+              <i class="fa-solid fa-house"></i>
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'ver_estadisticas_equipos' %}">
+              Estadísticas
+            </a>
+          </li>         
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'ver_estadisticas_equipo_detalle' equipo.id %}">
+              Equipo
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a class="link-body-emphasis" href="{% url 'resumen_estadisticas_equipo' equipo.id %}">
+              Resumen 
+            </a>
+          </li>          
+          <li class="breadcrumb-item active" aria-current="page">
+            Graficos
+          </li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow border border-primary mb-4">
+  <div class="card-header text-white text-center fw-bold fs-3"
+       style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+    📊 Estadísticas Totales del Equipo
+  </div>
+  <div class="card-body">
+    <h4 class="text-center mb-4">{{ equipo.nombre }}</h4>
+
+    {% if sin_datos %}
+      <div class="alert alert-warning text-center">
+        <i class="fas fa-info-circle me-2"></i>Este equipo aún no posee estadísticas registradas.
+      </div>
+    {% else %}
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-header text-white fw-bold text-center" style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+            Desempeño General
+          </div>
+          <div class="card-body">
+            <canvas id="grafico_barras" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-header text-white fw-bold text-center" style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+            Habilidades Técnicas
+          </div>
+          <div class="card-body">
+            <canvas id="radarChart" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen Numérico -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card shadow-sm">
+          <div class="card-header text-white fw-bold text-center" style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+            Resumen Numérico
+          </div>
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item"><strong>Total de Puntos:</strong> {{ datos.puntos|default:0 }}</li>
+              <li class="list-group-item"><strong>Errores Cometidos:</strong> {{ datos.errores|default:0 }}</li>
+              <li class="list-group-item"><strong>Puntos Netos:</strong> {{ puntos_neto }}</li>
+              <li class="list-group-item"><strong>Aportes al Juego:</strong> {{ aportes }} (Armadas + Recepciones)</li>
+              <li class="list-group-item"><strong>Relación Apoyo/Acción:</strong> {{ relacion_apoyo }}%</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leyendas -->
+      <div class="col-md-6">
+        <div class="card shadow-sm">
+          <div class="card-header text-white fw-bold text-center" style="background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);">
+            Análisis
+          </div>
+          <div class="card-body">
+            <p><span class="badge" style="background-color: {{ color_destacado }};">Punto fuerte</span> <strong>{{ mayor }}</strong>: {{ leyenda_mayor }}</p>
+            <p><span class="badge bg-secondary">Punto débil</span> <strong>{{ menor }}</strong>: {{ leyenda_menor|safe }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% endif %}
+  </div>
+</div>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  {% if not sin_datos %}
+  // Gráfico de barras
+  const ctx1 = document.getElementById('grafico_barras').getContext('2d');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: ['Puntos', 'Saques', 'Remates', 'Bloqueos', 'Errores'],
+      datasets: [{
+        label: 'Cantidad',
+        data: [
+          {{ datos.puntos|default:0 }},
+          {{ datos.saques|default:0 }},
+          {{ datos.remates|default:0 }},
+          {{ datos.bloqueos|default:0 }},
+          {{ datos.errores|default:0 }}
+        ],
+        backgroundColor: ['#007bff', '#3498db', '#e74c3c', '#8e44ad', '#dc3545']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Radar chart
+  const ctxRadar = document.getElementById('radarChart').getContext('2d');
+  const radarData = {{ radar_values|safe }};
+  const radarMax = radarData.length > 0 ? Math.max(...radarData) * 1.2 || 10 : 10;
+
+  new Chart(ctxRadar, {
+    type: 'radar',
+    data: {
+      labels: {{ radar_labels|safe }},
+      datasets: [{
+        label: 'Rendimiento Técnico',
+        data: radarData,
+        fill: true,
+        backgroundColor: '{{ color_destacado|default:"rgba(54,162,235,0.2)" }}',
+        borderColor: '{{ color_destacado|default:"rgba(54,162,235,1)" }}',
+        pointBackgroundColor: '{{ color_destacado|default:"rgba(54,162,235,1)" }}',
+        pointHoverBackgroundColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          beginAtZero: true,
+          min: 0,
+          max: radarMax,
+          ticks: { display: false },
+          pointLabels: {
+            font: { size: 14, weight: 'bold' },
+            color: (context) => {
+              const labels = {{ radar_labels|safe }};
+              const colores = {
+                'Remates': '#e74c3c',
+                'Bloqueo': '#8e44ad',
+                'Recepción': '#27ae60',
+                'Armada': '#f39c12',
+                'Saques': '#3498db',
+              };
+              return colores[labels[context.index]] || '#000';
+            }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+  {% endif %}
+</script>
+
+{% endblock %}
