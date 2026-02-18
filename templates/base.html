@@ -69,7 +69,7 @@
 
                <!-- Menú central -->
                 <ul class="navbar-nav mx-auto gap-3">
-                    {% if is_admin or is_trainer %}
+                    {% if show_modules %}
                         <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a></li>
                         <li class="nav-item"><a class="nav-link text-white" href="{% url 'administracion' %}">Administración</a></li>
 
