@@ -2,6 +2,7 @@
 from django import forms
 from .models import Estadistica, Entrenador, Atleta, Campeonato, Partido, Equipo, Administrador
 from django.contrib.auth.models import User
+from .services import actualizar_email_en_supabase
 from django.utils import timezone
 from datetime import timedelta
 
@@ -73,19 +74,27 @@ class UsuarioForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
 
-    def __init__(self, *args, instance: User = None, **kwargs):
+    def __init__(self, *args, instance: User | str = None, **kwargs):
         """
         Acepta instance=<User> para pre-rellenar al editar.
         En modo edición el username se muestra pero no se edita
         (Supabase no permite cambiar el UUID).
         """
         initial = kwargs.get('initial', {})
+        # 'instance' puede ser una instancia de User o un UUID (str)
+        django_user = None
         if instance is not None:
-            # En edición mostramos el username guardado (puede ser el UUID o el username real)
-            # Para la UI mostramos el email como referencia más amigable
-            initial.setdefault('username', instance.username)
-            initial.setdefault('email', instance.email)
-            initial.setdefault('is_active', str(instance.is_active))
+            if isinstance(instance, str):
+                initial.setdefault('username', instance)
+                # intentar buscar User local para mostrar email/estado
+                django_user = User.objects.filter(username=instance).first()
+            else:
+                django_user = instance
+
+        if django_user is not None:
+            initial.setdefault('username', django_user.username)
+            initial.setdefault('email', django_user.email)
+            initial.setdefault('is_active', str(django_user.is_active))
         kwargs['initial'] = initial
         super().__init__(*args, **kwargs)
         self._instance = instance
@@ -108,15 +117,42 @@ class UsuarioForm(forms.Form):
         """Devuelve la nueva contraseña si el usuario la escribió, o None."""
         return self.cleaned_data.get('password') or None
 
-    def apply_to_user(self, user: User) -> User:
+    def apply_to_user(self, user: User | str) -> User | None:
         """
-        Aplica los cambios de email/estado al User de Django.
-        La contraseña se actualiza por separado en Supabase (ver views).
+        Aplica los cambios al usuario.
+        - Si se pasa una instancia `User`, actualiza ese objeto local.
+        - Si se pasa un `str` (UUID de Supabase), actualiza en Supabase y en el User local si existe.
+        Devuelve la instancia `User` local si existe, o None.
         """
-        user.email = self.cleaned_data.get('email') or user.email
-        user.is_active = self.cleaned_data['is_active']
-        user.save()
-        return user
+        email = self.cleaned_data.get('email') or None
+        is_active = self.cleaned_data['is_active']
+
+        if isinstance(user, User):
+            if email:
+                user.email = email
+            user.is_active = is_active
+            user.save()
+            return user
+
+        # user es supabase UUID
+        supabase_uuid = user
+        # actualizar email en Supabase si se proporcionó
+        if email:
+            try:
+                actualizar_email_en_supabase(supabase_uuid, email)
+            except Exception:
+                pass
+
+        # actualizar User local si existe
+        django_user = User.objects.filter(username=supabase_uuid).first()
+        if django_user:
+            if email:
+                django_user.email = email
+            django_user.is_active = is_active
+            django_user.save()
+            return django_user
+
+        return None
 
 
 class EntrenadorForm(forms.ModelForm):

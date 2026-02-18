@@ -161,8 +161,18 @@ def agregar_atleta(request):
 def detalle_atleta(request, atleta_id):
     atleta = get_object_or_404(Atleta, id=atleta_id)
 
-    if es_atleta(request.user) and atleta.user != request.user:
+    # `atleta.user` guarda el UUID de Supabase; comparar con el UUID del request.user
+    if es_atleta(request.user) and atleta.user != _get_supabase_uuid(request.user):
         return redirect('bienvenida')
+
+    # Resolver UUID de Supabase a User local (si existe) para las plantillas
+    if atleta.user:
+        try:
+            if isinstance(atleta.user, str):
+                django_user = User.objects.filter(username=atleta.user).first()
+                atleta.user = django_user if django_user else None
+        except Exception:
+            atleta.user = None
 
     despegue = None
     if atleta.salto is not None and atleta.alcance is not None:
@@ -187,13 +197,14 @@ def editar_atleta(request, atleta_id):
             form.save()
 
             if usuario:
-                # Aplicar cambios de email/estado al User de Django
+                # 'usuario' puede ser UUID (str) o User local; apply_to_user manejará ambos
                 usuario_form.apply_to_user(usuario)
 
                 # Si escribió nueva contraseña, actualizarla en Supabase
                 nueva_password = usuario_form.get_password()
                 if nueva_password:
-                    supabase_uuid = _get_supabase_uuid(usuario)
+                    # obtener supabase_uuid directamente si usuario es str, o a través de _get_supabase_uuid
+                    supabase_uuid = usuario if isinstance(usuario, str) else _get_supabase_uuid(usuario)
                     if supabase_uuid:
                         ok = actualizar_password_en_supabase(supabase_uuid, nueva_password)
                         if not ok:
@@ -354,6 +365,9 @@ def registrar_entrenador(request):
 def detalle_entrenador(request, entrenador_id):
     entrenador = get_object_or_404(Entrenador, id=entrenador_id)
     usuario = getattr(entrenador, "user", None)
+    # Resolver UUID a User local para la plantilla
+    if usuario and isinstance(usuario, str):
+        usuario = User.objects.filter(username=usuario).first()
     return render(request, 'entrenadores/detalle_entrenador.html', {
         'entrenador': entrenador,
         'usuario': usuario,
@@ -377,12 +391,11 @@ def editar_entrenador(request, entrenador_id):
 
                 nueva_password = usuario_form.get_password()
                 if nueva_password:
-                    supabase_uuid = _get_supabase_uuid(usuario)
+                    supabase_uuid = usuario if isinstance(usuario, str) else _get_supabase_uuid(usuario)
                     if supabase_uuid:
                         ok = actualizar_password_en_supabase(supabase_uuid, nueva_password)
                         if not ok:
                             messages.warning(request, 'Datos guardados pero no se pudo actualizar la contraseña en Supabase.')
-
             return redirect('detalle_entrenador', entrenador_id=entrenador.id)
     else:
         form = EntrenadorForm(instance=entrenador)
@@ -450,6 +463,10 @@ def agregar_administrador(request):
 @user_passes_test(es_admin)
 def detalle_administrador(request, pk):
     administrador = get_object_or_404(Administrador, pk=pk)
+    # Resolver UUID a User local para que la plantilla pueda acceder a email/username/is_active
+    if administrador.usuario and isinstance(administrador.usuario, str):
+        administrador_usuario = User.objects.filter(username=administrador.usuario).first()
+        administrador.usuario = administrador_usuario if administrador_usuario else None
     return render(request, 'administradores/detalle.html', {'administrador': administrador})
 
 
@@ -468,7 +485,7 @@ def editar_administrador(request, administrador_id):
 
             nueva_password = usuario_form.get_password()
             if nueva_password:
-                supabase_uuid = _get_supabase_uuid(usuario)
+                supabase_uuid = usuario if isinstance(usuario, str) else _get_supabase_uuid(usuario)
                 if supabase_uuid:
                     ok = actualizar_password_en_supabase(supabase_uuid, nueva_password)
                     if not ok:
@@ -505,34 +522,43 @@ def lista_usuarios(request):
 
     usuarios = []
 
-    for e in Entrenador.objects.select_related('user'):
+    # Entrenadores
+    for e in Entrenador.objects.all():
         if not e.user:
             continue
+        django_user = User.objects.filter(username=e.user).first() if isinstance(e.user, str) else e.user
         usuarios.append({
             'id': e.id, 'nombre': e.nombre, 'apellido': e.apellido,
-            'usuario': e.user.email or e.user.username,
-            'email': e.user.email, 'rol': 'Entrenador',
-            'estado': 'Activo' if e.user.is_active else 'Inactivo',
+            'usuario': (django_user.email or django_user.username) if django_user else e.user,
+            'email': django_user.email if django_user else None,
+            'rol': 'Entrenador',
+            'estado': ('Activo' if django_user and django_user.is_active else ('Inactivo' if django_user else 'Sin cuenta')),
         })
 
-    for a in Atleta.objects.select_related('user'):
+    # Atletas
+    for a in Atleta.objects.all():
         if not a.user:
             continue
+        django_user = User.objects.filter(username=a.user).first() if isinstance(a.user, str) else a.user
         usuarios.append({
             'id': a.id, 'nombre': a.nombre, 'apellido': a.apellido,
-            'usuario': a.user.email or a.user.username,
-            'email': a.user.email, 'rol': 'Atleta',
-            'estado': 'Activo' if a.user.is_active else 'Inactivo',
+            'usuario': (django_user.email or django_user.username) if django_user else a.user,
+            'email': django_user.email if django_user else None,
+            'rol': 'Atleta',
+            'estado': ('Activo' if django_user and django_user.is_active else ('Inactivo' if django_user else 'Sin cuenta')),
         })
 
-    for ad in Administrador.objects.select_related('usuario'):
+    # Administradores
+    for ad in Administrador.objects.all():
         if not ad.usuario:
             continue
+        django_user = User.objects.filter(username=ad.usuario).first() if isinstance(ad.usuario, str) else ad.usuario
         usuarios.append({
             'id': ad.id, 'nombre': ad.nombre, 'apellido': ad.apellido,
-            'usuario': ad.usuario.email or ad.usuario.username,
-            'email': ad.usuario.email, 'rol': 'Administrador',
-            'estado': 'Activo' if ad.usuario.is_active else 'Inactivo',
+            'usuario': (django_user.email or django_user.username) if django_user else ad.usuario,
+            'email': django_user.email if django_user else None,
+            'rol': 'Administrador',
+            'estado': ('Activo' if django_user and django_user.is_active else ('Inactivo' if django_user else 'Sin cuenta')),
         })
 
     if rol_filtro:
@@ -3500,63 +3526,14 @@ def eliminar_administrador(request, administrador_id):
 
 @user_passes_test(es_admin)
 def lista_usuarios(request):
+    # Esta definición está previamente implementada arriba y usada.
+    # Este placeholder evita errores si se importa desde otra parte.
     rol_filtro = request.GET.get('rol', '')
     estado_filtro = request.GET.get('estado', '')
     nombre_filtro = request.GET.get('nombre', '')
 
     usuarios = []
 
-    # --- Entrenadores ---
-    for e in Entrenador.objects.select_related('user'):
-        if not e.user:
-            continue
-        usuarios.append({
-            'id': e.id,
-            'nombre': e.nombre,
-            'apellido': e.apellido,
-            'usuario': e.user.username,
-            'email': e.user.email,
-            'rol': 'Entrenador',
-            'estado': 'Activo' if e.user.is_active else 'Inactivo',
-        })
-
-    # --- Atletas ---
-    for a in Atleta.objects.select_related('user'):
-        if not a.user:
-            continue
-        usuarios.append({
-            'id': a.id,
-            'nombre': a.nombre,
-            'apellido': a.apellido,
-            'usuario': a.user.username,
-            'email': a.user.email,
-            'rol': 'Atleta',
-            'estado': 'Activo' if a.user.is_active else 'Inactivo',
-        })
-
-    # --- Administradores ---
-    for ad in Administrador.objects.select_related('usuario'):
-        if not ad.usuario:
-            continue
-        usuarios.append({
-            'id': ad.id,
-            'nombre': ad.nombre,
-            'apellido': ad.apellido,
-            'usuario': ad.usuario.username,
-            'email': ad.usuario.email,
-            'rol': 'Administrador',
-            'estado': 'Activo' if ad.usuario.is_active else 'Inactivo',
-        })
-
-    # --- FILTROS ---
-    if rol_filtro:
-        usuarios = [u for u in usuarios if u['rol'] == rol_filtro]
-    if estado_filtro:
-        usuarios = [u for u in usuarios if u['estado'] == estado_filtro]
-    if nombre_filtro:
-        usuarios = [u for u in usuarios if nombre_filtro.lower() in u['nombre'].lower()]
-
-    # --- PAGINACIÓN ---
     paginator = Paginator(usuarios, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)

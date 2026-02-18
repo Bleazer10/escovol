@@ -39,8 +39,10 @@
         </div>
         {% if usuario %}
           <div class="row">
-            <div class="col-md-6 py-2"><strong>Usuario:</strong> {{ usuario.username }}</div>
-            <div class="col-md-6 py-2"><strong>Correo:</strong> {{ usuario.email }}</div>
+            <div class="col-md-6 py-2"><strong>Usuario:</strong>
+              {% if usuario.username %}{{ usuario.username }}{% else %}{{ usuario }}{% endif %}
+            </div>
+            <div class="col-md-6 py-2"><strong>Correo:</strong> {% if usuario.email %}{{ usuario.email }}{% else %}—{% endif %}</div>
           </div>
           <div class="row">
             <div class="col-md-6 py-2">
@@ -48,7 +50,7 @@
               {% if usuario.is_active %}
                 <span class="badge bg-success">Activo</span>
               {% else %}
-                <span class="badge bg-danger">Inactivo</span>
+                <span class="badge bg-secondary">Sin cuenta local</span>
               {% endif %}
             </div>
             <div class="col-md-6 py-2"><strong>Contraseña:</strong> ********</div>

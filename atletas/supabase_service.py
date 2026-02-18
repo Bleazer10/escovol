@@ -130,7 +130,8 @@ def crear_usuario_para_atleta(atleta, username: str, password: str, email: str =
     group, _ = Group.objects.get_or_create(name='Atleta')
     user.groups.add(group)
 
-    atleta.user = user
+    # Guardamos el UUID (username del User Django) en el modelo local
+    atleta.user = user.username
     atleta.save()
     return user
 
@@ -147,7 +148,7 @@ def crear_usuario_para_entrenador(entrenador, username: str, password: str, emai
     group, _ = Group.objects.get_or_create(name='Entrenador')
     user.groups.add(group)
 
-    entrenador.user = user
+    entrenador.user = user.username
     entrenador.save()
     return user
 
@@ -164,6 +165,6 @@ def crear_usuario_para_administrador(admin_obj, username: str, password: str, em
     group, _ = Group.objects.get_or_create(name='Administrador')
     user.groups.add(group)
 
-    admin_obj.usuario = user
+    admin_obj.usuario = user.username
     admin_obj.save()
     return user

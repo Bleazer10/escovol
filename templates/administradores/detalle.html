@@ -38,16 +38,28 @@
 
       <!-- Datos del Usuario asociado -->
       <div class="row mb-3">
-        <div class="col-md-6"><strong>Usuario:</strong> {{ administrador.usuario.username }}</div>
-        <div class="col-md-6"><strong>Correo:</strong> {{ administrador.usuario.email }}</div>
+        <div class="col-md-6"><strong>Usuario:</strong>
+          {% if administrador.usuario.username %}
+            {{ administrador.usuario.username }}
+          {% elif administrador.usuario %}
+            {{ administrador.usuario }}
+          {% else %}
+            (sin usuario)
+          {% endif %}
+        </div>
+        <div class="col-md-6"><strong>Correo:</strong>
+          {% if administrador.usuario.email %}{{ administrador.usuario.email }}{% else %}—{% endif %}
+        </div>
       </div>
       <div class="row mb-3">
         <div class="col-md-6">
           <strong>Estado:</strong>
           {% if administrador.usuario.is_active %}
             <span class="badge bg-success">Activo</span>
+          {% elif administrador.usuario %}
+            <span class="badge bg-secondary">Sin cuenta local</span>
           {% else %}
-            <span class="badge bg-danger">Inactivo</span>
+            <span class="badge bg-danger">No asignado</span>
           {% endif %}
         </div>
         <div class="col-md-6"><strong>Contraseña:</strong> ********</div>
