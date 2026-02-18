@@ -1,8 +1,5 @@
 Django>=4.2,<5.0
-dj-database-url
 python-decouple
-psycopg2-binary
-whitenoise
 gunicorn
 django-widget-tweaks
 reportlab
@@ -10,6 +7,11 @@ matplotlib
 numpy
 pandas
 openpyxl
-supabase>=2.0.0
-setuptools>=65.5.0
+setuptools==65.5.0
 gunicorn==20.1.0
+Django==4.2.0
+supabase>=1.0.0
+python-dotenv>=1.0.0
+dj-database-url>=2.0.0
+psycopg2-binary>=2.9.0
+whitenoise>=6.0.0
