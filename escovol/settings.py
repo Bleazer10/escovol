@@ -1,5 +1,5 @@
 """
-Django settings for escovol project - Configurado para Render
+Django settings for escovol project - Configurado para Supabase
 """
 
 from pathlib import Path
@@ -9,17 +9,10 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ✅ SECRET_KEY desde variable de entorno
 SECRET_KEY = config('SECRET_KEY')
-
-# ✅ DEBUG desde variable de entorno (False en producción)
 DEBUG = config('DEBUG', default=False, cast=bool)
-
-# ✅ ALLOWED_HOSTS desde variable de entorno
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
 
-
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -29,12 +22,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'atletas',
-    'widget_tweaks'
+    'widget_tweaks',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ Añadido para archivos estáticos
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,8 +56,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'escovol.wsgi.application'
 
-
-# ✅ Base de datos: PostgreSQL en producción, SQLite en local
+# ─── Base de datos: Supabase (PostgreSQL) ─────────────────────────────────────
+# En Supabase: Project Settings → Database → Connection string (URI)
 DATABASE_URL = config('DATABASE_URL', default=None)
 
 if DATABASE_URL:
@@ -79,8 +72,21 @@ else:
         }
     }
 
+# ─── Supabase Auth ─────────────────────────────────────────────────────────────
+# En Supabase: Project Settings → API
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_ANON_KEY = config('SUPABASE_ANON_KEY', default='')
+# Para crear/eliminar usuarios desde el backend (mantener MUY secreto)
+SUPABASE_SERVICE_ROLE_KEY = config('SUPABASE_SERVICE_ROLE_KEY', default='')
 
-# Password validation
+# ─── Backend de autenticación ──────────────────────────────────────────────────
+# 1. Intenta con Supabase Auth
+# 2. Si falla, cae al backend nativo de Django (útil para /admin/ con superuser)
+AUTHENTICATION_BACKENDS = [
+    'atletas.auth_backends.SupabaseAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -88,20 +94,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-
-# ✅ Archivos estáticos con WhiteNoise
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
