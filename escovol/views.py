@@ -219,7 +219,7 @@ def menu_principal(request):
         return HttpResponse(html)
 
     
-    return render(request, 'templates/menu_principal.html', context)
+    return render(request, 'menu_principal.html', context)
 
 def bienvenida(request):
     return render(request, 'bienvenida.html')
