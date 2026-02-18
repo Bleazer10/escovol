@@ -1,3 +1,4 @@
+#settings.py
 """
 Django settings for escovol project - Configurado para Supabase
 """
@@ -10,8 +11,10 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = False
-ALLOWED_HOSTS = ['olympo-6kp9.onrender.com', 'localhost', '127.0.0.1']
+# DEBUG = False
+# ALLOWED_HOSTS = ['olympo-6kp9.onrender.com', 'localhost', '127.0.0.1']
+DEBUG = True
+ALLOWED_HOSTS = ['*']  # Temporalmente para pruebas
 
 INSTALLED_APPS = [
     'django.contrib.admin',
