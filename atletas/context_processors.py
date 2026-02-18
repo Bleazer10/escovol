@@ -1,15 +1,31 @@
-from .utils.roles import es_admin, es_entrenador, es_atleta
+# atletas/context_processors.py
+from django.core.exceptions import ObjectDoesNotExist
+from .utils.roles import es_admin, es_entrenador
 
 def role_flags(request):
+    """Context processor con manejo de errores para la relación Atleta"""
     u = request.user
-    atleta_id = None
-    if u.is_authenticated and es_atleta(u):  # ✅ propiedad
-        if hasattr(u, "atleta"):
-            atleta_id = u.atleta.id
-
-    return {
-        "is_admin": es_admin(u),
-        "is_trainer": es_entrenador(u),
-        "is_athlete": es_atleta(u),
-        "atleta_id": atleta_id,
+    
+    # Valores por defecto
+    flags = {
+        'is_admin': u.is_authenticated and es_admin(u),
+        'is_entrenador': u.is_authenticated and es_entrenador(u),
+        'is_atleta': False,
     }
+    
+    # Intentar verificar si es atleta de manera segura
+    if u.is_authenticated:
+        try:
+            # Verificar si existe el atributo atleta sin disparar consulta
+            if hasattr(u, 'atleta'):
+                # Intentar acceder para ver si realmente existe
+                _ = u.atleta
+                flags['is_atleta'] = True
+        except ObjectDoesNotExist:
+            # El atleta no existe, es False
+            pass
+        except Exception:j
+            # Cualquier otro error (como el de tipos), asumimos False
+            pass
+    
+    return flags
