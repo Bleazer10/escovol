@@ -6,5 +6,4 @@ class AtletasConfig(AppConfig):
     name = 'atletas'
 
     def ready(self):
-        # import atletas.signals
-        pass
+        import atletas.signals
