@@ -1,42 +1,53 @@
 # atletas/context_processors.py
-from django.core.exceptions import ObjectDoesNotExist
+
 from .utils.roles import es_admin, es_entrenador, es_atleta
 from .models import Atleta
 
 
 def role_flags(request):
-    """Context processor que expone banderas de rol y atleta_id cuando corresponda.
+    """
+    Context processor que inyecta en TODOS los templates las banderas de rol.
 
-    Devuelve claves compatibles con las plantillas: `is_admin`, `is_trainer`,
-    `is_entrenador`, `is_athlete`, `is_atleta`, y `atleta_id`.
+    Variables disponibles en templates:
+      is_admin      → True si es Administrador o superuser
+      is_entrenador → True si es Entrenador   (alias: is_trainer)
+      is_trainer    → alias de is_entrenador   (compatibilidad con base.html)
+      is_athlete    → True si es Atleta        (alias: is_atleta)
+      is_atleta     → alias de is_athlete
+      atleta_id     → ID del Atleta vinculado al usuario (solo para atletas)
+      show_modules  → True si es admin o entrenador (ve el menú completo)
     """
     u = request.user
 
-    flags = {
-        'is_admin': u.is_authenticated and es_admin(u),
-        'is_trainer': u.is_authenticated and es_entrenador(u),
-        'is_entrenador': u.is_authenticated and es_entrenador(u),
-        'is_athlete': False,
-        'is_atleta': False,
-        'atleta_id': None,
+    if not u.is_authenticated:
+        return {
+            'is_admin':      False,
+            'is_entrenador': False,
+            'is_trainer':    False,
+            'is_athlete':    False,
+            'is_atleta':     False,
+            'atleta_id':     None,
+            'show_modules':  False,
+        }
+
+    admin     = es_admin(u)
+    entrenador = es_entrenador(u)
+    atleta_flag = es_atleta(u)
+
+    # Buscar el objeto Atleta vinculado al usuario logueado.
+    # Atleta.user almacena el UUID de Supabase = User.username en Django.
+    atleta_id = None
+    if atleta_flag:
+        atleta_obj = Atleta.objects.filter(user=u.username).first()
+        if atleta_obj:
+            atleta_id = atleta_obj.id
+
+    return {
+        'is_admin':      admin,
+        'is_entrenador': entrenador,
+        'is_trainer':    entrenador,       # alias usado en base.html anterior
+        'is_athlete':    atleta_flag,
+        'is_atleta':     atleta_flag,      # alias
+        'atleta_id':     atleta_id,
+        'show_modules':  admin or entrenador,
     }
-
-    if u.is_authenticated:
-        try:
-            # Determinar si el usuario tiene un atleta asociado buscando por username (UUID)
-            supa_uuid = getattr(u, 'username', None)
-            if supa_uuid:
-                atleta = Atleta.objects.filter(user=supa_uuid).first()
-                if atleta:
-                    flags['is_atleta'] = True
-                    flags['is_athlete'] = True
-                    flags['atleta_id'] = atleta.id
-            # Mostrar módulos si tiene algún rol, es staff o superuser
-            flags['show_modules'] = bool(
-                flags['is_admin'] or flags['is_trainer'] or flags['is_atleta'] or getattr(u, 'is_staff', False) or getattr(u, 'is_superuser', False)
-            )
-        except Exception:
-            # Si algo falla, dejamos los flags por defecto
-            pass
-
-    return flags

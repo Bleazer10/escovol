@@ -1,117 +1,114 @@
 # atletas/auth_views.py
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from .utils.roles import es_admin, es_entrenador, es_atleta
+from .models import Atleta
+
 
 def login_view(request):
-    """Vista de inicio de sesión que usa tu template existente"""
+    """Vista de inicio de sesión. Redirige según el rol del usuario."""
     if request.user.is_authenticated:
-        return redirect('lista_atletas')
-    
+        return _redirigir_por_rol(request.user)
+
     if request.method == 'POST':
-        # Tu template usa 'username' pero puede ser email o nombre de usuario
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        
-        # Authenticate usará tu SupabaseAuthBackend
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
+            if not user.is_active:
+                messages.error(request, 'Tu cuenta está desactivada. Contacta al administrador.')
+                return render(request, 'registration/login.html', {'error': True})
+
             login(request, user)
-            messages.success(request, f"¡Bienvenido {user.email}!")
-            
-            # Redirigir según el grupo
-            if user.groups.filter(name='Administrador').exists():
-                return redirect('administracion')
-            elif user.groups.filter(name='Entrenador').exists():
-                return redirect('lista_entrenadores')
-            else:
-                return redirect('lista_atletas')
+            return _redirigir_por_rol(user)
         else:
-            # Para que tu template muestre el error con form.errors
-            # Creamos un error en el formulario
-            return render(request, 'atletas/login.html', {'form': type('obj', (object,), {'errors': True})})
-    
-    # GET request - mostrar formulario vacío
-    return render(request, 'atletas/login.html', {'form': type('obj', (object,), {'errors': False})})
+            messages.error(request, 'Credenciales incorrectas. Inténtalo de nuevo.')
+            return render(request, 'registration/login.html', {'error': True})
+
+    return render(request, 'registration/login.html')
+
+
+def _redirigir_por_rol(user):
+    """Devuelve un redirect según el grupo del usuario."""
+    if es_admin(user):
+        return redirect('menu_principal')
+    elif es_entrenador(user):
+        return redirect('menu_principal')
+    elif es_atleta(user):
+        # Buscar el ID del atleta vinculado
+        atleta = Atleta.objects.filter(user=user.username).first()
+        if atleta:
+            return redirect('detalle_atleta', atleta_id=atleta.id)
+        return redirect('bienvenida')
+    # Fallback: superuser u otros
+    return redirect('menu_principal')
+
 
 def logout_view(request):
-    """Cerrar sesión"""
+    """Cierra la sesión y redirige a la página de bienvenida."""
     logout(request)
-    messages.success(request, "Sesión cerrada correctamente")
-    # Redirigir al root público según despliegue
-    return redirect('https://olympo-6kp9.onrender.com/')
+    messages.success(request, 'Sesión cerrada correctamente.')
+    return redirect('bienvenida')
+
 
 @login_required
 def profile_view(request):
-    """Ver perfil del usuario"""
-    return render(request, 'atletas/profile.html', {
-        'user': request.user
-    })
+    """Perfil del usuario autenticado."""
+    return render(request, 'atletas/profile.html', {'user': request.user})
+
 
 def bienvenida_view(request):
-    """Página de bienvenida (pública)"""
+    """Página pública de bienvenida."""
     if request.user.is_authenticated:
-        return redirect('lista_atletas')
-    return render(request, 'atletas/bienvenida.html')
+        return _redirigir_por_rol(request.user)
+    return render(request, 'bienvenida.html')
 
-# atletas/auth_views.py - Añade esta función
 
 def register_view(request):
-    """Vista de registro de nuevos usuarios"""
+    """Registro de nuevos usuarios (vía Supabase)."""
     if request.user.is_authenticated:
-        return redirect('lista_atletas')
-    
+        return _redirigir_por_rol(request.user)
+
     if request.method == 'POST':
-        email = request.POST.get('email')
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        password2 = request.POST.get('password2')
-        nombre = request.POST.get('nombre')
-        rol = request.POST.get('rol', 'Atleta')  # Por defecto 'Atleta'
-        
-        # Validaciones básicas
+        email    = request.POST.get('email', '').strip()
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        password2 = request.POST.get('password2', '').strip()
+        nombre   = request.POST.get('nombre', '').strip()
+        rol      = request.POST.get('rol', 'Atleta')
+
         if password != password2:
-            return render(request, 'atletas/register.html', {
-                'error': 'Las contraseñas no coinciden'
-            })
-        
+            return render(request, 'atletas/register.html',
+                          {'error': 'Las contraseñas no coinciden.'})
+
         try:
             from supabase import create_client
-            import os
-            
-            supabase = create_client(
-                os.getenv('SUPABASE_URL'),
-                os.getenv('SUPABASE_ANON_KEY')
-            )
-            
-            # Registrar en Supabase
+            from django.conf import settings
+
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             response = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
                 "options": {
-                    "data": {
-                        "username": username,
-                        "nombre": nombre,
-                        "rol": rol
-                    }
+                    "data": {"username": username, "nombre": nombre, "rol": rol}
                 }
             })
-            
+
             if response.user:
-                messages.success(request, 
-                    "¡Registro exitoso! Por favor revisa tu email para confirmar la cuenta.")
+                messages.success(request,
+                    '¡Registro exitoso! Revisa tu correo para confirmar la cuenta.')
                 return redirect('login')
-            else:
-                return render(request, 'atletas/register.html', {
-                    'error': 'Error en el registro'
-                })
-                
+
+            return render(request, 'atletas/register.html',
+                          {'error': 'Error en el registro. Inténtalo de nuevo.'})
+
         except Exception as e:
-            return render(request, 'atletas/register.html', {
-                'error': f'Error: {str(e)}'
-            })
-    
-    # GET request
+            return render(request, 'atletas/register.html',
+                          {'error': f'Error: {str(e)}'})
+
     return render(request, 'atletas/register.html')
