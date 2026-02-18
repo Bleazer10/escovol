@@ -24,7 +24,7 @@ def role_flags(request):
         except ObjectDoesNotExist:
             # El atleta no existe, es False
             pass
-        except Exception:j
+        except Exception:  # ← Eliminada la 'j'
             # Cualquier otro error (como el de tipos), asumimos False
             pass
     
