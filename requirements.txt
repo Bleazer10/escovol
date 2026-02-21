@@ -4,7 +4,7 @@ python-decouple
 psycopg2-binary
 whitenoise
 gunicorn
-django-widget-tweaks
+widget-tweaks
 reportlab
 matplotlib
 numpy
