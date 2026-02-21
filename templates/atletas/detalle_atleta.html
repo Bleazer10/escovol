@@ -86,29 +86,9 @@
         🔑 DATOS DEL USUARIO
       </div>
       <div class="card-body row g-3 px-4">
-        <div class="col-md-6"><p><strong>Usuario:</strong>
-          {% if atleta.user.email %}
-            {{ atleta.user.username }}
-          {% elif atleta.user.username %}
-            {{ atleta.user.username }}
-          {% elif atleta.user %}
-            {{ atleta.user }}
-          {% else %}
-            (sin usuario)
-          {% endif %}
-        </p></div>
-        <div class="col-md-6"><p><strong>Correo:</strong>
-          {% if atleta.user.email %}{{ atleta.user.email }}{% elif atleta.user and atleta.user|length > 0 and "@" in atleta.user %}{{ atleta.user }}{% else %}—{% endif %}
-        </p></div>
-        <div class="col-md-6"><p><strong>Estado:</strong>
-          {% if atleta.user.is_active %}
-            <span class="badge bg-success">Activo</span>
-          {% elif atleta.user %}
-            <span class="badge bg-secondary">Sin cuenta local</span>
-          {% else %}
-            <span class="badge bg-danger">No asignado</span>
-          {% endif %}
-        </p></div>
+        <div class="col-md-6"><p><strong>Usuario:</strong> {{ atleta.user.username }}</p></div>
+        <div class="col-md-6"><p><strong>Correo:</strong> {{ atleta.user.email }}</p></div>
+        <div class="col-md-6"><p><strong>Estado:</strong> {% if atleta.user.is_active %} <span class="badge bg-success">Activo</span> {% else %} <span class="badge bg-danger">Inactivo</span> {% endif %}</p></div>
         <div class="col-md-6"><p><strong>Contraseña:</strong> ********</p></div>
       </div>
     </div>

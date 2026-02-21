@@ -3,6 +3,7 @@ from datetime import date
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.db.models.signals import post_save
 import calendar
@@ -28,14 +29,14 @@ class Atleta(models.Model):
         ('libero', 'Libero'),
         ('punta', 'Punta'),
     )
-    # ID del usuario en Supabase (antes era FK a Django User)
-    user = models.CharField(
-        max_length=255,
-        null=True,
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        null=True, 
         blank=True,
-        db_column='user_id',
-        help_text='ID del usuario en Supabase (uuid)'
-    )
+        db_column='user_id',  # Nombre de columna explícito
+        db_constraint=False,   # No crear constraint en la BD
+    )# <— NUEVO
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
@@ -144,14 +145,7 @@ class Mensualidad(models.Model):
                 )
 
 class Entrenador(models.Model):
-    # ID del usuario en Supabase (antes era FK a Django User)
-    user = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        db_column='user_id',
-        help_text='ID del usuario en Supabase (uuid)'
-    )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)  # <— NUEVO
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     cedula = models.CharField(max_length=20, unique=True)
@@ -280,20 +274,11 @@ class Estadistica(models.Model):
 
 
     def __str__(self):
-        if self.partido:
-            return f"Estadísticas de {self.atleta} - {self.partido.fecha}"
-        return f"Estadísticas de {self.atleta} - (sin partido)"
+        return f"Estadísticas de {self.atleta} - {self.fecha_partido}"
     
 
 class Administrador(models.Model):
-    # ID del usuario en Supabase (antes era FK a Django User)
-    usuario = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True,
-        db_column='user_id',
-        help_text='ID del usuario en Supabase (uuid)'
-    )
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name="administrador")
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     cedula = models.CharField(max_length=20, unique=True)
