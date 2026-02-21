@@ -11,5 +11,4 @@ numpy
 pandas
 openpyxl
 supabase>=2.0.0
-setuptools>=65.5.0
 gunicorn==20.1.0
