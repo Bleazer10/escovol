@@ -29,14 +29,7 @@ class Atleta(models.Model):
         ('libero', 'Libero'),
         ('punta', 'Punta'),
     )
-    user = models.OneToOneField(
-        User, 
-        on_delete=models.CASCADE, 
-        null=True, 
-        blank=True,
-        db_column='user_id',  # Nombre de columna explícito
-        db_constraint=False,   # No crear constraint en la BD
-    )# <— NUEVO
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)  # <— NUEVO
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
