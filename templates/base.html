@@ -130,7 +130,7 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center text-white" href="#" role="button" data-bs-toggle="dropdown">
                                 <i class="fa-solid fa-user-circle me-1"></i>
-                                {{ user.get_full_name|default:user.email|default:user.username }}
+                                {{ user.get_full_name|default:user.username }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>

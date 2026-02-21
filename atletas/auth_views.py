@@ -40,8 +40,7 @@ def logout_view(request):
     """Cerrar sesión"""
     logout(request)
     messages.success(request, "Sesión cerrada correctamente")
-    # Redirigir al root público según despliegue
-    return redirect('https://olympo-6kp9.onrender.com/')
+    return redirect('bienvenida')
 
 @login_required
 def profile_view(request):

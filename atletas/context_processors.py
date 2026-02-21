@@ -1,38 +1,31 @@
 # atletas/context_processors.py
 from django.core.exceptions import ObjectDoesNotExist
-from .utils.roles import es_admin, es_entrenador, es_atleta
-from .models import Atleta
-
+from .utils.roles import es_admin, es_entrenador
 
 def role_flags(request):
-    """Context processor que expone banderas de rol y atleta_id cuando corresponda.
-
-    Devuelve claves compatibles con las plantillas: `is_admin`, `is_trainer`,
-    `is_entrenador`, `is_athlete`, `is_atleta`, y `atleta_id`.
-    """
+    """Context processor con manejo de errores para la relación Atleta"""
     u = request.user
-
+    
+    # Valores por defecto
     flags = {
         'is_admin': u.is_authenticated and es_admin(u),
-        'is_trainer': u.is_authenticated and es_entrenador(u),
         'is_entrenador': u.is_authenticated and es_entrenador(u),
-        'is_athlete': False,
         'is_atleta': False,
-        'atleta_id': None,
     }
-
+    
+    # Intentar verificar si es atleta de manera segura
     if u.is_authenticated:
         try:
-            # Determinar si el usuario tiene un atleta asociado buscando por username (UUID)
-            supa_uuid = getattr(u, 'username', None)
-            if supa_uuid:
-                atleta = Atleta.objects.filter(user=supa_uuid).first()
-                if atleta:
-                    flags['is_atleta'] = True
-                    flags['is_athlete'] = True
-                    flags['atleta_id'] = atleta.id
-        except Exception:
-            # Si algo falla, dejamos los flags por defecto
+            # Verificar si existe el atributo atleta sin disparar consulta
+            if hasattr(u, 'atleta'):
+                # Intentar acceder para ver si realmente existe
+                _ = u.atleta
+                flags['is_atleta'] = True
+        except ObjectDoesNotExist:
+            # El atleta no existe, es False
             pass
-
+        except Exception:  # ← Eliminada la 'j'
+            # Cualquier otro error (como el de tipos), asumimos False
+            pass
+    
     return flags
