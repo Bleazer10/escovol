@@ -31,10 +31,6 @@ def role_flags(request):
                     flags['is_atleta'] = True
                     flags['is_athlete'] = True
                     flags['atleta_id'] = atleta.id
-            # Mostrar módulos si tiene algún rol, es staff o superuser
-            flags['show_modules'] = bool(
-                flags['is_admin'] or flags['is_trainer'] or flags['is_atleta'] or getattr(u, 'is_staff', False) or getattr(u, 'is_superuser', False)
-            )
         except Exception:
             # Si algo falla, dejamos los flags por defecto
             pass
