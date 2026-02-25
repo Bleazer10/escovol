@@ -120,7 +120,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 # Para desarrollo local - Django busca aquí
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR/'static']  # Tus archivos originales
 
 # Para producción - Django recolectará AQUÍ

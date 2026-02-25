@@ -31,7 +31,7 @@ def run_django():
     Arranca el servidor de Django en segundo plano.
     --noreload es CLAVE para que no cree procesos duplicados.
     """
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "escovol.settings")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "escovol.settings_leo")
     from django.core.management import execute_from_command_line
     execute_from_command_line([
         "manage.py",
