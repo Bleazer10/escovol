@@ -58,3 +58,6 @@ if "whitenoise.middleware.WhiteNoiseMiddleware" not in MIDDLEWARE:
 # =========================
 # LOGIN_REDIRECT_URL = "/atletas/menu/"
 # LOGOUT_REDIRECT_URL = "bienvenida"
+
+# Desktop local: evitar problemas de CSRF en WebView
+MIDDLEWARE = [mw for mw in MIDDLEWARE if mw != "django.middleware.csrf.CsrfViewMiddleware"]

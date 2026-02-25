@@ -28,23 +28,15 @@
         .card-header {
             background: linear-gradient(to right, #2A73B6, #158EFF, #158EFF);
             color: #000000 !important;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Añadir sombra para mejor visibilidad */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .pagination .page-link {
-            color: #343434;
-        }
-
+        .pagination .page-link { color: #343434; }
         .pagination .page-item.active .page-link {
             background-color: #2A73B6;
             border-color: #2A73B6;
         }
-
-        .pagination .page-item .page-link {
-            border-color: #2A73B6;
-        }
-            
+        .pagination .page-item .page-link { border-color: #2A73B6; }
     </style>
-
 
     {% block extra_head %}{% endblock %}
 </head>
@@ -55,7 +47,7 @@
         <div class="container-fluid px-4">
 
             <!-- Logo -->
-            <a class="navbar-brand d-flex align-items-center">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'menu_principal' %}">
                 <img src="{% static 'img/logo-olympo.jpeg' %}" alt="Logo Olympo" width="55" height="55" class="me-2 rounded-circle shadow">
                 <span class="fw-bold text-white">OLYMPO</span>
             </a>
@@ -67,61 +59,34 @@
 
             <div class="collapse navbar-collapse justify-content-between" id="navbarMenu">
 
-               <!-- Menú central -->
+                <!-- Menú (LEO Desktop: solo módulos necesarios) -->
                 <ul class="navbar-nav mx-auto gap-3">
-                    {% if is_admin or is_trainer %}
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'administracion' %}">Administración</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a>
+                </li>
 
-                        <!-- Estadísticas -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Estadísticas</a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'estadisticas_individuales' %}">Individuales</a></li>
-                                <li><a class="dropdown-item" href="{% url 'ver_estadisticas_equipos' %}">En Equipo</a></li>
-                            </ul>
-                        </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="{% url 'listar_equipos' %}">Equipos</a>
+                </li>
 
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_entrenadores' %}">Entrenador</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_campeonatos' %}">Campeonatos</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_partidos' %}">Partidos</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'listar_equipos' %}">Equipos</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="{% url 'administracion' %}">Mensualidad</a>
+                </li>
 
-                        {% if is_admin %}
-                            <!-- Usuarios (solo Admin) -->
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Usuarios</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'lista_usuarios' %}">Usuarios</a></li>
-                                    <li><a class="dropdown-item" href="{% url 'lista_administradores' %}">Administradores</a></li>
-                                </ul>
-                            </li>
-                        {% endif %}
+                <!-- Usuarios (reutiliza el módulo de administradores) -->
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="{% url 'lista_administradores' %}">Usuarios</a>
+                </li>
 
-                        <!-- Reportes -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Reportes</a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'reporte_atletas' %}">Atletas</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_campeonatos' %}">Campeonatos</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_equipos' %}">Equipos</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_entrenadores' %}">Entrenadores</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_estadisticas' %}">Estadísticas Individuales</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_estadisticas_equipo' %}">Estadísticas Equipo</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_pagos_view' %}">Pagos</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_partidos' %}">Partidos</a></li>
-                            </ul>
-                        </li>
-                    {% endif %}
-
-                    {% if is_athlete %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'ver_estadisticas' atleta_id=atleta_id %}">Mis estadísticas</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'detalle_atleta' atleta_id=atleta_id %}">Mi Perfil</a>
-                        </li>
-                    {% endif %}
+                <!-- Reportes -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">Reportes</a>
+                    <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'reporte_atletas' %}">Atletas</a></li>
+                    <li><a class="dropdown-item" href="{% url 'reporte_equipos' %}">Equipos</a></li>
+                    <li><a class="dropdown-item" href="{% url 'reporte_pagos_view' %}">Pagos / Mensualidad</a></li>
+                    </ul>
+                </li>
                 </ul>
 
                 <!-- Usuario / Login -->
@@ -134,13 +99,10 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
-                                    <form method="post" action="{% url 'logout' %}" style="margin: 0; padding: 0;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item text-dark">
-                                            <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
-                                            Cerrar sesión
-                                        </button>
-                                    </form>
+                                    <a class="dropdown-item text-dark" href="{% url 'logout' %}">
+                                        <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>
+                                        Cerrar sesión
+                                    </a>
                                 </li>
                             </ul>
                         </li>
@@ -153,7 +115,6 @@
                     {% endif %}
                 </ul>
 
-
             </div>
         </div>
     </nav>
@@ -165,7 +126,7 @@
 
     <!-- Footer -->
     <footer>
-        Escuela de Voleibol OLYMPO © {{ year|default:2025 }}
+        Sistema local (LEO) © {{ year|default:2026 }}
     </footer>
 
     <!-- Bootstrap JS -->
