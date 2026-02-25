@@ -1,7 +1,8 @@
-# .gitignore generado para el proyecto escovol
-# Reglas comunes para Python/Django, entornos virtuales y builds
+# .gitignore para proyecto Django/Python + Desktop builds
 
-# Byte-compiled / optimized / DLL files
+# =========================
+# Python cache / bytecode
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -9,7 +10,18 @@ __pycache__/
 # C extensions
 *.so
 
+# =========================
+# Virtual environments
+# =========================
+env/
+venv/
+.venv/
+ENV/
+test_env/
+
+# =========================
 # Distribution / packaging
+# =========================
 build/
 dist/
 downloads/
@@ -19,17 +31,12 @@ eggs/
 pip-wheel-metadata/
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so keep the spec if you need it.
-dist/
-build/
 *.manifest
 *.spec
 
-# Installer logs
-pip-log.txt
-
-# Unit test / coverage reports
+# =========================
+# Testing / coverage
+# =========================
 .tox/
 *.cover
 .coverage
@@ -37,51 +44,64 @@ coverage.xml
 htmlcov/
 .pytest_cache/
 
-# Django stuff:
+# =========================
+# Django
+# =========================
 *.log
 local_settings.py
+
+# Database (SQLite)
 db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Media uploads
 media/
+
+# Collected static (Django collectstatic output)
 staticfiles/
 
-# If you collect static files to a local folder
-/static/
+# ⚠️ IMPORTANTE:
+# NO ignorar /static/ porque aquí están tus assets fuente (css/img/video)
+# (Por eso NO hay /static/ aquí)
 
-# Virtual environments
-env/
-venv/
-.venv/
-ENV/
-test_env/
-
-# VS Code / JetBrains
+# =========================
+# IDEs
+# =========================
 .vscode/
 .idea/
+.mypy_cache/
 
+# =========================
 # OS files
+# =========================
 .DS_Store
 Thumbs.db
 
-# Pyright / mypy
-.mypy_cache/
-
-# Sphinx documentation
-docs/_build/
-
-# Generated files
-*.pyc
-*.pyo
-*.pyd
-
+# =========================
 # Secret and environment files
+# =========================
 .env
 .env.*
 *.local
 
+# =========================
 # Editor temporary files
+# =========================
 *~
 *.swp
 
-# Other
+# =========================
+# Desktop app data / exports (si alguna vez las guardas dentro del proyecto)
+# =========================
+data/
+backups/
+exports/
+reports/
+
+# Otros
 desktop_app/
 build/desktop_app/
+
