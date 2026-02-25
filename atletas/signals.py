@@ -6,6 +6,7 @@ from datetime import date
 from .models import Atleta, Mensualidad, Entrenador, Equipo, Campeonato, Partido, Estadistica
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
 
 @receiver(post_save, sender=Atleta)
 def crear_mensualidades_para_nuevo_atleta(sender, instance, created, **kwargs):
@@ -21,6 +22,8 @@ def crear_mensualidades_para_nuevo_atleta(sender, instance, created, **kwargs):
 
 @receiver(post_migrate)
 def crear_roles_y_permisos(sender, **kwargs):
+    if getattr(settings, "DESKTOP_MODE", False):
+        return  # Evitamos crear grupos/permisos en modo desktop (local) para no complicar el desarrollo.
     """
     Crea/actualiza 3 grupos:
       - Administrador: TODOS los permisos
