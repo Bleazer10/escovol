@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Sum, Count
 from django.http import FileResponse, HttpResponse
 from django.conf import settings
+from django.http import JsonResponse
 
 from datetime import date, datetime
 import os
@@ -25,8 +26,7 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 from .models import Atleta, Mensualidad, Equipo, Administrador
-from .forms import AtletaForm, EquipoForm, UsuarioForm, AdministradorForm
-from .services import crear_usuario_para_atleta, crear_usuario_para_administrador
+from .forms import AtletaForm, EquipoForm, AdministradorForm
 
 def solo_login(view_func):
     return login_required(view_func)
@@ -81,30 +81,14 @@ def lista_atletas(request):
 @solo_login
 def agregar_atleta(request):
     if request.method == 'POST':
-        atleta_form = AtletaForm(request.POST)
-        usuario_form = UsuarioForm(request.POST)
-
-        if atleta_form.is_valid() and usuario_form.is_valid():
-            # Guardar atleta sin usuario todavía
-            atleta = atleta_form.save(commit=False)
-
-            # Datos del usuario
-            username = usuario_form.cleaned_data['username']
-            password = usuario_form.cleaned_data['password']
-            email = usuario_form.cleaned_data['email']
-
-            # Crear usuario + asignar grupo automáticamente
-            crear_usuario_para_atleta(atleta, username, password, email)
-
+        form = AtletaForm(request.POST)
+        if form.is_valid():
+            form.save()
             return redirect('lista_atletas')
     else:
-        atleta_form = AtletaForm()
-        usuario_form = UsuarioForm()
+        form = AtletaForm()
 
-    return render(request, 'atletas/agregar_atleta.html', {
-        'form': atleta_form,
-        'usuario_form': usuario_form
-    })
+    return render(request, 'atletas/agregar_atleta.html', {'form': form})
 
 @solo_login
 def detalle_atleta(request, atleta_id):
@@ -121,45 +105,21 @@ def detalle_atleta(request, atleta_id):
     }
     return render(request, 'atletas/detalle_atleta.html', context)
 
-
 @solo_login
 def editar_atleta(request, atleta_id):
     atleta = get_object_or_404(Atleta, id=atleta_id)
-    usuario = getattr(atleta, "user", None)
 
     if request.method == 'POST':
         form = AtletaForm(request.POST, instance=atleta)
-        usuario_form = UsuarioForm(request.POST, instance=usuario)  # 🔑 siempre creamos el form
-
-        if form.is_valid() and usuario_form.is_valid():
+        if form.is_valid():
             form.save()
-            user = usuario_form.save(commit=False)
-
-            # Si es un usuario nuevo, hay que asignarle username obligatorio
-            if not usuario:
-                user.username = form.cleaned_data['cedula']  # por ejemplo, usar la cédula
-                user.set_password(usuario_form.cleaned_data['password'])
-
-            else:
-                # Si ya existía, solo cambiamos password si vino algo nuevo
-                password = usuario_form.cleaned_data.get("password")
-                if password:
-                    user.set_password(password)
-
-            user.save()
-            # Asegurar que el atleta quede vinculado con este usuario
-            atleta.user = user
-            atleta.save()
-
             return redirect('detalle_atleta', atleta_id=atleta.id)
     else:
         form = AtletaForm(instance=atleta)
-        usuario_form = UsuarioForm(instance=usuario)  # 🔑 siempre creamos el form
 
     return render(request, 'atletas/editar_atleta.html', {
         'form': form,
         'atleta': atleta,
-        'usuario_form': usuario_form,
     })
 
 
@@ -171,67 +131,132 @@ def eliminar_atleta(request, atleta_id):
         return redirect('lista_atletas')
     return render(request, 'atletas/eliminar_atleta.html', {'atleta': atleta})
 
+
 @solo_login
 @require_POST
 def actualizar_mensualidad(request, mensualidad_id):
     mensualidad = get_object_or_404(Mensualidad, id=mensualidad_id)
-    monto = request.POST.get("monto", 0)
-    exonerado = 'exonerado' in request.POST
+
+    monto_raw = (request.POST.get("monto") or "").strip()
+    exonerado = request.POST.get("exonerado") in ("true", "True", "1", "on") or ('exonerado' in request.POST)
 
     try:
-        mensualidad.monto_pagado = float(monto)
+        monto = float(monto_raw) if monto_raw else 0.0
     except ValueError:
-        mensualidad.monto_pagado = 0
+        monto = 0.0
 
+    mensualidad.monto_pagado = monto
     mensualidad.exonerado = exonerado
     mensualidad.save()
 
-    return redirect('administracion')
+    # ====== Si es AJAX, devolvemos JSON ======
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        # datos para recalcular resumen (los mandaremos desde el frontend)
+        año = int(request.POST.get("año", date.today().year))
+        mes = int(request.POST.get("mes", date.today().month))
+        categoria = (request.POST.get("categoria") or "").strip()
+
+        mensualidades_mes = Mensualidad.objects.filter(año=año, mes=mes)
+        if categoria:
+            mensualidades_mes = mensualidades_mes.filter(atleta__categoria=categoria)
+
+        total_recaudado = float(mensualidades_mes.aggregate(total=Sum("monto_pagado"))["total"] or 0)
+        total_atletas = mensualidades_mes.count()
+
+        al_dia = 0
+        exonerados = 0
+        for m in mensualidades_mes:
+            if m.exonerado:
+                exonerados += 1
+            elif float(m.monto_pagado) >= 8.0:
+                al_dia += 1
+
+        deudores = total_atletas - al_dia - exonerados
+
+        # estado para pintar en tabla
+        if mensualidad.exonerado:
+            estado = "exonerado"
+        elif float(mensualidad.monto_pagado) >= 8.0:
+            estado = "pagado"
+        elif float(mensualidad.monto_pagado) > 0:
+            estado = "parcial"
+        else:
+            estado = "no_pagado"
+
+        return JsonResponse({
+            "ok": True,
+            "estado": estado,
+            "monto": float(mensualidad.monto_pagado),
+            "exonerado": bool(mensualidad.exonerado),
+            "total_recaudado": total_recaudado,
+            "al_dia": al_dia,
+            "exonerados": exonerados,
+            "deudores": deudores,
+            "total_atletas": total_atletas,
+        })
+
+    # ====== Si NO es AJAX, mantenemos tu redirect clásico ======
+    return redirect("administracion")
+
 
 @solo_login
 def administracion(request):
     mes_actual = date.today().month
     año_actual = int(request.GET.get("año", date.today().year))
     mes_filtro = int(request.GET.get("mes", mes_actual))
-    categoria_filtro = request.GET.get("categoria", "")
+    categoria_filtro = request.GET.get("categoria", "").strip()
 
-    # Filtrar atletas
     atletas = Atleta.objects.all()
     if categoria_filtro:
         atletas = atletas.filter(categoria=categoria_filtro)
 
-    # Asegurar que existan mensualidades para el año actual y siguiente
-    for atleta in atletas:
-        for mes in range(1, 13):
-            Mensualidad.objects.get_or_create(
-                atleta=atleta,
-                mes=mes,
-                año=año_actual,
-                defaults={"monto_pagado": 0.00, "exonerado": False}
-            )
+    atletas = atletas.order_by("apellido", "nombre", "id")
 
-    siguiente_año = año_actual + 1
-    for atleta in atletas:
-        for mes in range(1, 13):
-            Mensualidad.objects.get_or_create(
-                atleta=atleta,
-                mes=mes,
-                año=siguiente_año,
-                defaults={"monto_pagado": 0.00, "exonerado": False}
-            )
+    # =========================
+    # 1) Asegurar mensualidades del año seleccionado (solo faltantes) con BULK
+    # =========================
+    atleta_ids = list(atletas.values_list("id", flat=True))
 
-    # Preparar registros para la tabla
+    existentes = set(
+        Mensualidad.objects.filter(atleta_id__in=atleta_ids, año=año_actual)
+        .values_list("atleta_id", "mes")
+    )
+
+    crear = []
+    for atleta_id in atleta_ids:
+        for mes in range(1, 13):
+            if (atleta_id, mes) not in existentes:
+                crear.append(
+                    Mensualidad(
+                        atleta_id=atleta_id,
+                        año=año_actual,
+                        mes=mes,
+                        monto_pagado=0,
+                        exonerado=False,
+                    )
+                )
+
+    if crear:
+        Mensualidad.objects.bulk_create(crear, ignore_conflicts=True)
+
+    # =========================
+    # 2) Preparar tabla
+    # =========================
+    mensualidades_dict = {
+        m.atleta_id: m
+        for m in Mensualidad.objects.filter(atleta_id__in=atleta_ids, año=año_actual, mes=mes_filtro)
+    }
+
     registros = []
     for atleta in atletas:
-        mensualidad = Mensualidad.objects.filter(
-            atleta=atleta, mes=mes_filtro, año=año_actual
-        ).first()
         registros.append({
             "atleta": atleta,
-            "mensualidad": mensualidad
+            "mensualidad": mensualidades_dict.get(atleta.id)  # siempre debería existir ya
         })
 
-    # ✅ Cálculos del resumen mensual
+    # =========================
+    # 3) Resumen mensual
+    # =========================
     mensualidades_mes = Mensualidad.objects.filter(mes=mes_filtro, año=año_actual)
     if categoria_filtro:
         mensualidades_mes = mensualidades_mes.filter(atleta__categoria=categoria_filtro)
@@ -242,19 +267,20 @@ def administracion(request):
     al_dia = 0
     exonerados = 0
     for m in mensualidades_mes:
-        if m.estado() == "Al día":
-            al_dia += 1
-        elif m.estado() == "Exonerado":
+        if m.exonerado:
             exonerados += 1
+        elif float(m.monto_pagado) >= 8.0:
+            al_dia += 1
 
     deudores = total_atletas - al_dia - exonerados
 
-    # Paginación
+    # =========================
+    # 4) Paginación
+    # =========================
     paginator = Paginator(registros, 20)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # Meses y categorías para filtros
     meses = [(i, date(1900, i, 1).strftime('%B')) for i in range(1, 13)]
     categorias = Atleta.objects.values_list("categoria", flat=True).distinct()
 
@@ -272,8 +298,7 @@ def administracion(request):
         "deudores": deudores,
         "total_atletas": total_atletas,
     }
-
-    return render(request, 'atletas/administracion.html', context)
+    return render(request, "atletas/administracion.html", context)
 
 def calcular_edad(nacimiento):
     hoy = date.today()
@@ -463,7 +488,7 @@ def reporte_pagos_view(request):
     nombre = request.GET.get('nombre', '').strip()
     mes_inicio = int(request.GET.get('mes_inicio') or 1)
     mes_fin = int(request.GET.get('mes_fin') or 12)
-    estado_filtro = request.GET.get('estado', '')
+    estado_filtro = request.GET.get('estado', '').strip()  # ✅ limpio
 
     atletas = Atleta.objects.all()
 
@@ -487,30 +512,34 @@ def reporte_pagos_view(request):
 
         for mes in range(mes_inicio, mes_fin + 1):
             mensualidad = Mensualidad.objects.filter(atleta=atleta, año=año, mes=mes).first()
+
             if mensualidad:
                 monto = float(mensualidad.monto_pagado)
                 if mensualidad.exonerado:
-                    estado = "exonerado"
-                elif monto >= 5.00:
-                    estado = "pagado"
+                    estado_mes = "exonerado"
+                elif monto >= 8.00:
+                    estado_mes = "pagado"
                 elif monto > 0:
-                    estado = "parcial"
+                    estado_mes = "parcial"
                 else:
-                    estado = "no_pagado"
+                    estado_mes = "no_pagado"
             else:
                 monto = 0.00
-                estado = "no_pagado"
+                estado_mes = "no_pagado"
 
-            pagos.append({'mes': mes, 'monto': monto, 'estado': estado})
+            pagos.append({'mes': mes, 'monto': monto, 'estado': estado_mes})
 
-            if estado != "exonerado":
+            # Totales (no se suma pendiente si es exonerado)
+            if estado_mes != "exonerado":
                 total_pagado += monto
-                if monto < 5:
-                    total_pendiente += (5 - monto)
+                if monto < 8:
+                    total_pendiente += (8 - monto)
 
-            if estado == estado_filtro:
+            # ✅ filtro por estado (ahora claro y sin pisar variables)
+            if estado_filtro and estado_mes == estado_filtro:
                 tiene_estado = True
 
+        # Si se está filtrando por estado, y no tiene ese estado, lo saco
         if estado_filtro and not tiene_estado and not atletas_filtrados_por_cedula:
             continue
 
@@ -595,7 +624,7 @@ def exportar_pagos_excel(request):
                 if mensualidad.exonerado:
                     fila[mes_nombre] = "E"
                     tiene_exonerado = True
-                elif monto >= 5:
+                elif monto >= 8:
                     fila[mes_nombre] = monto
                 elif monto > 0:
                     fila[mes_nombre] = monto
@@ -605,10 +634,10 @@ def exportar_pagos_excel(request):
                     fila[mes_nombre] = 0
                     todos_pagados = False
                 total_pagado += monto if not mensualidad.exonerado else 0
-                total_pendiente += 0 if (monto >= 5 or mensualidad.exonerado) else (5 - monto)
+                total_pendiente += 0 if (monto >= 8 or mensualidad.exonerado) else (8 - monto)
             else:
                 fila[mes_nombre] = 0
-                total_pendiente += 5
+                total_pendiente += 8
                 todos_pagados = False
 
         # Nueva lógica de filtro por estado (igual al PDF)
@@ -620,7 +649,7 @@ def exportar_pagos_excel(request):
                 monto = float(mensualidad.monto_pagado)
                 if mensualidad.exonerado:
                     estado_mes = "exonerado"
-                elif monto >= 5:
+                elif monto >= 8:
                     estado_mes = "pagado"
                 elif monto > 0:
                     estado_mes = "parcial"
@@ -799,7 +828,7 @@ def exportar_pagos_pdf(request):
                 if mensualidad.exonerado:
                     estado_mes = "exonerado"
                     pagos_mes.append("E")
-                elif monto >= 5:
+                elif monto >= 8:
                     estado_mes = "pagado"
                     pagos_mes.append(f"{monto:.2f}")
                 elif monto > 0:
@@ -812,11 +841,11 @@ def exportar_pagos_pdf(request):
                     tiene_estado = True
                 if estado_mes != "exonerado":
                     total_pagado += monto
-                    if monto < 5:
-                        total_pendiente += (5 - monto)
+                    if monto < 8:
+                        total_pendiente += (8 - monto)
             else:
                 pagos_mes.append("—")
-                total_pendiente += 5
+                total_pendiente += 8
                 if estado == "no_pagado":
                     tiene_estado = True
 
@@ -1239,81 +1268,78 @@ def exportar_equipo_pdf(request, equipo_id):
     doc.build(elements, onFirstPage=header_footer, onLaterPages=header_footer)
     return response
 
+# LISTAR
 @solo_login
 def lista_administradores(request):
-    administradores = Administrador.objects.all().order_by("apellido")
-    paginator = Paginator(administradores, 8)  # 5 admins por página
+    administradores = Administrador.objects.select_related("usuario").all().order_by("apellido", "nombre")
+    paginator = Paginator(administradores, 8)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
     return render(request, "administradores/lista.html", {
         "page_obj": page_obj,
-        "administradores": page_obj.object_list
+        "administradores": page_obj.object_list,
     })
 
+
+# AGREGAR
 @solo_login
 def agregar_administrador(request):
     if request.method == "POST":
-        usuario_form = UsuarioForm(request.POST)
-        administrador_form = AdministradorForm(request.POST)
-
-        if usuario_form.is_valid() and administrador_form.is_valid():
-            # Guardar administrador sin usuario todavía
-            administrador = administrador_form.save(commit=False)
-
-            # Datos del usuario
-            username = usuario_form.cleaned_data['username']
-            password = usuario_form.cleaned_data['password']
-            email = usuario_form.cleaned_data['email']
-
-            # Crear usuario + asignar grupo automáticamente
-            crear_usuario_para_administrador(administrador, username, password, email)
-
-            return redirect('lista_administradores')
+        form = AdministradorForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("lista_administradores")
     else:
-        usuario_form = UsuarioForm()
-        administrador_form = AdministradorForm()
+        form = AdministradorForm()
 
     return render(request, "administradores/agregar.html", {
-        "usuario_form": usuario_form,
-        "form": administrador_form
+        "form": form
     })
 
+
+# DETALLE
 @solo_login
 def detalle_administrador(request, pk):
-    administrador = get_object_or_404(Administrador, pk=pk)
-    return render(request, 'administradores/detalle.html', {
-        'administrador': administrador
+    administrador = get_object_or_404(Administrador.objects.select_related("usuario"), pk=pk)
+    return render(request, "administradores/detalle.html", {
+        "administrador": administrador
     })
 
+
+# EDITAR
 @solo_login
 def editar_administrador(request, administrador_id):
     administrador = get_object_or_404(Administrador, id=administrador_id)
-    usuario = administrador.usuario  
 
     if request.method == "POST":
         form = AdministradorForm(request.POST, instance=administrador)
-        usuario_form = UsuarioForm(request.POST, instance=usuario)
-
-        if form.is_valid() and usuario_form.is_valid():
+        if form.is_valid():
             form.save()
-            usuario_form.save()  # ya maneja contraseña y estado
-            return redirect("detalle_administrador", administrador.id)
+            return redirect("detalle_administrador", pk=administrador.id)
     else:
         form = AdministradorForm(instance=administrador)
-        usuario_form = UsuarioForm(instance=usuario)
 
-    return render(
-        request,
-        "administradores/editar.html",
-        {"form": form, "usuario_form": usuario_form, "administrador": administrador},
-    )
+    return render(request, "administradores/editar.html", {
+        "form": form,
+        "administrador": administrador,
+    })
 
+
+# ELIMINAR
 @solo_login
 def eliminar_administrador(request, administrador_id):
     administrador = get_object_or_404(Administrador, id=administrador_id)
-    if request.method == "POST":
-        administrador.delete()
-        return redirect("lista_administradores")
-    return render(request, "administradores/eliminar.html", {"administrador": administrador})
 
+    if request.method == "POST":
+        # Importante: borrar también el User asociado para no dejar basura
+        user = administrador.usuario
+        administrador.delete()
+        if user:
+            user.delete()
+
+        return redirect("lista_administradores")
+
+    return render(request, "administradores/eliminar.html", {
+        "administrador": administrador
+    })

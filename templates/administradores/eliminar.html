@@ -13,36 +13,44 @@
           </a>
         </li>
         <li class="breadcrumb-item">
-          <a href="{% url 'lista_administradores' %}" class="text-dark">Administradores</a>
+          <a href="{% url 'lista_administradores' %}" class="text-dark">Usuarios</a>
         </li>
         <li class="breadcrumb-item">
           <a href="{% url 'detalle_administrador' administrador.id %}" class="text-dark">Detalle</a>
         </li>
-        <li class="breadcrumb-item active" aria-current="page">Eliminar </li>
+        <li class="breadcrumb-item active" aria-current="page">Eliminar</li>
       </ol>
     </nav>
   </div>
 
-    <div class="card shadow-lg rounded-3">
-        <div class="card-header bg-primary text-white text-center">
-            <h4 class="mb-0">Eliminar Administrador</h4>
-        </div>
-        <div class="card-body text-center">
-            <p>¿Estás seguro que deseas eliminar a 
-                <strong>{{ administrador.nombre }} {{ administrador.apellido }}</strong>?</p>
-
-            <form method="post">
-                {% csrf_token %}
-                <div class="d-flex justify-content-center gap-3">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt"></i> Eliminar
-                    </button>
-                    <a href="{% url 'detalle_administrador' administrador.id %}" class="btn " style="background: #f8b100;">
-                        <i class="fa-solid fa-arrow-left"></i> Cancelar
-                    </a>
-                </div>
-            </form>
-        </div>
+  <div class="card shadow-lg rounded-3">
+    <div class="card-header bg-danger text-white text-center">
+      <h4 class="mb-0">Eliminar Usuario</h4>
     </div>
+
+    <div class="card-body text-center">
+      <p class="mb-2">
+        ¿Estás seguro que deseas eliminar a:
+        <strong>{{ administrador.nombre }} {{ administrador.apellido }}</strong>?
+      </p>
+
+      <p class="text-muted mb-4">
+        Usuario: <strong>{{ administrador.usuario.username }}</strong>
+      </p>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="d-flex justify-content-center gap-3">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Eliminar
+          </button>
+          <a href="{% url 'detalle_administrador' administrador.id %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

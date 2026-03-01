@@ -73,7 +73,7 @@
           <div class="card text-center shadow-sm border-success">
             <div class="card-body">
               <h6 class="text-muted">Recaudado del Mes</h6>
-              <h3 class="text-success fw-bold">${{ total_recaudado|floatformat:2 }}</h3>
+              <h3 class="text-success fw-bold">$<span id="kpi-total">{{ total_recaudado|floatformat:2 }}</span></h3>
             </div>
           </div>
         </div>
@@ -81,7 +81,9 @@
           <div class="card text-center shadow-sm border-primary">
             <div class="card-body">
               <h6 class="text-muted">Al Día</h6>
-              <h3 class="fw-bold text-primary">{{ al_dia }}/{{ total_atletas }}</h3>
+              <h3 class="fw-bold text-primary">
+                <span id="kpi-al-dia">{{ al_dia }}</span>/<span id="kpi-total-atletas">{{ total_atletas }}</span>
+              </h3>
             </div>
           </div>
         </div>
@@ -89,7 +91,7 @@
           <div class="card text-center shadow-sm border-warning">
             <div class="card-body">
               <h6 class="text-muted">Exonerados</h6>
-              <h3 class="fw-bold text-warning">{{ exonerados }}</h3>
+              <h3 class="fw-bold text-warning"><span id="kpi-exonerados">{{ exonerados }}</span></h3>
             </div>
           </div>
         </div>
@@ -97,7 +99,7 @@
           <div class="card text-center shadow-sm border-danger">
             <div class="card-body">
               <h6 class="text-muted">Con Deuda</h6>
-              <h3 class="fw-bold text-danger">{{ deudores }}</h3>
+              <h3 class="fw-bold text-danger"><span id="kpi-deudores">{{ deudores }}</span></h3>
             </div>
           </div>
         </div>
@@ -124,37 +126,66 @@
                 <td>{{ item.atleta.nombre }}</td>
                 <td>{{ item.atleta.apellido }}</td>
                 <td class="text-center align-middle" style="width: 130px;">{{ item.atleta.categoria }}</td>
+
                 <td class="text-center align-middle" style="width: 130px;">
                   {% if item.mensualidad %}
-                    <span class="badge 
-                      {% if item.mensualidad.estado == 'al_dia' %} bg-success 
-                      {% elif item.mensualidad.estado == 'deuda' %} bg-danger 
-                      {% else %} bg-secondary {% endif %}">
-                      {{ item.mensualidad.estado|capfirst }}
-                    </span>
+                    {% with est=item.mensualidad.estado %}
+                      <span
+                        class="badge js-estado-badge
+                          {% if est == 'Al día' %} bg-success
+                          {% elif est == 'Exonerado' %} bg-warning text-dark
+                          {% else %} bg-danger {% endif %}"
+                        data-id="{{ item.mensualidad.id }}"
+                      >
+                        {{ est }}
+                      </span>
+                    {% endwith %}
                   {% else %}
                     <span class="badge bg-secondary">Sin registro</span>
                   {% endif %}
                 </td>
+
                 {% if item.mensualidad %}
-                  <form method="POST" action="{% url 'actualizar_mensualidad' item.mensualidad.id %}">
-                    {% csrf_token %}
-                    <td class="text-center align-middle" style="width: 150px;">
-                      <input type="number" step="0.01" name="monto"
-                            class="form-control form-control-sm text-center mx-auto"
-                            style="width: 100px;"
-                            value="{{ item.mensualidad.monto_pagado }}">
-                    </td>
-                    <td class="text-center align-middle" style="width: 120px;">
-                      <input type="checkbox" name="exonerado" class="form-check-input"
-                            {% if item.mensualidad.exonerado %}checked{% endif %}>
-                    </td>
-                    <td>
+                  <td class="text-center align-middle" style="width: 150px;">
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="monto"
+                      class="form-control form-control-sm text-center mx-auto js-monto"
+                      style="width: 100px;"
+                      value="{{ item.mensualidad.monto_pagado }}"
+                      data-id="{{ item.mensualidad.id }}"
+                    >
+                  </td>
+
+                  <td class="text-center align-middle" style="width: 120px;">
+                    <input
+                      type="checkbox"
+                      name="exonerado"
+                      class="form-check-input js-exonerado"
+                      data-id="{{ item.mensualidad.id }}"
+                      {% if item.mensualidad.exonerado %}checked{% endif %}
+                    >
+                  </td>
+
+                  <td>
+                    <form class="js-mensualidad-form" method="POST" action="{% url 'actualizar_mensualidad' item.mensualidad.id %}">
+                      {% csrf_token %}
+
+                      <!-- Para que el backend AJAX pueda recalcular el resumen -->
+                      <input type="hidden" name="mes" value="{{ mes_filtro }}">
+                      <input type="hidden" name="año" value="{{ año_actual }}">
+                      <input type="hidden" name="categoria" value="{{ categoria_filtro }}">
+
+                      <!-- inputs reales que mandaremos por JS -->
+                      <input type="hidden" name="monto" value="{{ item.mensualidad.monto_pagado }}" data-id="{{ item.mensualidad.id }}" class="js-hidden-monto">
+                      <input type="hidden" name="exonerado" value="{% if item.mensualidad.exonerado %}true{% else %}false{% endif %}" data-id="{{ item.mensualidad.id }}" class="js-hidden-exonerado">
+
                       <button type="submit" class="btn btn-sm" style="background: #4caf50;">
                         <i class="fa-solid fa-floppy-disk"></i>
                       </button>
-                    </td>
-                  </form>
+                    </form>
+                  </td>
                 {% else %}
                   <td colspan="3" class="text-center text-muted">Sin mensualidad registrada</td>
                 {% endif %}
@@ -210,4 +241,102 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Helper CSRF (Django)
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // Mantener sincronizados los inputs visibles con los hidden del form
+  function syncHiddenInputs(id) {
+    const montoInput = document.querySelector(`.js-monto[data-id="${id}"]`);
+    const exoInput = document.querySelector(`.js-exonerado[data-id="${id}"]`);
+    const hiddenMonto = document.querySelector(`.js-hidden-monto[data-id="${id}"]`);
+    const hiddenExo = document.querySelector(`.js-hidden-exonerado[data-id="${id}"]`);
+    if (!montoInput || !exoInput || !hiddenMonto || !hiddenExo) return;
+
+    hiddenMonto.value = montoInput.value || "0";
+    hiddenExo.value = exoInput.checked ? "true" : "false";
+  }
+
+  document.querySelectorAll(".js-monto, .js-exonerado").forEach(el => {
+    el.addEventListener("change", () => syncHiddenInputs(el.dataset.id));
+    el.addEventListener("input", () => syncHiddenInputs(el.dataset.id));
+  });
+
+  // AJAX submit
+  document.querySelectorAll(".js-mensualidad-form").forEach(form => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const url = form.getAttribute("action");
+      const formData = new FormData(form);
+
+      // decirle al backend que es AJAX
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrftoken,
+          },
+          body: formData
+        });
+
+        const data = await resp.json();
+        if (!data.ok) throw new Error("Respuesta inválida");
+
+        // 1) Actualizar KPIs
+        document.getElementById("kpi-total").textContent = (data.total_recaudado || 0).toFixed(2);
+        document.getElementById("kpi-al-dia").textContent = data.al_dia ?? 0;
+        document.getElementById("kpi-exonerados").textContent = data.exonerados ?? 0;
+        document.getElementById("kpi-deudores").textContent = data.deudores ?? 0;
+        document.getElementById("kpi-total-atletas").textContent = data.total_atletas ?? 0;
+
+        // 2) Actualizar badge de estado de esa mensualidad
+        const mensualidadId = url.split("/").filter(Boolean).slice(-2, -1)[0]; // .../mensualidad/<id>/actualizar/
+        const badge = document.querySelector(`.js-estado-badge[data-id="${mensualidadId}"]`);
+        if (badge) {
+          // mapeo a texto/c颜色
+          let txt = "Incompleto";
+          let cls = "bg-danger";
+          if (data.estado === "pagado") {
+            txt = "Al día";
+            cls = "bg-success";
+          } else if (data.estado === "exonerado") {
+            txt = "Exonerado";
+            cls = "bg-warning text-dark";
+          } else if (data.estado === "parcial" || data.estado === "no_pagado") {
+            txt = "Incompleto";
+            cls = "bg-danger";
+          }
+
+          badge.textContent = txt;
+          badge.className = `badge js-estado-badge ${cls}`;
+          badge.dataset.id = mensualidadId;
+        }
+
+      } catch (err) {
+        console.error(err);
+        // fallback: si falla, enviamos normal
+        form.submit();
+      }
+    });
+  });
+</script>
 {% endblock %}

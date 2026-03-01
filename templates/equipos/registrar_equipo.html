@@ -17,7 +17,7 @@
   </nav>
 
   <div class="card shadow rounded-4">
-    <div class="card-header text-white text-center fw-bold fs-4" >
+    <div class="card-header text-white text-center fw-bold fs-4 bg-dark rounded-top-4">
       Agregar Equipo
     </div>
     <div class="card-body p-4 bg-light rounded-bottom-4">
@@ -26,8 +26,9 @@
       <form method="get" class="mb-4 row g-3 align-items-end border-bottom pb-3">
         <div class="col-md-5">
           <label for="edad_tope" class="form-label fw-semibold">Edad Tope</label>
-          <input type="number" name="edad_tope" id="edad_tope" value="{{ edad_tope|default:'' }}"
-                 class="form-control" placeholder="Ej. 15">
+          <input type="number" name="edad_tope" id="edad_tope"
+                 value="{{ edad_tope|default:'' }}"
+                 class="form-control" placeholder="Ej. 15" min="1">
         </div>
 
         <div class="col-md-5">
@@ -52,35 +53,44 @@
       <form method="post">
         {% csrf_token %}
 
-        {% if error_msg %}
-        <div class="alert alert-danger text-center">{{ error_msg }}</div>
+        {% if error_maximo %}
+          <div class="alert alert-danger text-center">
+            Solo se pueden seleccionar hasta 14 atletas.
+          </div>
         {% endif %}
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label for="nombre" class="form-label fw-semibold">Nombre</label>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Nombre</label>
             {{ form.nombre|add_class:"form-control" }}
+            {% for error in form.nombre.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
           </div>
 
-          <div class="col-md-6 mb-3">
-            <label for="entrenador" class="form-label fw-semibold">Entrenador</label>
-            {{ form.entrenador|add_class:"form-select" }}
-          </div>
-
-          <div class="col-md-6 mb-3">
-            <label for="categoria" class="form-label fw-semibold">Categoría</label>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Categoría</label>
             {{ form.categoria|add_class:"form-control" }}
+            {% for error in form.categoria.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
           </div>
+
+          <!-- sexo_equipo no lo pedimos aquí porque lo define el filtro -->
+          <!-- edad_tope tampoco: lo define el filtro -->
+        </div>
 
         {% if atletas_disponibles %}
         <!-- Tabla de atletas -->
         <div class="mt-4">
           <h5 class="text-center fw-bold mb-3">
-            Atletas disponibles ({{ sexo|title }}, menores e iguales a {{ edad_tope }} años)
+            Atletas disponibles ({{ sexo|title }}, ≤ {{ edad_tope }} años)
           </h5>
+
           <div class="alert alert-warning text-center d-none" id="alerta-limite">
             Solo se pueden seleccionar hasta 14 atletas.
           </div>
+
           <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle text-center">
               <thead class="table-dark">
@@ -90,20 +100,23 @@
                   <th>Cédula</th>
                   <th>Edad</th>
                   <th>Sexo</th>
-                  <th>Categoria</th>
+                  <th>Categoría</th>
                 </tr>
               </thead>
               <tbody>
                 {% for atleta in atletas_disponibles %}
                 <tr>
                   <td>
-                    <input type="checkbox" class="checkbox-atleta" name="atletas_seleccionados" value="{{ atleta.id }}"
-                      {% if atleta.id|stringformat:"s" in atletas_seleccionados %}checked{% endif %}>
+                    <input type="checkbox"
+                           class="checkbox-atleta"
+                           name="atletas_seleccionados"
+                           value="{{ atleta.id }}"
+                           {% if atleta.id|stringformat:"s" in atletas_seleccionados %}checked{% endif %}>
                   </td>
                   <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
                   <td>{{ atleta.cedula }}</td>
                   <td>{{ atleta.edad }} años</td>
-                  <td>{{ atleta.sexo|title }}</td>
+                  <td>{{ atleta.get_sexo_display }}</td>
                   <td>{{ atleta.categoria }}</td>
                 </tr>
                 {% endfor %}
@@ -111,19 +124,28 @@
             </table>
           </div>
         </div>
+        {% else %}
+          <div class="alert alert-info text-center mt-4">
+            No hay atletas disponibles con ese filtro.
+          </div>
         {% endif %}
 
         <!-- Botones -->
         <div class="d-flex justify-content-center gap-3 mt-4">
           <button type="submit" class="btn" style="background: #4caf50;">
-            <i class="fa-solid fa-floppy-disk"></i> Guardar 
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
           </button>
           <a href="{% url 'listar_equipos' %}" class="btn" style="background: #f8b100;">
             <i class="fa-solid fa-arrow-left"></i> Cancelar
           </a>
         </div>
       </form>
+      {% else %}
+        <div class="alert alert-secondary text-center">
+          Primero selecciona <strong>Edad Tope</strong> y <strong>Sexo</strong> y presiona <strong>Buscar</strong>.
+        </div>
       {% endif %}
+
     </div>
   </div>
 </div>
@@ -137,15 +159,15 @@ document.addEventListener('DOMContentLoaded', function () {
   checkboxes.forEach(cb => {
     cb.addEventListener('change', () => {
       const seleccionados = Array.from(checkboxes).filter(c => c.checked).length;
-
       if (seleccionados > 14) {
         cb.checked = false;
-        alerta.classList.remove('d-none');
-        setTimeout(() => alerta.classList.add('d-none'), 3000);
+        if (alerta) {
+          alerta.classList.remove('d-none');
+          setTimeout(() => alerta.classList.add('d-none'), 2500);
+        }
       }
     });
   });
 });
 </script>
-
 {% endblock %}

@@ -4,18 +4,25 @@
 <div class="container mt-4">
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'menu_principal' %}"><i class="fa-solid fa-house"></i></a></li>
-      <li class="breadcrumb-item"><a class="text-dark" href="{% url 'listar_equipos' %}">Equipos</a></li>
+      <li class="breadcrumb-item">
+        <a class="text-dark" href="{% url 'menu_principal' %}">
+          <i class="fa-solid fa-house"></i>
+        </a>
+      </li>
+      <li class="breadcrumb-item">
+        <a class="text-dark" href="{% url 'listar_equipos' %}">Equipos</a>
+      </li>
       <li class="breadcrumb-item active" aria-current="page">Detalle</li>
     </ol>
   </nav>
 
   <div class="card shadow rounded-4">
-    <div class="card-header text-white text-center fw-bold fs-4">
+    <div class="card-header text-white text-center fw-bold fs-4 bg-dark rounded-top-4">
       Detalle del Equipo
     </div>
+
     <div class="card-body bg-light rounded-bottom-4">
-      <div class="row mb-3">
+      <div class="row mb-3 g-2">
         <div class="col-md-6">
           <strong>Nombre:</strong> {{ equipo.nombre }}
         </div>
@@ -23,10 +30,15 @@
           <strong>Categoría:</strong> {{ equipo.categoria }}
         </div>
         <div class="col-md-6">
-          <strong>Entrenador:</strong> {{ equipo.entrenador.nombre }} {{ equipo.entrenador.apellido }}
+          <strong>Sexo:</strong>
+          {% if equipo.sexo_equipo %}
+            {{ equipo.get_sexo_equipo_display }}
+          {% else %}
+            —
+          {% endif %}
         </div>
         <div class="col-md-6">
-          <strong>Sexo:</strong> {{ equipo.get_sexo_equipo_display }}
+          <strong>Edad tope:</strong> {{ equipo.edad_tope|default:"—" }}
         </div>
       </div>
 
@@ -52,7 +64,7 @@
                 <td>{{ atleta.cedula }}</td>
                 <td>{{ atleta.edad }} años</td>
                 <td>{{ atleta.telefono }}</td>
-                <td>{{ atleta.sexo|title }}</td>
+                <td>{{ atleta.get_sexo_display }}</td>
               </tr>
               {% endfor %}
             </tbody>

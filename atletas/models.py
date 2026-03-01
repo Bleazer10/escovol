@@ -1,8 +1,5 @@
 from django.db import models
 from datetime import date
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from decimal import Decimal
 from django.contrib.auth.models import User
 from django.dispatch import receiver
 from django.db.models.signals import post_save
@@ -29,7 +26,6 @@ class Atleta(models.Model):
         ('libero', 'Libero'),
         ('punta', 'Punta'),
     )
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)  # <— NUEVO
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
@@ -112,7 +108,7 @@ class Mensualidad(models.Model):
     def estado(self):
         if self.exonerado:
             return "Exonerado"
-        elif self.monto_pagado >= 5.00:
+        elif self.monto_pagado >= 8.00:
             return "Al día"
         else:
             return "Incompleto"
@@ -136,39 +132,6 @@ class Mensualidad(models.Model):
                     mes=mes,
                     defaults={"monto_pagado": 0.00, "exonerado": False}
                 )
-
-class Entrenador(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)  # <— NUEVO
-    nombre = models.CharField(max_length=100)
-    apellido = models.CharField(max_length=100)
-    cedula = models.CharField(max_length=20, unique=True)
-    fecha_nacimiento = models.DateField()
-    telefono = models.CharField(max_length=20)
-
-    def __str__(self):
-        return f"{self.nombre} {self.apellido}"
-
-    @property
-    def edad(self):
-        today = date.today()
-        return today.year - self.fecha_nacimiento.year - (
-            (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
-            )
-    
-class Campeonato(models.Model):
-    TIPO_CHOICES = [
-        ('formal', 'Formal'),
-        ('amistoso', 'Amistoso'),
-    ]
-
-    nombre = models.CharField(max_length=100)
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
-    anio = models.PositiveIntegerField()
-    fecha_inicio = models.DateField(blank=True, null=True)
-    descripcion = models.TextField(blank=True)
-
-    def __str__(self):
-        return f"{self.nombre} - {self.anio}"
     
 class Equipo(models.Model):
     SEXO_CHOICES = [
@@ -177,98 +140,13 @@ class Equipo(models.Model):
         ('mixto', 'Mixto'),
     ]
     nombre = models.CharField(max_length=100)
-    entrenador = models.ForeignKey(Entrenador, on_delete=models.CASCADE)
-    atletas = models.ManyToManyField(Atleta)
+    atletas = models.ManyToManyField(Atleta, blank=True)
     categoria = models.CharField(max_length=50)
     sexo_equipo = models.CharField(max_length=10, choices=SEXO_CHOICES, null=True, blank=True)
     edad_tope = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.nombre
-    
-
-class Partido(models.Model):
-    ESTADOS = [
-        ('programado', 'Programado'),
-        ('en_curso', 'En curso'),
-        ('finalizado', 'Finalizado'),
-        ('cancelado', 'Cancelado'),
-    ]
-
-    FORMATOS = [
-        ('3-2', 'Ganar 2 de 3 sets'),
-        ('5-3', 'Ganar 3 de 5 sets'),
-    ]
-
-    equipo_local = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name='partidos')
-    equipo_externo = models.CharField(max_length=100)
-    fecha = models.DateField()
-    hora = models.TimeField()
-    lugar = models.CharField(max_length=150)
-    campeonato = models.ForeignKey(Campeonato, on_delete=models.SET_NULL, null=True, blank=True)
-    observaciones = models.TextField(blank=True, null=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='programado')
-    formato_partido = models.CharField(max_length=5, choices=FORMATOS, default='5-3')
-    ganador = models.CharField(max_length=20, choices=[('local', 'Equipo Local'), ('externo', 'Equipo Externo')], null=True, blank=True)
-
-
-    # Resultado por sets
-    set1_local = models.PositiveIntegerField(null=True, blank=True)
-    set1_externo = models.PositiveIntegerField(null=True, blank=True)
-    set2_local = models.PositiveIntegerField(null=True, blank=True)
-    set2_externo = models.PositiveIntegerField(null=True, blank=True)
-    set3_local = models.PositiveIntegerField(null=True, blank=True)
-    set3_externo = models.PositiveIntegerField(null=True, blank=True)
-    set4_local = models.PositiveIntegerField(null=True, blank=True)
-    set4_externo = models.PositiveIntegerField(null=True, blank=True)
-    set5_local = models.PositiveIntegerField(null=True, blank=True)
-    set5_externo = models.PositiveIntegerField(null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.equipo_local.nombre} vs {self.equipo_externo} - {self.fecha}"
-
-    def resultado_final(self):
-        sets_local = 0
-        sets_externo = 0
-        for i in range(1, 6):
-            local = getattr(self, f"set{i}_local")
-            externo = getattr(self, f"set{i}_externo")
-            if local is not None and externo is not None:
-                if local > externo:
-                    sets_local += 1
-                elif externo > local:
-                    sets_externo += 1
-        return f"{sets_local} - {sets_externo}"
-
-    @property
-    def resultado_con_nombre(self):
-        if self.estado != 'finalizado':
-            return None
-
-        resultado = self.resultado_final()
-        if self.ganador == 'local':
-            return f"{self.equipo_local.nombre} {resultado}"
-        elif self.ganador == 'externo':
-            return f"{self.equipo_externo} {resultado}"
-        return "—"
-
-class Estadistica(models.Model):
-    atleta = models.ForeignKey(Atleta, on_delete=models.CASCADE, related_name='estadisticas')
-    partido = models.ForeignKey(Partido, on_delete=models.CASCADE, related_name='estadisticas', null=True, blank=True)
-    puntos = models.PositiveIntegerField(default=0)
-    saques = models.PositiveIntegerField(default=0)
-    remates = models.PositiveIntegerField(default=0)
-    bloqueos = models.PositiveIntegerField(default=0)
-    armadas = models.PositiveIntegerField(default=0)
-    recepciones = models.PositiveIntegerField(default=0)
-    errores = models.PositiveIntegerField(default=0)
-    alcance = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    salto = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-
-
-    def __str__(self):
-        return f"Estadísticas de {self.atleta} - {self.fecha_partido}"
-    
 
 class Administrador(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name="administrador")

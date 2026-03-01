@@ -11,7 +11,7 @@
             <i class="fa-solid fa-house"></i>
           </a>
         </li>
-        <li class="breadcrumb-item active" aria-current="page">Administradores</li>
+        <li class="breadcrumb-item active" aria-current="page">Usuarios</li>
       </ol>
     </nav>
     <a href="{% url 'agregar_administrador' %}" class="btn" style="background: #f97316;">
@@ -21,7 +21,7 @@
 
   <div class="card shadow rounded-4">
     <div class="card-header bg-dark text-white text-center rounded-top-4">
-      <h4 class="mb-0">Listado de Administradores</h4>
+      <h4 class="mb-0">Listado de Usuarios</h4>
     </div>
     <div class="card-body bg-light rounded-bottom-4">
 
@@ -30,10 +30,12 @@
           <table class="table table-hover align-middle text-center">
             <thead class="table-dark">
               <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Estado</th>
                 <th>Cédula</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
-                <th>Edad</th>
                 <th>Teléfono</th>
                 <th>Consultar</th>
               </tr>
@@ -41,13 +43,24 @@
             <tbody>
               {% for admin in administradores %}
               <tr>
+                <td class="fw-semibold">{{ admin.usuario.username }}</td>
+                <td>{{ admin.usuario.email|default:"—" }}</td>
+
+                <td>
+                  {% if admin.usuario.is_active %}
+                    <span class="badge bg-success">Activo</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                  {% endif %}
+                </td>
+
                 <td>{{ admin.cedula }}</td>
                 <td>{{ admin.nombre }}</td>
                 <td>{{ admin.apellido }}</td>
-                <td>{{ admin.edad }}</td>
-                <td>{{ admin.telefono }}</td>
+                <td>{{ admin.telefono|default:"—" }}</td>
+
                 <td>
-                  <a href="{% url 'detalle_administrador' admin.id %}" 
+                  <a href="{% url 'detalle_administrador' admin.id %}"
                      class="btn btn-sm" style="background:#06b6d4">
                     <i class="fa-solid fa-magnifying-glass"></i>
                   </a>
@@ -58,10 +71,10 @@
           </table>
         </div>
       {% else %}
-        <div class="alert alert-info text-center">No hay administradores registrados.</div>
+        <div class="alert alert-info text-center">No hay usuarios registrados.</div>
       {% endif %}
 
-      <!-- 🔄 Paginación SIEMPRE visible -->
+      <!-- 🔄 Paginación -->
       <div class="d-flex justify-content-center mt-4">
         <nav>
           <ul class="pagination pagination-sm">

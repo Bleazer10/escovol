@@ -12,7 +12,7 @@
         </a>
       </li>
       <li class="breadcrumb-item">
-        <a href="{% url 'lista_administradores' %}" class="text-dark">Administradores</a>
+        <a href="{% url 'lista_administradores' %}" class="text-dark">Usuarios</a>
       </li>
       <li class="breadcrumb-item active" aria-current="page">Detalle</li>
     </ol>
@@ -21,40 +21,41 @@
   <!-- Card principal -->
   <div class="card shadow border border-primary rounded-4">
     <div class="card-header bg-dark text-white text-center rounded-top-4">
-      <h4 class="mb-0">Administrador: {{ administrador.nombre }} {{ administrador.apellido }}</h4>
+      <h4 class="mb-0">Usuario: {{ administrador.nombre }} {{ administrador.apellido }}</h4>
     </div>
 
     <div class="card-body bg-light rounded-bottom-4">
 
-      <!-- Datos del Administrador -->
+      <!-- Datos personales -->
       <div class="row mb-3">
         <div class="col-md-6"><strong>Cédula:</strong> {{ administrador.cedula }}</div>
-        <div class="col-md-6"><strong>Teléfono:</strong> {{ administrador.telefono }}</div>
+        <div class="col-md-6"><strong>Teléfono:</strong> {{ administrador.telefono|default:"—" }}</div>
       </div>
       <div class="row mb-3">
         <div class="col-md-6"><strong>Fecha de nacimiento:</strong> {{ administrador.fecha_nacimiento|date:"d/m/Y" }}</div>
         <div class="col-md-6"><strong>Edad:</strong> {{ administrador.edad }}</div>
       </div>
 
-      <!-- Datos del Usuario asociado -->
+      <hr>
+
+      <!-- Datos de acceso -->
       <div class="row mb-3">
         <div class="col-md-6"><strong>Usuario:</strong> {{ administrador.usuario.username }}</div>
-        <div class="col-md-6"><strong>Correo:</strong> {{ administrador.usuario.email }}</div>
+        <div class="col-md-6"><strong>Correo:</strong> {{ administrador.usuario.email|default:"—" }}</div>
       </div>
+
       <div class="row mb-3">
         <div class="col-md-6">
           <strong>Estado:</strong>
           {% if administrador.usuario.is_active %}
             <span class="badge bg-success">Activo</span>
           {% else %}
-            <span class="badge bg-danger">Inactivo</span>
+            <span class="badge bg-secondary">Inactivo</span>
           {% endif %}
         </div>
-        <div class="col-md-6"><strong>Contraseña:</strong> ********</div>
       </div>
 
-
-      <!-- Botones dentro de la card -->
+      <!-- Botones -->
       <div class="d-flex justify-content-center gap-3 mt-4">
         <a href="{% url 'editar_administrador' administrador.id %}" class="btn" style="background:#4caf50">
           <i class="fas fa-edit"></i> Editar

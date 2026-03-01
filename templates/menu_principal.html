@@ -15,10 +15,13 @@
   </div>
 
   <!-- Totales generales -->
-  <div class="row g-4 mb-5">
+  <div class="row g-4 mb-4">
+
+    <!-- Total atletas -->
     <div class="col-md-6">
       <div class="card border-0 shadow-lg h-100 rounded-4 bg-white position-relative overflow-hidden">
-        <div class="position-absolute top-0 start-0 w-100 h-100 opacity-10" style="background: url('{% static "img/bg-volley.svg" %}') no-repeat bottom right; background-size: contain;"></div>
+        <div class="position-absolute top-0 start-0 w-100 h-100 opacity-10"
+             style="background: url('{% static "img/bg-volley.svg" %}') no-repeat bottom right; background-size: contain;"></div>
         <div class="card-body text-center p-4 position-relative">
           <i class="fas fa-users fa-2x text-danger mb-3"></i>
           <h6 class="text-muted">Total de Atletas</h6>
@@ -26,124 +29,76 @@
         </div>
       </div>
     </div>
+
+    <!-- Total equipos -->
     <div class="col-md-6">
       <div class="card border-0 shadow-lg h-100 rounded-4 bg-white position-relative overflow-hidden">
         <div class="card-body text-center p-4 position-relative">
-          <i class="fas fa-trophy fa-2x text-primary mb-3"></i>
-          <h6 class="text-muted">Partidos Ganados del Mes</h6>
-          <h2 class="fw-bold text-primary">
-            {{ partidos_ganados_mes }}/{{ total_partidos_mes }}
-          </h2>
+          <i class="fas fa-people-group fa-2x text-primary mb-3"></i>
+          <h6 class="text-muted">Total de Equipos</h6>
+          <h2 class="fw-bold text-primary">{{ total_equipos }}</h2>
         </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Jugadores destacados -->
+  <!-- Resumen mensual (Mensualidades) -->
   <div class="card shadow-lg mb-5 rounded-4 border-0">
     <div class="card-header bg-dark text-white text-center fw-bold fs-5 rounded-top-4">
-      🏅 Destacados del Mes
+      💰 Resumen de Mensualidades ({{ mes_actual }}/{{ año_actual }})
     </div>
+
     <div class="card-body bg-light rounded-bottom-4">
+      <div class="row g-4">
 
-      <!-- Jugador Más Destacado (mes anterior) -->
-      <div class="row justify-content-center mb-5">
-        {% if jugador_destacado %}
-          {% for jugador in jugador_destacado %}
-          <div class="col-md-4 mb-3">
-            <div class="p-4 h-100 bg-white shadow-lg rounded-4 border-start border-5 border-danger">
-              <i class="fas fa-star fa-2x text-danger mb-2"></i>
-              <h5 class="fw-bold text-danger">Jugador Más Destacado</h5>
-              <p class="mb-0 fs-5">{{ jugador.nombre }} {{ jugador.apellido }}</p>
-              <small class="text-muted">Puntos Netos: {{ jugador.total_puntos }}</small>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <p class="text-muted text-center">Sin datos</p>
-        {% endif %}
-      </div>
-
-      <!-- Mejores por Rol (mes actual) -->
-      <div class="row text-center">
-        {% for item in mejores_por_rol %}
-        <div class="col-md-4 mb-4">
-          <div class="p-4 h-100 bg-white shadow-sm rounded-4 border-start border-4 border-{{ item.color }}">
-            <i class="fas {{ item.icono }} fa-lg text-{{ item.color }} mb-2"></i>
-            <h6 class="fw-bold text-{{ item.color }}">{{ item.titulo }}</h6>
-            {% if item.jugadores %}
-              {% for jugador in item.jugadores %}
-                <p class="mb-0">{{ jugador.nombre }} {{ jugador.apellido }}</p>
-                <small class="text-muted">{{ item.rol|capfirst }}: {{ jugador.total }}</small>
-                {% if not forloop.last %}<hr class="my-2">{% endif %}
-              {% endfor %}
-            {% else %}
-              <p class="text-muted">Sin datos</p>
-            {% endif %}
+        <!-- Recaudado -->
+        <div class="col-md-3">
+          <div class="p-4 h-100 bg-white shadow-sm rounded-4 border-start border-5 border-success text-center">
+            <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+            <h6 class="text-muted mb-1">Recaudado del mes</h6>
+            <h4 class="fw-bold text-success mb-0">
+              ${{ total_recaudado|floatformat:2 }}
+            </h4>
           </div>
         </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
 
-
-  <!-- Equipo más destacado -->
-  <div class="card shadow-lg mb-5 border-0 rounded-4 bg-white">
-    <div class="card-body text-center p-5 border-start border-4 border-primary">
-      <h5 class="fw-bold text-primary mb-3">🏆 Equipo(s) Más Destacado(s) del Mes</h5>
-      {% if equipo_destacado %}
-        <div class="row justify-content-center">
-          {% for equipo in equipo_destacado %}
-          <div class="col-md-6 mb-3">
-            <div class="bg-light rounded-4 py-3 px-4 shadow-sm border-start border-3 border-danger h-100">
-              <i class="fas fa-trophy fa-lg text-danger mb-2"></i>
-              <h6 class="fw-bold mb-1">{{ equipo.nombre }}</h6>
-              <small class="text-muted">Juegos Ganados: {{ equipo.total_victorias }}</small>
-            </div>
+        <!-- Al día -->
+        <div class="col-md-3">
+          <div class="p-4 h-100 bg-white shadow-sm rounded-4 border-start border-5 border-primary text-center">
+            <i class="fas fa-circle-check fa-2x text-primary mb-2"></i>
+            <h6 class="text-muted mb-1">Al día</h6>
+            <h4 class="fw-bold text-primary mb-0">{{ al_dia }}</h4>
           </div>
-          {% endfor %}
         </div>
-      {% else %}
-        <p class="text-muted">Sin datos del mes actual</p>
-      {% endif %}
-    </div>
-</div>
 
+        <!-- Exonerados -->
+        <div class="col-md-3">
+          <div class="p-4 h-100 bg-white shadow-sm rounded-4 border-start border-5 border-warning text-center">
+            <i class="fas fa-hand-holding-heart fa-2x text-warning mb-2"></i>
+            <h6 class="text-muted mb-1">Exonerados</h6>
+            <h4 class="fw-bold text-warning mb-0">{{ exonerados }}</h4>
+          </div>
+        </div>
 
-  <!-- Calendario semanal de partidos -->
-  <div class="card shadow-lg mb-5 border-0 rounded-4 bg-white">
-    <div class="card-body p-4">
-      <div id="contenedor-calendario">
-        {% include 'fragmentos/calendario_semanal.html' %}
+        <!-- Con deuda -->
+        <div class="col-md-3">
+          <div class="p-4 h-100 bg-white shadow-sm rounded-4 border-start border-5 border-danger text-center">
+            <i class="fas fa-triangle-exclamation fa-2x text-danger mb-2"></i>
+            <h6 class="text-muted mb-1">Con deuda</h6>
+            <h4 class="fw-bold text-danger mb-0">{{ deudores }}</h4>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="text-center mt-4">
+        <a href="{% url 'administracion' %}" class="btn btn-sm btn-dark px-4">
+          Ir a Administración
+        </a>
       </div>
     </div>
   </div>
 
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const contenedor = document.getElementById('contenedor-calendario');
-
-  contenedor.addEventListener('click', function (e) {
-    const link = e.target.closest('a.btn');
-    if (link) {
-      e.preventDefault();
-      const url = link.getAttribute('href');
-
-      fetch(url, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      })
-      .then(response => response.text())
-      .then(html => {
-        contenedor.innerHTML = html;
-      })
-      .catch(error => console.error('Error al actualizar calendario:', error));
-    }
-  });
-});
-</script>
-
-
 {% endblock %}

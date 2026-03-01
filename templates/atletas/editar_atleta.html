@@ -24,95 +24,57 @@
   </nav>
 </div>
 
-<div class="container mt-5"></div>
+<div class="container mt-5">
 
-{% if is_admin %}
-<div class="card shadow border border-primary">
-  <div class="card-header bg-primary text-white text-center fw-bold fs-3">
-    Editar Atleta
-  </div>
-  <div class="card-body p-5">
-    <form method="post">
-      {% csrf_token %}
+  <div class="card shadow border border-primary">
+    <div class="card-header bg-primary text-white text-center fw-bold fs-3">
+      Editar Atleta
+    </div>
 
-      <div class="row g-3">
-        <!-- Nombre -->
-        <div class="col-md-6">
-          <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold text-dark">Nombre</label>
-          {{ form.nombre|add_class:"form-control" }}
-          {% for error in form.nombre.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
+    <div class="card-body p-5">
+      <form method="post">
+        {% csrf_token %}
 
-        <!-- Apellido -->
-        <div class="col-md-6">
-          <label for="{{ form.apellido.id_for_label }}" class="form-label fw-semibold text-dark">Apellido</label>
-          {{ form.apellido|add_class:"form-control" }}
-          {% for error in form.apellido.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
+        <div class="row g-3">
+          <!-- Nombre -->
+          <div class="col-md-6">
+            <label for="{{ form.nombre.id_for_label }}" class="form-label fw-semibold text-dark">Nombre</label>
+            {{ form.nombre|add_class:"form-control" }}
+            {% for error in form.nombre.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
 
-        <!-- Cédula -->
-        <div class="col-md-6">
-          <label for="{{ form.cedula.id_for_label }}" class="form-label fw-semibold text-dark">Cédula</label>
-          {{ form.cedula|add_class:"form-control" }}
-          {% for error in form.cedula.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
+          <!-- Apellido -->
+          <div class="col-md-6">
+            <label for="{{ form.apellido.id_for_label }}" class="form-label fw-semibold text-dark">Apellido</label>
+            {{ form.apellido|add_class:"form-control" }}
+            {% for error in form.apellido.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
 
-        <!-- Teléfono -->
-        <div class="col-md-6">
-          <label for="{{ form.telefono.id_for_label }}" class="form-label fw-semibold text-dark">Teléfono</label>
-          {{ form.telefono|add_class:"form-control" }}
-          {% for error in form.telefono.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
+          <!-- Cédula -->
+          <div class="col-md-6">
+            <label for="{{ form.cedula.id_for_label }}" class="form-label fw-semibold text-dark">Cédula</label>
+            {{ form.cedula|add_class:"form-control" }}
+            {% for error in form.cedula.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
 
-        <!-- Otros campos generales -->
-        {% for field in form %}
-          {% if field.name not in 'nombre apellido cedula telefono peso estatura salto alcance direccion representante_nombre representante_apellido representante_cedula representante_telefono' %}
-            <div class="col-md-6">
-              <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
-              {{ field|add_class:"form-control" }}
-              {% if field.help_text %}
-                <div class="form-text text-muted">{{ field.help_text }}</div>
-              {% endif %}
-              {% for error in field.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endfor %}
+          <!-- Teléfono -->
+          <div class="col-md-6">
+            <label for="{{ form.telefono.id_for_label }}" class="form-label fw-semibold text-dark">Teléfono</label>
+            {{ form.telefono|add_class:"form-control" }}
+            {% for error in form.telefono.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
 
-        <!-- Turno y Dirección -->
-        <div class="col-md-6">
-          <label for="{{ form.turno.id_for_label }}" class="form-label fw-semibold text-dark">Turno</label>
-          {{ form.turno|add_class:"form-select" }}
-          {% for error in form.turno.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
-        <div class="col-md-6">
-          <label for="{{ form.direccion.id_for_label }}" class="form-label fw-semibold text-dark">Dirección</label>
-          {{ form.direccion|add_class:"form-control" }}
-          {% for error in form.direccion.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Card para Datos Antropométricos -->
-      <div class="card mt-5 border border-primary shadow-sm">
-        <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center">
-          🧍‍♂️ DATOS ANTROPOMÉTRICOS
-        </div>
-        <div class="card-body row g-3 px-3">
+          {# Otros campos generales (excluimos los ya puestos + antropométricos + representante + turno/dirección porque van juntos abajo) #}
           {% for field in form %}
-            {% if field.name in 'peso estatura salto alcance' %}
+            {% if field.name not in "nombre apellido cedula telefono peso estatura salto alcance direccion representante_nombre representante_apellido representante_cedula representante_telefono turno" %}
               <div class="col-md-6">
                 <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
                 {{ field|add_class:"form-control" }}
@@ -125,88 +87,81 @@
               </div>
             {% endif %}
           {% endfor %}
-        </div>
-      </div>
 
-      <!-- Mini Card del Representante -->
-      <div class="card mt-5 border border-primary shadow-sm rounded-4 d-none" id="card-representante">
-        <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center rounded-top-4">
-          👤 DATOS DEL REPRESENTANTE
-        </div>
-        <div class="card-body row g-3 px-3">
-          {% for field in form %}
-            {% if field.name == 'representante_nombre' or field.name == 'representante_apellido' or field.name == 'representante_cedula' or field.name == 'representante_telefono' %}
-              <div class="col-md-6">
-                <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
-                {{ field|add_class:"form-control" }}
-                {% for error in field.errors %}
-                  <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
-              </div>
-            {% endif %}
-          {% endfor %}
-        </div>
-      </div>
+          <!-- Turno y Dirección -->
+          <div class="col-md-6">
+            <label for="{{ form.turno.id_for_label }}" class="form-label fw-semibold text-dark">Turno</label>
+            {{ form.turno|add_class:"form-select" }}
+            {% for error in form.turno.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
 
-      <!-- 🔑 Mini Card Usuario -->
-      {% if is_admin %}
-        {% if usuario_form %}
-        <div class="card mt-5 border border-primary shadow-sm rounded-4">
-          <div class="card-header bg-primary text-white fw-semibold fs-5 text-center rounded-top-4">
-            🔑 DATOS DE USUARIO
+          <div class="col-md-6">
+            <label for="{{ form.direccion.id_for_label }}" class="form-label fw-semibold text-dark">Dirección</label>
+            {{ form.direccion|add_class:"form-control" }}
+            {% for error in form.direccion.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Card para Datos Antropométricos -->
+        <div class="card mt-5 border border-primary shadow-sm">
+          <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center">
+            🧍‍♂️ DATOS ANTROPOMÉTRICOS
           </div>
           <div class="card-body row g-3 px-3">
-            <div class="col-md-6">
-              <label for="{{ usuario_form.username.id_for_label }}" class="form-label fw-semibold">Usuario</label>
-              {{ usuario_form.username|add_class:"form-control" }}
-              {% for error in usuario_form.username.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
-            </div>
-            <div class="col-md-6">
-              <label for="{{ usuario_form.email.id_for_label }}" class="form-label fw-semibold">Correo</label>
-              {{ usuario_form.email|add_class:"form-control" }}
-              {% for error in usuario_form.email.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
-            </div>
-            <div class="col-md-6">
-              <label for="{{ usuario_form.password.id_for_label }}" class="form-label fw-semibold">Contraseña</label>
-              {{ usuario_form.password|add_class:"form-control" }}
-              {% for error in usuario_form.password.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
-            </div>
-            <div class="col-md-6">
-              <label for="{{ usuario_form.is_active.id_for_label }}" class="form-label fw-semibold">Estado</label>
-              {{ usuario_form.is_active|add_class:"form-select" }}
-              {% for error in usuario_form.is_active.errors %}
-                <div class="text-danger small">{{ error }}</div>
-              {% endfor %}
-            </div>
+            {% for field in form %}
+              {% if field.name in "peso estatura salto alcance" %}
+                <div class="col-md-6">
+                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
+                  {{ field|add_class:"form-control" }}
+                  {% if field.help_text %}
+                    <div class="form-text text-muted">{{ field.help_text }}</div>
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </div>
-        {% endif %}
-      {% endif %}
 
-      <!-- Botones -->
-      <div class="mt-4 d-flex justify-content-center gap-3">
-        <button type="submit" class="btn" style="background: #4caf50;">
-          <i class="fa-solid fa-floppy-disk"></i> Guardar
-        </button>
-        <a href="{% url 'detalle_atleta' atleta.id %}" class="btn" style="background: #f8b100;">
-          <i class="fa-solid fa-arrow-left"></i> Cancelar
-        </a>
-      </div>
-    </form>
+        <!-- Card del Representante -->
+        <div class="card mt-5 border border-primary shadow-sm rounded-4 d-none" id="card-representante">
+          <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center rounded-top-4">
+            👤 DATOS DEL REPRESENTANTE
+          </div>
+          <div class="card-body row g-3 px-3">
+            {% for field in form %}
+              {% if field.name in "representante_nombre representante_apellido representante_cedula representante_telefono" %}
+                <div class="col-md-6">
+                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
+                  {{ field|add_class:"form-control" }}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="mt-4 d-flex justify-content-center gap-3">
+          <button type="submit" class="btn" style="background: #4caf50;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar
+          </button>
+          <a href="{% url 'detalle_atleta' atleta.id %}" class="btn" style="background: #f8b100;">
+            <i class="fa-solid fa-arrow-left"></i> Cancelar
+          </a>
+        </div>
+
+      </form>
+    </div>
   </div>
-</div>
-{% else %}
-<div class="alert alert-danger text-center mt-5">
-  No tienes permiso para acceder a esta sección.
-</div>
-{% endif %}
-
 </div>
 
 <script>
@@ -219,28 +174,25 @@
       const fechaNac = new Date(fechaNacStr);
       let edad = hoy.getFullYear() - fechaNac.getFullYear();
       const m = hoy.getMonth() - fechaNac.getMonth();
-      if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
-        edad--;
-      }
+      if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) edad--;
       return edad;
     }
 
     function verificarEdad() {
+      if (!nacimientoInput) return;
       const valor = nacimientoInput.value;
-      if (valor) {
-        const edad = calcularEdad(valor);
-        if (edad < 18) {
-          cardRepresentante.classList.remove("d-none");
-        } else {
-          cardRepresentante.classList.add("d-none");
-        }
-      }
+      if (!valor) return;
+
+      const edad = calcularEdad(valor);
+      if (edad < 18) cardRepresentante.classList.remove("d-none");
+      else cardRepresentante.classList.add("d-none");
     }
 
-    nacimientoInput.addEventListener("change", verificarEdad);
-    verificarEdad();  // Para precargar si ya hay fecha
+    if (nacimientoInput) {
+      nacimientoInput.addEventListener("change", verificarEdad);
+      verificarEdad(); // precargar si ya hay fecha
+    }
   });
 </script>
 
 {% endblock %}
-
