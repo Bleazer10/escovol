@@ -131,7 +131,10 @@
                   </td>
 
                   <td>
-                    <form class="js-mensualidad-form" method="POST" action="{% url 'actualizar_mensualidad' item.mensualidad.id %}">
+                    <form class="js-mensualidad-form"
+                          data-id="{{ item.mensualidad.id }}"
+                          method="POST"
+                          action="{% url 'actualizar_mensualidad' item.mensualidad.id %}">
                       {% csrf_token %}
 
                       <!-- Para que el backend AJAX pueda recalcular el resumen -->
@@ -236,9 +239,16 @@
     hiddenExo.value = exoInput.checked ? "true" : "false";
   }
 
+  // listeners para cambios en inputs visibles
   document.querySelectorAll(".js-monto, .js-exonerado").forEach(el => {
     el.addEventListener("change", () => syncHiddenInputs(el.dataset.id));
     el.addEventListener("input", () => syncHiddenInputs(el.dataset.id));
+  });
+
+  // 🔥 sincronizar al cargar (por si el usuario no toca nada y guarda igual)
+  document.querySelectorAll(".js-mensualidad-form").forEach(form => {
+    const id = form.dataset.id;
+    if (id) syncHiddenInputs(id);
   });
 
   // AJAX submit
@@ -247,9 +257,13 @@
       e.preventDefault();
 
       const url = form.getAttribute("action");
+
+      // asegurar que hidden inputs estén al día justo antes de enviar
+      const mensualidadId = form.dataset.id;
+      if (mensualidadId) syncHiddenInputs(mensualidadId);
+
       const formData = new FormData(form);
 
-      // decirle al backend que es AJAX
       try {
         const resp = await fetch(url, {
           method: "POST",
@@ -263,27 +277,19 @@
         const data = await resp.json();
         if (!data.ok) throw new Error("Respuesta inválida");
 
-        // 1) Actualizar KPIs
-        document.getElementById("kpi-total").textContent = (data.total_recaudado || 0).toFixed(2);
-        document.getElementById("kpi-al-dia").textContent = data.al_dia ?? 0;
-        document.getElementById("kpi-exonerados").textContent = data.exonerados ?? 0;
-        document.getElementById("kpi-deudores").textContent = data.deudores ?? 0;
-        document.getElementById("kpi-total-atletas").textContent = data.total_atletas ?? 0;
-
-        // 2) Actualizar badge de estado de esa mensualidad
-        const mensualidadId = url.split("/").filter(Boolean).slice(-2, -1)[0]; // .../mensualidad/<id>/actualizar/
+        // ✅ Actualizar badge de estado de esa mensualidad (sin parsear URL)
         const badge = document.querySelector(`.js-estado-badge[data-id="${mensualidadId}"]`);
         if (badge) {
-          // mapeo a texto/c颜色
           let txt = "Incompleto";
           let cls = "bg-danger";
+
           if (data.estado === "pagado") {
             txt = "Al día";
             cls = "bg-success";
           } else if (data.estado === "exonerado") {
             txt = "Exonerado";
             cls = "bg-warning text-dark";
-          } else if (data.estado === "parcial" || data.estado === "no_pagado") {
+          } else {
             txt = "Incompleto";
             cls = "bg-danger";
           }
@@ -295,7 +301,7 @@
 
       } catch (err) {
         console.error(err);
-        // fallback: si falla, enviamos normal
+        // fallback: si falla AJAX, enviamos normal
         form.submit();
       }
     });

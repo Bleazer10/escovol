@@ -137,21 +137,23 @@ def eliminar_atleta(request, atleta_id):
 def actualizar_mensualidad(request, mensualidad_id):
     mensualidad = get_object_or_404(Mensualidad, id=mensualidad_id)
 
-    monto_raw = (request.POST.get("monto") or "").strip()
-    exonerado = request.POST.get("exonerado") in ("true", "True", "1", "on") or ('exonerado' in request.POST)
+    def parse_bool(v):
+        return str(v).strip().lower() in ("1", "true", "on", "yes")
 
+    monto_raw = (request.POST.get("monto") or "").strip()
     try:
         monto = float(monto_raw) if monto_raw else 0.0
     except ValueError:
         monto = 0.0
 
+    # ✅ aquí el fix
+    exonerado = parse_bool(request.POST.get("exonerado", "false"))
+
     mensualidad.monto_pagado = monto
     mensualidad.exonerado = exonerado
     mensualidad.save()
 
-    # ====== Si es AJAX, devolvemos JSON ======
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        # datos para recalcular resumen (los mandaremos desde el frontend)
         año = int(request.POST.get("año", date.today().year))
         mes = int(request.POST.get("mes", date.today().month))
         categoria = (request.POST.get("categoria") or "").strip()
@@ -173,7 +175,6 @@ def actualizar_mensualidad(request, mensualidad_id):
 
         deudores = total_atletas - al_dia - exonerados
 
-        # estado para pintar en tabla
         if mensualidad.exonerado:
             estado = "exonerado"
         elif float(mensualidad.monto_pagado) >= 8.0:
@@ -195,9 +196,7 @@ def actualizar_mensualidad(request, mensualidad_id):
             "total_atletas": total_atletas,
         })
 
-    # ====== Si NO es AJAX, mantenemos tu redirect clásico ======
     return redirect("administracion")
-
 
 @solo_login
 def administracion(request):
