@@ -72,9 +72,9 @@
             {% endfor %}
           </div>
 
-          {# Otros campos generales (excluimos los ya puestos + antropométricos + representante + turno/dirección porque van juntos abajo) #}
+          {# Otros campos generales #}
           {% for field in form %}
-            {% if field.name not in "nombre apellido cedula telefono peso estatura salto alcance direccion representante_nombre representante_apellido representante_cedula representante_telefono turno" %}
+            {% if field.name != "nombre" and field.name != "apellido" and field.name != "cedula" and field.name != "telefono" and field.name != "peso" and field.name != "estatura" and field.name != "salto" and field.name != "alcance" and field.name != "direccion" and field.name != "representante_nombre" and field.name != "representante_apellido" and field.name != "representante_cedula" and field.name != "representante_telefono" and field.name != "turno" %}
               <div class="col-md-6">
                 <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
                 {{ field|add_class:"form-control" }}
@@ -113,7 +113,7 @@
           </div>
           <div class="card-body row g-3 px-3">
             {% for field in form %}
-              {% if field.name in "peso estatura salto alcance" %}
+              {% if field.name == "peso" or field.name == "estatura" or field.name == "salto" or field.name == "alcance" %}
                 <div class="col-md-6">
                   <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
                   {{ field|add_class:"form-control" }}
@@ -134,18 +134,49 @@
           <div class="card-header bg-secondary text-white fw-semibold fs-5 text-center rounded-top-4">
             👤 DATOS DEL REPRESENTANTE
           </div>
+
           <div class="card-body row g-3 px-3">
-            {% for field in form %}
-              {% if field.name in "representante_nombre representante_apellido representante_cedula representante_telefono" %}
-                <div class="col-md-6">
-                  <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-dark">{{ field.label }}</label>
-                  {{ field|add_class:"form-control" }}
-                  {% for error in field.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            {% endfor %}
+
+            <div class="col-md-6">
+              <label for="{{ form.representante_nombre.id_for_label }}" class="form-label fw-semibold text-dark">
+                {{ form.representante_nombre.label }}
+              </label>
+              {{ form.representante_nombre|add_class:"form-control" }}
+              {% for error in form.representante_nombre.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.representante_apellido.id_for_label }}" class="form-label fw-semibold text-dark">
+                {{ form.representante_apellido.label }}
+              </label>
+              {{ form.representante_apellido|add_class:"form-control" }}
+              {% for error in form.representante_apellido.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.representante_cedula.id_for_label }}" class="form-label fw-semibold text-dark">
+                {{ form.representante_cedula.label }}
+              </label>
+              {{ form.representante_cedula|add_class:"form-control" }}
+              {% for error in form.representante_cedula.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="col-md-6">
+              <label for="{{ form.representante_telefono.id_for_label }}" class="form-label fw-semibold text-dark">
+                {{ form.representante_telefono.label }}
+              </label>
+              {{ form.representante_telefono|add_class:"form-control" }}
+              {% for error in form.representante_telefono.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
           </div>
         </div>
 

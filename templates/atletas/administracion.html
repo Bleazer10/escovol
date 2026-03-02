@@ -68,44 +68,6 @@
         </div>
       </form>
 
-      <div class="row mb-4">
-        <div class="col-md-3">
-          <div class="card text-center shadow-sm border-success">
-            <div class="card-body">
-              <h6 class="text-muted">Recaudado del Mes</h6>
-              <h3 class="text-success fw-bold">$<span id="kpi-total">{{ total_recaudado|floatformat:2 }}</span></h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center shadow-sm border-primary">
-            <div class="card-body">
-              <h6 class="text-muted">Al Día</h6>
-              <h3 class="fw-bold text-primary">
-                <span id="kpi-al-dia">{{ al_dia }}</span>/<span id="kpi-total-atletas">{{ total_atletas }}</span>
-              </h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center shadow-sm border-warning">
-            <div class="card-body">
-              <h6 class="text-muted">Exonerados</h6>
-              <h3 class="fw-bold text-warning"><span id="kpi-exonerados">{{ exonerados }}</span></h3>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card text-center shadow-sm border-danger">
-            <div class="card-body">
-              <h6 class="text-muted">Con Deuda</h6>
-              <h3 class="fw-bold text-danger"><span id="kpi-deudores">{{ deudores }}</span></h3>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
       <!-- Tabla de Atletas -->
       <div class="table-responsive p-4">
         <table class="table table-hover table-bordered align-middle text-center">
