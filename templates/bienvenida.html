@@ -1,6 +1,40 @@
 {% extends 'base_publica.html' %}
 {% load static %}
 
+{% block extra_head %}
+<!-- SEO Tags Específicos de la Página -->
+<meta name="robots" content="index, follow">
+<meta name="author" content="Escuela de Voleibol OLYMPO">
+<meta property="og:title" content="Bienvenido a OLYMPO - Escuela de Voleibol en El Tocuyo">
+<meta property="og:description" content="Inicia tu formación en voleibol con nosotros. OLYMPO ofrece entrenamiento, valores y desarrollo para todas las edades.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Escuela de Voleibol OLYMPO">
+<meta name="twitter:description" content="Formación, valores y deporte para transformar vidas en El Tocuyo.">
+
+<!-- JSON-LD para SEO Local (SportsClub) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SportsClub",
+  "name": "Escuela de Voleibol OLYMPO",
+  "image": "https://olympo.eu.pythonanywhere.com/static/img/logo-olympo.jpeg",
+  "description": "Escuela de voleibol en El Tocuyo, enfocada en la formación de niños y jóvenes con disciplina, pasión y compromiso.",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Parque Hedilio Lozada",
+    "addressLocality": "El Tocuyo",
+    "addressRegion": "Lara",
+    "addressCountry": "VE"
+  },
+  "url": "https://olympo.eu.pythonanywhere.com/",
+  "telephone": "+584126764591",
+  "sameAs": [
+    "https://www.instagram.com/_olympovoleyclub_"
+  ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <style>
   :root{
