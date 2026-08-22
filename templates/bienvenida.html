@@ -267,6 +267,12 @@
     margin-top: 40px;
   }
   .gallery-img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+
     border-radius: 20px;
     transition: transform 0.4s cubic-bezier(.4,2,.6,1), box-shadow 0.3s;
     box-shadow: 0 10px 22px rgba(11,18,32,.10);
@@ -278,23 +284,97 @@
     box-shadow: 0 18px 44px rgba(11,18,32,.16);
   }
 
+  /* =========================
+    BOTÓN VOLVER ARRIBA
+  ========================= */
+  .back-to-top {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+
+    width: 52px;
+    height: 52px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 50%;
+
+    background: var(--brand-gradient);
+    color: #ffffff;
+
+    font-size: 1.25rem;
+
+    box-shadow: 0 10px 28px rgba(21,142,255,.35);
+
+    cursor: pointer;
+    z-index: 1050;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transform: translateY(15px);
+
+    transition:
+      opacity .25s ease,
+      visibility .25s ease,
+      transform .25s ease,
+      box-shadow .25s ease;
+  }
+
+  .back-to-top.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .back-to-top:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(21,142,255,.45);
+  }
+
+  .back-to-top:active {
+    transform: scale(.94);
+  }
+
   @media (max-width: 900px) {
     .section-block, .section-block.reverse {
       flex-direction: column !important;
       gap: 20px;
       padding: 30px 8px;
     }
+
     .section-img, .section-content {
       max-width: 100%;
       padding: 0;
     }
-    .hero h1 { font-size: 2.2rem; }
-    .hero { padding: 60px 10px 50px 10px; }
+
+    .hero h1 {
+      font-size: 2.2rem;
+    }
+
+    .hero {
+      padding: 60px 10px 50px 10px;
+    }
+
     .contact-card .row.justify-content-center {
       gap: 16px 0;
     }
+
     .contact-box {
       margin: 10px 0;
+    }
+
+    .back-to-top {
+      width: 46px;
+      height: 46px;
+      right: 16px;
+      bottom: 16px;
+      font-size: 1.1rem;
     }
   }
 </style>
@@ -319,13 +399,36 @@
   <!-- QUIÉNES SOMOS -->
   <div class="section-block">
     <div class="section-img">
-      <img src="{% static 'img/voli.jpeg' %}" alt="Entrenamientos ESCOVOL">
+      <img src="{% static 'img/voli.jpeg' %}" alt="Atletas de la Escuela de Voleibol OLYMPO">
     </div>
+
     <div class="section-content">
       <h2>¿Quiénes somos?</h2>
-      <p>OLYMPO es más que una escuela deportiva: es un espacio de formación y superación a través del voleibol.</p>
-      <p>Desde 2026, formamos a jóvenes con disciplina, pasión y compromiso.</p>
-      <p>🏠 Entrenamos en el Parque Hedilio Lozada con esfuerzo y alegría.</p>
+
+      <p>
+        <strong>OLYMPO</strong> es una escuela de voleibol ubicada en El Tocuyo, estado Lara,
+        dedicada a la formación y desarrollo de atletas en distintas edades y categorías,
+        tanto femeninas como masculinas.
+      </p>
+
+      <p>
+        Nuestro trabajo va más allá de enseñar a jugar voleibol. Buscamos desarrollar
+        habilidades técnicas y deportivas mientras promovemos valores como la disciplina,
+        el respeto, la responsabilidad, el compañerismo y la constancia, fundamentales
+        dentro y fuera de la cancha.
+      </p>
+
+      <p>
+        A través de entrenamientos, encuentros y participación constante en torneos,
+        brindamos a nuestros atletas oportunidades para aprender, competir, superarse
+        y crecer como parte de un equipo, acompañándolos en cada etapa de su formación deportiva.
+      </p>
+
+      <p>
+        🏠 Nuestra casa es el <strong>Parque Hedilio Lozada</strong>, donde cada entrenamiento
+        representa una nueva oportunidad para crecer, compartir y seguir construyendo
+        juntos la historia de OLYMPO.
+      </p>
     </div>
   </div>
 
@@ -351,13 +454,24 @@
   <!-- LOGROS -->
   <div class="section-block">
     <div class="section-img">
-      <img src="{% static 'img/logros_voleibol.jpg' %}" alt="Logros ESCOVOL">
+      <img src="{% static 'img/logros_voleibol.jpg' %}" alt="Logros de la Escuela de Voleibol OLYMPO">
     </div>
+
     <div class="section-content">
       <h2>🏆 Nuestros logros</h2>
-      <p>Hemos representado con orgullo a nuestra comunidad en múltiples torneos, incluyendo campeonatos regionales y un bicampeonato en la categoría libre masculina, donde se obtuvo dos trofeos para nuestra escuela.</p>
-      <p>Cada vez mas se sigue participando en los torneos y ligas en nuestras diferentes categorias, donde nuestros atletas continúan destacándose y logrando grandes resultados.</p>
-      <p>Cada logro es resultado del trabajo en equipo, la dedicación y el espíritu de nuestros atletas.</p>
+
+      <p>
+        OLYMPO continúa construyendo su historia deportiva con esfuerzo, disciplina y compromiso.
+        Uno de nuestros primeros grandes logros llegó de la mano del equipo femenino categoría Libre
+        <strong>Team OLYMPO</strong>, que se consagró campeón en su primera participación representando
+        oficialmente nuestra divisa.
+      </p>
+
+      <p>
+        Seguimos participando constantemente en torneos y encuentros de distintas categorías,
+        tanto femeninas como masculinas, brindando a nuestros atletas nuevas oportunidades para
+        competir, desarrollarse y demostrar en la cancha los frutos del trabajo realizado en cada entrenamiento.
+      </p>
     </div>
   </div>
 
@@ -409,4 +523,41 @@
   </div>
 
 </div>
+
+<!-- BOTÓN VOLVER ARRIBA -->
+<button
+  type="button"
+  id="btnSubir"
+  class="back-to-top"
+  aria-label="Volver al inicio de la página"
+  title="Volver arriba"
+>
+  <i class="fa-solid fa-arrow-up"></i>
+</button>
+
+<script>
+  const btnSubir = document.getElementById("btnSubir");
+
+  function controlarBotonSubir() {
+    if (window.scrollY > 350) {
+      btnSubir.classList.add("show");
+    } else {
+      btnSubir.classList.remove("show");
+    }
+  }
+
+  window.addEventListener("scroll", controlarBotonSubir, {
+    passive: true
+  });
+
+  btnSubir.addEventListener("click", function () {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  });
+
+  // Comprobar también al cargar la página
+  controlarBotonSubir();
+</script>
 {% endblock %}
