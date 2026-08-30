@@ -860,6 +860,11 @@ def agregar_estadistica(request, atleta_id):
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u) or es_atleta(u))
 def ver_estadisticas(request, atleta_id):
     atleta = get_object_or_404(Atleta, id=atleta_id)
+
+    # Un atleta solo puede consultar sus propias estadísticas
+    if es_atleta(request.user) and atleta.user != request.user:
+        return redirect('bienvenida')
+
     estadisticas_qs = Estadistica.objects.filter(atleta=atleta)
 
     # Filtros por mes y año
@@ -957,6 +962,11 @@ def eliminar_estadistica(request, pk):
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u) or es_atleta(u))
 def resumen_estadisticas(request, atleta_id):
     atleta = get_object_or_404(Atleta, id=atleta_id)
+
+    # Un atleta solo puede consultar su propio resumen estadístico
+    if es_atleta(request.user) and atleta.user != request.user:
+        return redirect('bienvenida')
+
     estadisticas = Estadistica.objects.filter(atleta=atleta)
 
     # Si no hay estadísticas, mostrar un resumen vacío
