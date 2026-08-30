@@ -199,6 +199,7 @@ def eliminar_atleta(request, atleta_id):
         return redirect('lista_atletas')
     return render(request, 'atletas/eliminar_atleta.html', {'atleta': atleta})
 
+@user_passes_test(es_admin)
 @require_POST
 def actualizar_mensualidad(request, mensualidad_id):
     mensualidad = get_object_or_404(Mensualidad, id=mensualidad_id)
@@ -215,7 +216,7 @@ def actualizar_mensualidad(request, mensualidad_id):
 
     return redirect('administracion')
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def administracion(request):
     mes_actual = date.today().month
     año_actual = int(request.GET.get("año", date.today().year))
@@ -1442,7 +1443,7 @@ def resumen_estadisticas_equipo_grafico(request, equipo_id):
 
     return render(request, 'estadisticas/resumen_equipo_grafico.html', context)
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def reporte_pagos_view(request):
     año_actual = datetime.now().year
     año = int(request.GET.get('año', año_actual))
@@ -1537,7 +1538,7 @@ def reporte_pagos_view(request):
 
     return render(request, 'reportes/reporte_pagos.html', context)
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def exportar_pagos_excel(request):
     from openpyxl.styles import Font, Alignment, PatternFill
     from openpyxl.utils import get_column_letter
@@ -1697,7 +1698,7 @@ def exportar_pagos_excel(request):
     response['Content-Disposition'] = 'attachment; filename="reporte_pagos.xlsx"'
     return response
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def exportar_pagos_pdf(request):
     from datetime import datetime
     año = int(request.GET.get('año', date.today().year))

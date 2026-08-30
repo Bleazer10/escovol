@@ -69,9 +69,17 @@
 
                <!-- Menú central -->
                 <ul class="navbar-nav mx-auto gap-3">
+
                     {% if is_admin or is_trainer %}
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'administracion' %}">Administración</a></li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'lista_atletas' %}">Atletas</a>
+                        </li>
+
+                        {% if is_admin %}
+                            <li class="nav-item">
+                                <a class="nav-link text-white" href="{% url 'administracion' %}">Administración</a>
+                            </li>
+                        {% endif %}
 
                         <!-- Estadísticas -->
                         <li class="nav-item dropdown">
@@ -108,7 +116,13 @@
                                 <li><a class="dropdown-item" href="{% url 'reporte_entrenadores' %}">Entrenadores</a></li>
                                 <li><a class="dropdown-item" href="{% url 'reporte_estadisticas' %}">Estadísticas Individuales</a></li>
                                 <li><a class="dropdown-item" href="{% url 'reporte_estadisticas_equipo' %}">Estadísticas Equipo</a></li>
-                                <li><a class="dropdown-item" href="{% url 'reporte_pagos_view' %}">Pagos</a></li>
+
+                                {% if is_admin %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'reporte_pagos_view' %}">Pagos</a>
+                                    </li>
+                                {% endif %}
+
                                 <li><a class="dropdown-item" href="{% url 'reporte_partidos' %}">Partidos</a></li>
                             </ul>
                         </li>
