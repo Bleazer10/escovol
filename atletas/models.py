@@ -253,7 +253,9 @@ class Estadistica(models.Model):
 
 
     def __str__(self):
-        return f"Estadísticas de {self.atleta} - {self.fecha_partido}"
+        if self.partido:
+            return f"Estadísticas de {self.atleta} - {self.partido.fecha}"
+        return f"Estadísticas de {self.atleta}"
     
 
 class Administrador(models.Model):
