@@ -39,3 +39,22 @@ def crear_usuario_para_administrador(admin: Administrador, username: str, passwo
     g = Group.objects.get(name='Administrador')
     user.groups.add(g)
     return user
+
+# ---- ELIMINACIÓN SEGURA DE USUARIOS ----
+def eliminar_usuario_sin_perfil(user):
+    """
+    Elimina la cuenta de Django únicamente si ya no está asociada
+    a ningún perfil del sistema.
+    """
+    if not user:
+        return
+
+    tiene_otro_perfil = (
+        Atleta.objects.filter(user=user).exists()
+        or Entrenador.objects.filter(user=user).exists()
+        or Administrador.objects.filter(usuario=user).exists()
+    )
+
+    if not tiene_otro_perfil:
+        user.delete()
+

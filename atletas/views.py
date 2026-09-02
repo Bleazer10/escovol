@@ -11,7 +11,7 @@ from django.db.models.functions import ExtractYear
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db import models
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from datetime import timedelta, datetime
 from django.contrib.auth import authenticate, login
@@ -49,7 +49,12 @@ from django.utils.encoding import escape_uri_path
 from .utils.roles import es_admin, es_entrenador, es_atleta
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from .services import crear_usuario_para_atleta, crear_usuario_para_administrador, crear_usuario_para_entrenador
+from .services import (
+    crear_usuario_para_atleta,
+    crear_usuario_para_administrador,
+    crear_usuario_para_entrenador,
+    eliminar_usuario_sin_perfil,
+)
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def lista_atletas(request):
@@ -194,9 +199,16 @@ def editar_atleta(request, atleta_id):
 @user_passes_test(es_admin)
 def eliminar_atleta(request, atleta_id):
     atleta = get_object_or_404(Atleta, id=atleta_id)
+
     if request.method == 'POST':
-        atleta.delete()
+        usuario = atleta.user
+
+        with transaction.atomic():
+            atleta.delete()
+            eliminar_usuario_sin_perfil(usuario)
+
         return redirect('lista_atletas')
+
     return render(request, 'atletas/eliminar_atleta.html', {'atleta': atleta})
 
 @user_passes_test(es_admin)
@@ -361,14 +373,47 @@ def editar_entrenador(request, entrenador_id):
 @user_passes_test(es_admin)
 def eliminar_entrenador(request, entrenador_id):
     entrenador = get_object_or_404(Entrenador, id=entrenador_id)
+
+    equipos_asociados = entrenador.equipo_set.all()
+    motivo_bloqueo = None
+
+    if equipos_asociados.exists():
+        motivo_bloqueo = (
+            "No puedes eliminar este entrenador porque todavía tiene equipos "
+            "asociados. Primero debes reasignar esos equipos a otro entrenador."
+        )
+
     if request.method == 'POST':
-        entrenador.delete()
+        if motivo_bloqueo:
+            return render(
+                request,
+                'entrenadores/eliminar_entrenador.html',
+                {
+                    'entrenador': entrenador,
+                    'motivo_bloqueo': motivo_bloqueo,
+                    'equipos_asociados': equipos_asociados,
+                },
+                status=403,
+            )
+
+        usuario = entrenador.user
+
+        with transaction.atomic():
+            entrenador.delete()
+            eliminar_usuario_sin_perfil(usuario)
+
         messages.success(request, 'Entrenador eliminado con éxito.')
         return redirect('lista_entrenadores')
-    context = {
-        'entrenador': entrenador
-    }
-    return render(request, 'entrenadores/eliminar_entrenador.html', context)
+
+    return render(
+        request,
+        'entrenadores/eliminar_entrenador.html',
+        {
+            'entrenador': entrenador,
+            'motivo_bloqueo': motivo_bloqueo,
+            'equipos_asociados': equipos_asociados,
+        },
+    )
 
 @user_passes_test(es_admin)
 def registrar_entrenador(request):
@@ -3700,10 +3745,56 @@ def editar_administrador(request, administrador_id):
 @user_passes_test(es_admin)
 def eliminar_administrador(request, administrador_id):
     administrador = get_object_or_404(Administrador, id=administrador_id)
+
+    motivo_bloqueo = None
+
+    # No permitir que un administrador elimine su propia cuenta
+    if administrador.usuario_id == request.user.id:
+        motivo_bloqueo = (
+            "No puedes eliminar tu propia cuenta de administrador "
+            "mientras tienes la sesión iniciada."
+        )
+
+    # No permitir eliminar el último administrador activo
+    elif administrador.usuario.is_active:
+        otros_administradores_activos = Administrador.objects.filter(
+            usuario__is_active=True
+        ).exclude(id=administrador.id)
+
+        if not otros_administradores_activos.exists():
+            motivo_bloqueo = (
+                "No puedes eliminar el último administrador activo del sistema. "
+                "Primero debes crear o activar otro administrador."
+            )
+
     if request.method == "POST":
-        administrador.delete()
+        if motivo_bloqueo:
+            return render(
+                request,
+                "administradores/eliminar.html",
+                {
+                    "administrador": administrador,
+                    "motivo_bloqueo": motivo_bloqueo,
+                },
+                status=403,
+            )
+
+        usuario = administrador.usuario
+
+        with transaction.atomic():
+            administrador.delete()
+            eliminar_usuario_sin_perfil(usuario)
+
         return redirect("lista_administradores")
-    return render(request, "administradores/eliminar.html", {"administrador": administrador})
+
+    return render(
+        request,
+        "administradores/eliminar.html",
+        {
+            "administrador": administrador,
+            "motivo_bloqueo": motivo_bloqueo,
+        },
+    )
 
 @user_passes_test(es_admin)
 def lista_usuarios(request):

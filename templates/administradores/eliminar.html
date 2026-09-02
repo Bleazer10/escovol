@@ -28,20 +28,51 @@
             <h4 class="mb-0">Eliminar Administrador</h4>
         </div>
         <div class="card-body text-center">
-            <p>¿Estás seguro que deseas eliminar a 
-                <strong>{{ administrador.nombre }} {{ administrador.apellido }}</strong>?</p>
 
-            <form method="post">
-                {% csrf_token %}
-                <div class="d-flex justify-content-center gap-3">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt"></i> Eliminar
-                    </button>
-                    <a href="{% url 'detalle_administrador' administrador.id %}" class="btn " style="background: #f8b100;">
-                        <i class="fa-solid fa-arrow-left"></i> Cancelar
-                    </a>
+            <p>
+                ¿Estás seguro que deseas eliminar a
+                <strong>{{ administrador.nombre }} {{ administrador.apellido }}</strong>?
+            </p>
+
+            {% if motivo_bloqueo %}
+
+                <div class="alert alert-danger text-start">
+                    <i class="fa-solid fa-circle-exclamation me-2"></i>
+                    {{ motivo_bloqueo }}
                 </div>
-            </form>
+
+                <a href="{% url 'detalle_administrador' administrador.id %}"
+                  class="btn"
+                  style="background: #f8b100;">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+                </a>
+
+            {% else %}
+
+                <div class="alert alert-warning text-start">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>
+                    Al eliminar este administrador también se eliminará su cuenta de acceso
+                    <strong>{{ administrador.usuario.username }}</strong>.
+                    Esta acción no se puede deshacer.
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-center gap-3">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Eliminar
+                        </button>
+
+                        <a href="{% url 'detalle_administrador' administrador.id %}"
+                          class="btn"
+                          style="background: #f8b100;">
+                            <i class="fa-solid fa-arrow-left"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+
+            {% endif %}
+
         </div>
     </div>
 </div>

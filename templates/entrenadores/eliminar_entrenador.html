@@ -12,36 +12,116 @@
             <i class="fa-solid fa-house"></i>
           </a>
         </li>
+
         <li class="breadcrumb-item">
-          <a href="{% url 'lista_entrenadores' %}" class="text-dark">Entrenadores</a>
+          <a href="{% url 'lista_entrenadores' %}" class="text-dark">
+            Entrenadores
+          </a>
         </li>
+
         <li class="breadcrumb-item">
-          <a href="{% url 'detalle_entrenador' entrenador.id %}" class="text-dark">Detalle</a>
+          <a href="{% url 'detalle_entrenador' entrenador.id %}" class="text-dark">
+            Detalle
+          </a>
         </li>
-        <li class="breadcrumb-item active" aria-current="page">Eliminar </li>
+
+        <li class="breadcrumb-item active" aria-current="page">
+          Eliminar
+        </li>
       </ol>
     </nav>
   </div>
 
-  <div class="container mt-4"></div>
-  <div class="card shadow rounded-4">
-    <div class="card-header bg-danger text-white text-center rounded-top-4">
-      <h4 class="mb-0">Eliminar Entrenador</h4>
-    </div>
-    <div class="card-body bg-light rounded-bottom-4">
+  <div class="container mt-4">
+    <div class="card shadow rounded-4">
 
-      <p class="mb-4 text-center">
-        ¿Estás seguro que deseas eliminar al entrenador
-        <strong>{{ entrenador.nombre }} {{ entrenador.apellido }}</strong> (C.I. {{ entrenador.cedula }})?
-        Esta acción no se puede deshacer.
-      </p>
+      <div class="card-header bg-danger text-white text-center rounded-top-4">
+        <h4 class="mb-0">Eliminar Entrenador</h4>
+      </div>
 
-      <form method="post" class="d-flex justify-content-center gap-3">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i>  Eliminar</button>
-        <a href="{% url 'detalle_entrenador' entrenador.id %}" class="btn " style="background: #f8b100;"><i class="fa-solid fa-arrow-left"></i> Cancelar</a>
-      </form>
+      <div class="card-body bg-light rounded-bottom-4">
+
+        <p class="mb-3 text-center">
+          ¿Estás seguro que deseas eliminar al entrenador
+          <strong>{{ entrenador.nombre }} {{ entrenador.apellido }}</strong>
+          (C.I. {{ entrenador.cedula }})?
+        </p>
+
+        {% if motivo_bloqueo %}
+
+          <!-- Bloqueo por equipos asociados -->
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-exclamation me-2"></i>
+            {{ motivo_bloqueo }}
+          </div>
+
+          {% if equipos_asociados %}
+            <div class="mb-4">
+              <strong>Equipos asociados:</strong>
+
+              <ul class="mt-2 mb-0">
+                {% for equipo in equipos_asociados %}
+                  <li>{{ equipo.nombre }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          <div class="d-flex justify-content-center">
+            <a
+              href="{% url 'detalle_entrenador' entrenador.id %}"
+              class="btn"
+              style="background: #f8b100;"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              Volver
+            </a>
+          </div>
+
+        {% else %}
+
+          <!-- Advertencia de eliminación -->
+          {% if entrenador.user %}
+            <div class="alert alert-warning">
+              <i class="fa-solid fa-triangle-exclamation me-2"></i>
+
+              También se eliminará su cuenta de acceso
+              <strong>{{ entrenador.user.username }}</strong>.
+
+              Esta acción no se puede deshacer.
+            </div>
+          {% else %}
+            <div class="alert alert-warning">
+              <i class="fa-solid fa-triangle-exclamation me-2"></i>
+
+              Esta acción eliminará definitivamente el registro del entrenador
+              y no se puede deshacer.
+            </div>
+          {% endif %}
+
+          <!-- Confirmación -->
+          <form method="post" class="d-flex justify-content-center gap-3">
+            {% csrf_token %}
+
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash-alt"></i>
+              Eliminar
+            </button>
+
+            <a
+              href="{% url 'detalle_entrenador' entrenador.id %}"
+              class="btn"
+              style="background: #f8b100;"
+            >
+              <i class="fa-solid fa-arrow-left"></i>
+              Cancelar
+            </a>
+          </form>
+
+        {% endif %}
+
+      </div>
     </div>
   </div>
-</div>
+
 {% endblock %}
