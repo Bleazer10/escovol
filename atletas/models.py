@@ -4,8 +4,6 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.contrib.auth.models import User
-from django.dispatch import receiver
-from django.db.models.signals import post_save
 import calendar
 
 class Atleta(models.Model):
@@ -124,18 +122,6 @@ class Mensualidad(models.Model):
     def fecha(self):
         return date(self.año, self.mes, 1)
 
-
-    @receiver(post_save, sender=Atleta)
-    def crear_mensualidades_para_nuevo_atleta(sender, instance, created, **kwargs):
-        if created:
-            año_actual = date.today().year
-            for mes in range(1, 13):
-                Mensualidad.objects.get_or_create(
-                    atleta=instance,
-                    año=año_actual,
-                    mes=mes,
-                    defaults={"monto_pagado": 0.00, "exonerado": False}
-                )
 
 class Entrenador(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)  # <— NUEVO
