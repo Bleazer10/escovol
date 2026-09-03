@@ -16,7 +16,7 @@ from django.contrib import messages
 
 @login_required
 def menu_principal(request):
-    hoy = datetime.now()
+    hoy = timezone.localtime()
     semana_offset = int(request.GET.get('semana', 0))  # Desplazamiento de semanas
     inicio_semana = hoy - timedelta(days=hoy.weekday()) + timedelta(weeks=semana_offset)
     fin_semana = inicio_semana + timedelta(days=6)
@@ -33,7 +33,7 @@ def menu_principal(request):
     ).aggregate(total=Sum('monto_pagado'))['total'] or 0
 
     # Establecer fechas
-    hoy = datetime.now()
+    hoy = timezone.localtime()
     mes_actual = hoy.month
     año_actual = hoy.year
     mes_anterior = mes_actual - 1 if mes_actual > 1 else 12

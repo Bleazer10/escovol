@@ -10,36 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameField(
-            model_name='partido',
-            old_name='equipo_escovol',
-            new_name='equipo_local',
-        ),
-        migrations.RenameField(
-            model_name='partido',
-            old_name='set1_5t4',
-            new_name='set1_local',
-        ),
-        migrations.RenameField(
-            model_name='partido',
-            old_name='set2_escovol',
-            new_name='set2_local',
-        ),
-        migrations.RenameField(
-            model_name='partido',
-            old_name='set3_escovol',
-            new_name='set3_local',
-        ),
-        migrations.RenameField(
-            model_name='partido',
-            old_name='set4_escovol',
-            new_name='set4_local',
-        ),
-        migrations.RenameField(
-            model_name='partido',
-            old_name='set5_escovol',
-            new_name='set5_local',
-        ),
         migrations.AlterField(
             model_name='mensualidad',
             name='año',
@@ -48,6 +18,14 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='partido',
             name='ganador',
-            field=models.CharField(blank=True, choices=[('local', 'Equipo Local'), ('externo', 'Equipo Externo')], max_length=20, null=True),
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ('local', 'Equipo Local'),
+                    ('externo', 'Equipo Externo'),
+                ],
+                max_length=20,
+                null=True,
+            ),
         ),
     ]

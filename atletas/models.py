@@ -56,7 +56,7 @@ class Atleta(models.Model):
     representante_telefono = models.CharField(max_length=20, blank=True, null=True)
 
     def calcular_edad(self):
-        hoy = date.today()
+        hoy = timezone.localdate()
         return hoy.year - self.fecha_nacimiento.year - (
             (hoy.month, hoy.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
         )
@@ -67,7 +67,7 @@ class Atleta(models.Model):
         Ej: si cumple 17 en octubre, en febrero devuelve 17 igual.
         """
         if year is None:
-            year = date.today().year
+            year = timezone.localdate().year
         return year - self.fecha_nacimiento.year
 
     def get_categoria(self):
@@ -96,10 +96,14 @@ class Atleta(models.Model):
         return f"{self.nombre} {self.apellido} ({self.get_categoria()})"
     
 
+def anio_actual():
+    return timezone.localdate().year
+
+
 class Mensualidad(models.Model):
     atleta = models.ForeignKey(Atleta, on_delete=models.CASCADE, related_name='mensualidades')
     mes = models.IntegerField(choices=[(i, calendar.month_name[i]) for i in range(1, 13)])
-    año = models.IntegerField(default=date.today().year)
+    año = models.IntegerField(default=anio_actual)
     monto_pagado = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     exonerado = models.BooleanField(default=False)
 
@@ -136,7 +140,7 @@ class Entrenador(models.Model):
 
     @property
     def edad(self):
-        today = date.today()
+        today = timezone.localdate()
         return today.year - self.fecha_nacimiento.year - (
             (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
             )
@@ -271,7 +275,7 @@ class Administrador(models.Model):
 
     @property
     def edad(self):
-        today = date.today()
+        today = timezone.localdate()
         return today.year - self.fecha_nacimiento.year - (
             (today.month, today.day) < (self.fecha_nacimiento.month, self.fecha_nacimiento.day)
         )

@@ -2,7 +2,7 @@
 
 from django.db.models.signals import post_save, post_migrate
 from django.dispatch import receiver
-from datetime import date
+from django.utils import timezone
 from .models import Atleta, Mensualidad, Entrenador, Equipo, Campeonato, Partido, Estadistica
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -10,7 +10,7 @@ from django.contrib.contenttypes.models import ContentType
 @receiver(post_save, sender=Atleta)
 def crear_mensualidades_para_nuevo_atleta(sender, instance, created, **kwargs):
     if created:
-        año_actual = date.today().year
+        año_actual = timezone.localdate().year
         for mes in range(1, 13):
             Mensualidad.objects.get_or_create(
                 atleta=instance,

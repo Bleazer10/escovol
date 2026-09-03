@@ -230,8 +230,8 @@ def actualizar_mensualidad(request, mensualidad_id):
 
 @user_passes_test(es_admin)
 def administracion(request):
-    mes_actual = date.today().month
-    año_actual = int(request.GET.get("año", date.today().year))
+    mes_actual = timezone.localdate().month
+    año_actual = int(request.GET.get("año", timezone.localdate().year))
     mes_filtro = int(request.GET.get("mes", mes_actual))
     categoria_filtro = request.GET.get("categoria", "")
 
@@ -528,7 +528,7 @@ def detalle_campeonato(request, campeonato_id):
     })
 
 def calcular_edad(nacimiento):
-    hoy = date.today()
+    hoy = timezone.localdate()
     return hoy.year - nacimiento.year - ((hoy.month, hoy.day) < (nacimiento.month, nacimiento.day))
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
@@ -953,7 +953,7 @@ def ver_estadisticas(request, atleta_id):
         'page_obj': page_obj,
         'totales': totales,
         'es_entrenador': es_entrenador(request.user),
-        'default_year': date.today().year,
+        'default_year': timezone.localdate().year,
         'meses': meses,
         'años_disponibles': años_disponibles,
     }
@@ -1490,7 +1490,7 @@ def resumen_estadisticas_equipo_grafico(request, equipo_id):
 
 @user_passes_test(es_admin)
 def reporte_pagos_view(request):
-    año_actual = datetime.now().year
+    año_actual = timezone.localtime().year
     año = int(request.GET.get('año', año_actual))
     categoria = request.GET.get('categoria')
     cedula = request.GET.get('cedula', '').strip()
@@ -1589,7 +1589,7 @@ def exportar_pagos_excel(request):
     from openpyxl.utils import get_column_letter
     from openpyxl.drawing.image import Image as XLImage
 
-    año = int(request.GET.get('año', date.today().year))
+    año = int(request.GET.get('año', timezone.localdate().year))
     categoria = request.GET.get('categoria')
     nombre = request.GET.get('nombre')
     cedula = request.GET.get('cedula')
@@ -1746,7 +1746,7 @@ def exportar_pagos_excel(request):
 @user_passes_test(es_admin)
 def exportar_pagos_pdf(request):
     from datetime import datetime
-    año = int(request.GET.get('año', date.today().year))
+    año = int(request.GET.get('año', timezone.localdate().year))
     categoria = request.GET.get('categoria')
     nombre = request.GET.get('nombre')
     cedula = request.GET.get('cedula')
@@ -1811,7 +1811,7 @@ def exportar_pagos_pdf(request):
         p.setFont("Helvetica", 7)
 
     def imprimir_pie_pagina():
-        fecha_export = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha_export = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 8)
         p.drawRightString(width - 60, 25, f"Página {page_number}")
         p.drawString(40, 25, f"Exportado: {fecha_export}")
@@ -1907,9 +1907,9 @@ def reporte_atletas_view(request):
     if categoria:
         atletas = atletas.filter(categoria=categoria)
     if edad_min:
-        atletas = atletas.filter(fecha_nacimiento__year__lte=date.today().year - int(edad_min))
+        atletas = atletas.filter(fecha_nacimiento__year__lte=timezone.localdate().year - int(edad_min))
     if edad_max:
-        atletas = atletas.filter(fecha_nacimiento__year__gte=date.today().year - int(edad_max))
+        atletas = atletas.filter(fecha_nacimiento__year__gte=timezone.localdate().year - int(edad_max))
     if sexo:
         atletas = atletas.filter(sexo__iexact=sexo)
 
@@ -1954,9 +1954,9 @@ def aplicar_filtros(request):
     if categoria:
         atletas = atletas.filter(categoria=categoria)
     if edad_min:
-        atletas = atletas.filter(fecha_nacimiento__year__lte=date.today().year - int(edad_min))
+        atletas = atletas.filter(fecha_nacimiento__year__lte=timezone.localdate().year - int(edad_min))
     if edad_max:
-        atletas = atletas.filter(fecha_nacimiento__year__gte=date.today().year - int(edad_max))
+        atletas = atletas.filter(fecha_nacimiento__year__gte=timezone.localdate().year - int(edad_max))
     if sexo:
         atletas = atletas.filter(sexo__iexact=sexo)
 
@@ -2110,7 +2110,7 @@ def reporte_atletas_pdf(request):
         p.setFont("Helvetica", 7)
 
     def pie_pagina():
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 8)
         p.drawRightString(width - 40, 25, f"Página {page_number}")
         p.drawString(40, 25, f"Exportado: {fecha}")
@@ -2269,7 +2269,7 @@ def exportar_estadisticas_pdf(request, atleta_id):
         p.setFillColor(COLOR_TEXTO)
 
     def pie_pagina():
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 8)
         p.setFillColor(COLOR_TEXTO)
         p.drawRightString(width - 40, 25, f"Página {page_number}")
@@ -2616,7 +2616,7 @@ def exportar_estadisticas_equipo_pdf(request, equipo_id):
         p.setFillColor(COLOR_TEXTO)
 
     def pie_pagina():
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 8)
         p.setFillColor(COLOR_TEXTO)
         p.drawRightString(width - 40, 25, f"Página {page_number}")
@@ -2912,7 +2912,7 @@ def exportar_equipo_pdf(request, equipo_id):
         canvas.drawString(120, height - 40, "Escuela Deportiva OLYMPO")
 
         # pie página
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.black)
         canvas.drawString(40, 30, f"Exportado: {fecha}")
@@ -3183,7 +3183,7 @@ def reporte_entrenadores_pdf(request):
         canvas.line(40, h - 110, w - 40, h - 110)
 
         # Pie
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.black)
         canvas.drawString(40, 30, f"Exportado: {fecha}")
@@ -3289,7 +3289,7 @@ def reporte_campeonatos_pdf(request):
         p.setFont("Helvetica", 7)
 
     def pie_pagina():
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 7)
         p.drawRightString(width - 40, 25, f"Página {page_number}")
         p.drawString(40, 25, f"Exportado: {fecha}")
@@ -3526,7 +3526,7 @@ def exportar_partidos_pdf(partidos):
         p.setFont("Helvetica", 6.5)
 
     def pie_pagina():
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+        fecha = timezone.localtime().strftime("%d/%m/%Y %H:%M")
         p.setFont("Helvetica", 7)
         p.drawRightString(width - 40, 25, f"Página {page_number}")
         p.drawString(40, 25, f"Exportado: {fecha}")
@@ -3616,7 +3616,7 @@ def exportar_partidos_excel(partidos):
     # ✅ Títulos
     ws["C2"] = "Escuela Deportiva OLYMPO"
     ws["C3"] = "Reporte de Partidos"
-    ws["C4"] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws["C4"] = f"Generado: {timezone.localtime().strftime('%d/%m/%Y %H:%M')}"
     ws["C2"].font = Font(size=18, bold=True)
     ws["C3"].font = Font(size=14, bold=True)
     ws["C4"].font = Font(size=10, italic=True)
