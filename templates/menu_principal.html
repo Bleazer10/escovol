@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load humanize %}
-{% load static %}
 
 {% block title %}Menú Principal{% endblock %}
 
@@ -17,9 +16,8 @@
   <!-- Totales generales -->
   <div class="row g-4 mb-5">
     <div class="col-md-6">
-      <div class="card border-0 shadow-lg h-100 rounded-4 bg-white position-relative overflow-hidden">
-        <div class="position-absolute top-0 start-0 w-100 h-100 opacity-10" style="background: url('{% static "img/bg-volley.svg" %}') no-repeat bottom right; background-size: contain;"></div>
-        <div class="card-body text-center p-4 position-relative">
+      <div class="card border-0 shadow-lg h-100 rounded-4 bg-white">
+        <div class="card-body text-center p-4">
           <i class="fas fa-users fa-2x text-danger mb-3"></i>
           <h6 class="text-muted">Total de Atletas</h6>
           <h2 class="fw-bold text-danger">{{ total_atletas }}</h2>
