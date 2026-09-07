@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.contrib.auth.models import User
 import calendar
+from django.utils.formats import date_format
 
 class Atleta(models.Model):
 
@@ -120,7 +121,8 @@ class Mensualidad(models.Model):
             return "Incompleto"
 
     def __str__(self):
-        return f"{self.atleta} - {self.get_mes_display()} {self.año}"
+        nombre_mes = date_format(self.fecha, 'F')
+        return f"{self.atleta} - {nombre_mes} {self.año}"
 
     @property
     def fecha(self):

@@ -6,7 +6,6 @@ from django.core.paginator import Paginator
 from datetime import date
 from django.views.decorators.http import require_POST, require_http_methods
 from django.db.models import Sum, Count, Q
-from calendar import month_name 
 from django.db.models.functions import ExtractYear
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -20,7 +19,6 @@ from reportlab.pdfgen import canvas
 from django.http import FileResponse, HttpResponse
 import io
 import pandas as pd
-import calendar
 import os
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.utils import ImageReader
@@ -48,6 +46,7 @@ from django.utils.dateparse import parse_date
 from django.utils.encoding import escape_uri_path
 from .utils.roles import es_admin, es_entrenador, es_atleta
 from django.contrib import admin
+from django.utils.formats import date_format
 from django.contrib.auth.hashers import make_password
 from .services import (
     crear_usuario_para_atleta,
@@ -295,7 +294,7 @@ def administracion(request):
     page_obj = paginator.get_page(page_number)
 
     # Meses y categorías para filtros
-    meses = [(i, date(1900, i, 1).strftime('%B')) for i in range(1, 13)]
+    meses = [(i, date_format(date(1900, i, 1), 'F')) for i in range(1, 13)]
     categorias = Atleta.objects.values_list("categoria", flat=True).distinct()
 
     context = {
@@ -946,7 +945,7 @@ def ver_estadisticas(request, atleta_id):
         errores=Sum('errores'),
     )
 
-    meses = [(str(i), date(1900, i, 1).strftime('%B')) for i in range(1, 13)]
+    meses = [(str(i), date_format(date(1900, i, 1), 'F')) for i in range(1, 13)]
 
     context = {
         'atleta': atleta,
@@ -1563,7 +1562,7 @@ def reporte_pagos_view(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    meses = [(i, calendar.month_name[i]) for i in range(mes_inicio, mes_fin + 1)]
+    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
     categorias = Atleta.objects.values_list('categoria', flat=True).distinct()
 
     context = {
@@ -1611,7 +1610,7 @@ def exportar_pagos_excel(request):
 
 
     data = []
-    meses = [(i, date(1900, i, 1).strftime('%b')) for i in range(mes_inicio, mes_fin + 1)]
+    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
 
     for atleta in atletas:
         fila = {
@@ -1766,7 +1765,7 @@ def exportar_pagos_pdf(request):
     if cedula and atletas.count() == 1:
         atletas_filtrados_por_cedula = True
 
-    meses = [(i, date(1900, i, 1).strftime('%b')) for i in range(mes_inicio, mes_fin + 1)]
+    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(letter))
     width, height = landscape(letter)
