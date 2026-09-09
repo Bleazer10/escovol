@@ -91,7 +91,32 @@ class UsuarioForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'is_active']  # ⚠️ Quitamos password de aquí
+        fields = ['username', 'email', 'is_active']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Al crear una cuenta nueva, la contraseña sí es obligatoria.
+        # Al editar una existente, puede dejarse vacía para conservarla.
+        if not self.instance.pk:
+            self.fields['password'].required = True
+            self.fields['password'].label = "Contraseña"
+
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+
+        usuarios = User.objects.filter(username__iexact=username)
+
+        # Al editar, permitir conservar el username del mismo usuario.
+        if self.instance.pk:
+            usuarios = usuarios.exclude(pk=self.instance.pk)
+
+        if usuarios.exists():
+            raise forms.ValidationError(
+                "Ya existe una cuenta con este nombre de usuario."
+            )
+
+        return username
 
     def clean_is_active(self):
         value = self.cleaned_data['is_active']
@@ -101,12 +126,13 @@ class UsuarioForm(forms.ModelForm):
         user = super().save(commit=False)
         password = self.cleaned_data.get("password")
 
-        # Solo se actualiza si el admin escribió una nueva clave
+        # Solo cambia la contraseña si se escribió una nueva.
         if password:
             user.set_password(password)
 
         if commit:
             user.save()
+
         return user
 
 

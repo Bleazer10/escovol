@@ -1,43 +1,73 @@
 from django.contrib.auth.models import User, Group
 from .models import Atleta, Entrenador, Administrador
+from django.db import transaction
 
 # ---- ATLETA ----
-def crear_usuario_para_atleta(atleta: Atleta, username: str, password: str, email: str = ''):
-    user, created = User.objects.get_or_create(username=username, defaults={'email': email})
-    if created:
-        user.set_password(password)
-        user.save()
+@transaction.atomic
+def crear_usuario_para_atleta(
+    atleta: Atleta,
+    username: str,
+    password: str,
+    email: str = ''
+):
+    user = User.objects.create_user(
+        username=username.strip(),
+        email=email,
+        password=password
+    )
+
     atleta.user = user
     atleta.save()
-    # Añadir al grupo Atleta
-    g = Group.objects.get(name='Atleta')
-    user.groups.add(g)
+
+    grupo = Group.objects.get(name='Atleta')
+    user.groups.add(grupo)
+
     return user
+
 
 # ---- ENTRENADOR ----
-def crear_usuario_para_entrenador(entrenador: Entrenador, username: str, password: str, email: str = ''):
-    user, created = User.objects.get_or_create(username=username, defaults={'email': email})
-    if created:
-        user.set_password(password)
-        user.save()
+@transaction.atomic
+def crear_usuario_para_entrenador(
+    entrenador: Entrenador,
+    username: str,
+    password: str,
+    email: str = ''
+):
+    user = User.objects.create_user(
+        username=username.strip(),
+        email=email,
+        password=password
+    )
+
     entrenador.user = user
     entrenador.save()
-    # Añadir al grupo Entrenador
-    g = Group.objects.get(name='Entrenador')
-    user.groups.add(g)
+
+    grupo = Group.objects.get(name='Entrenador')
+    user.groups.add(grupo)
+
     return user
 
+
 # ---- ADMINISTRADOR ----
-def crear_usuario_para_administrador(admin: Administrador, username: str, password: str, email: str = ''):
-    user, created = User.objects.get_or_create(username=username, defaults={'email': email})
-    if created:
-        user.set_password(password)
-        user.save()
+@transaction.atomic
+def crear_usuario_para_administrador(
+    admin: Administrador,
+    username: str,
+    password: str,
+    email: str = ''
+):
+    user = User.objects.create_user(
+        username=username.strip(),
+        email=email,
+        password=password
+    )
+
     admin.usuario = user
     admin.save()
-    # Añadir al grupo Administrador
-    g = Group.objects.get(name='Administrador')
-    user.groups.add(g)
+
+    grupo = Group.objects.get(name='Administrador')
+    user.groups.add(grupo)
+
     return user
 
 # ---- ELIMINACIÓN SEGURA DE USUARIOS ----

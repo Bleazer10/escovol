@@ -121,9 +121,15 @@ def agregar_atleta(request):
             email = usuario_form.cleaned_data['email']
 
             # Crear usuario + asignar grupo automáticamente
-            crear_usuario_para_atleta(atleta, username, password, email)
-
-            return redirect('lista_atletas')
+            try:
+                crear_usuario_para_atleta(atleta, username, password, email)
+            except IntegrityError:
+                usuario_form.add_error(
+                    'username',
+                    'Ya existe una cuenta con este nombre de usuario.'
+                )
+            else:
+                return redirect('lista_atletas')
     else:
         atleta_form = AtletaForm()
         usuario_form = UsuarioForm()
@@ -168,7 +174,6 @@ def editar_atleta(request, atleta_id):
 
             # Si es un usuario nuevo, hay que asignarle username obligatorio
             if not usuario:
-                user.username = form.cleaned_data['cedula']  # por ejemplo, usar la cédula
                 user.set_password(usuario_form.cleaned_data['password'])
 
             else:
@@ -430,9 +435,20 @@ def registrar_entrenador(request):
             email = usuario_form.cleaned_data['email']
 
             # Crear usuario + asignar grupo automáticamente
-            crear_usuario_para_entrenador(entrenador, username, password, email)
-
-            return redirect('lista_entrenadores')
+            try:
+                crear_usuario_para_entrenador(
+                    entrenador,
+                    username,
+                    password,
+                    email
+                )
+            except IntegrityError:
+                usuario_form.add_error(
+                    'username',
+                    'Ya existe una cuenta con este nombre de usuario.'
+                )
+            else:
+                return redirect('lista_entrenadores')
     else:
         usuario_form = UsuarioForm()
         entrenador_form = EntrenadorForm()
@@ -3699,9 +3715,20 @@ def agregar_administrador(request):
             email = usuario_form.cleaned_data['email']
 
             # Crear usuario + asignar grupo automáticamente
-            crear_usuario_para_administrador(administrador, username, password, email)
-
-            return redirect('lista_administradores')
+            try:
+                crear_usuario_para_administrador(
+                    administrador,
+                    username,
+                    password,
+                    email
+                )
+            except IntegrityError:
+                usuario_form.add_error(
+                    'username',
+                    'Ya existe una cuenta con este nombre de usuario.'
+                )
+            else:
+                return redirect('lista_administradores')
     else:
         usuario_form = UsuarioForm()
         administrador_form = AdministradorForm()
