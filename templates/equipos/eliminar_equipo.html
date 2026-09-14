@@ -18,17 +18,39 @@
       <p class="fs-6 text-center">
         ¿Estás seguro de que deseas eliminar el equipo <strong>{{ equipo.nombre }}</strong>?
       </p>
-      <p class="text-center text-muted">Esta acción no se puede deshacer.</p>
+      {% if motivo_bloqueo %}
+        <div class="alert alert-warning text-center">
+          <i class="fas fa-triangle-exclamation me-2"></i>
+          {{ motivo_bloqueo }}
+        </div>
 
-      <form method="post" class="text-center mt-4">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger">
-          <i class="fas fa-trash-alt"></i> Eliminar
-        </button>
-        <a href="{% url 'detalle_equipo' equipo.id %}" class="btn" style="background: #f8b100;">
-          <i class="fas fa-arrow-left"></i> Cancelar
-        </a>
-      </form>
+        <p class="text-center text-muted">
+          Partidos asociados: <strong>{{ partidos_asociados.count }}</strong>
+        </p>
+
+        <div class="text-center mt-4">
+          <a href="{% url 'detalle_equipo' equipo.id %}"
+            class="btn"
+            style="background: #f8b100;">
+            <i class="fas fa-arrow-left"></i> Volver
+          </a>
+        </div>
+      {% else %}
+        <p class="text-center text-muted">Esta acción no se puede deshacer.</p>
+
+        <form method="post" class="text-center mt-4">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Eliminar
+          </button>
+
+          <a href="{% url 'detalle_equipo' equipo.id %}"
+            class="btn"
+            style="background: #f8b100;">
+            <i class="fas fa-arrow-left"></i> Cancelar
+          </a>
+        </form>
+      {% endif %}
     </div>
   </div>
 </div>

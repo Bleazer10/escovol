@@ -169,7 +169,7 @@ class Equipo(models.Model):
         ('mixto', 'Mixto'),
     ]
     nombre = models.CharField(max_length=100)
-    entrenador = models.ForeignKey(Entrenador, on_delete=models.CASCADE)
+    entrenador = models.ForeignKey(Entrenador, on_delete=models.PROTECT)
     atletas = models.ManyToManyField(Atleta)
     categoria = models.CharField(max_length=50)
     sexo_equipo = models.CharField(max_length=10, choices=SEXO_CHOICES, null=True, blank=True)
@@ -192,12 +192,12 @@ class Partido(models.Model):
         ('5-3', 'Ganar 3 de 5 sets'),
     ]
 
-    equipo_local = models.ForeignKey(Equipo, on_delete=models.CASCADE, related_name='partidos')
+    equipo_local = models.ForeignKey(Equipo, on_delete=models.PROTECT, related_name='partidos')
     equipo_externo = models.CharField(max_length=100)
     fecha = models.DateField()
     hora = models.TimeField()
     lugar = models.CharField(max_length=150)
-    campeonato = models.ForeignKey(Campeonato, on_delete=models.SET_NULL, null=True, blank=True)
+    campeonato = models.ForeignKey(Campeonato, on_delete=models.PROTECT, null=True, blank=True)
     observaciones = models.TextField(blank=True, null=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='programado')
     formato_partido = models.CharField(max_length=5, choices=FORMATOS, default='5-3')
@@ -246,7 +246,7 @@ class Partido(models.Model):
 
 class Estadistica(models.Model):
     atleta = models.ForeignKey(Atleta, on_delete=models.CASCADE, related_name='estadisticas')
-    partido = models.ForeignKey(Partido, on_delete=models.CASCADE, related_name='estadisticas', null=True, blank=True)
+    partido = models.ForeignKey(Partido, on_delete=models.PROTECT, related_name='estadisticas', null=True, blank=True)
     puntos = models.PositiveIntegerField(default=0)
     saques = models.PositiveIntegerField(default=0)
     remates = models.PositiveIntegerField(default=0)

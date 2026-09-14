@@ -525,15 +525,44 @@ def editar_campeonato(request, campeonato_id):
     })
 
 # Vista para eliminar campeonato
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def eliminar_campeonato(request, campeonato_id):
     campeonato = get_object_or_404(Campeonato, id=campeonato_id)
+
+    partidos_asociados = campeonato.partido_set.all()
+    motivo_bloqueo = None
+
+    if partidos_asociados.exists():
+        motivo_bloqueo = (
+            "No puedes eliminar este campeonato porque tiene partidos asociados. "
+            "El historial de esos partidos debe conservarse."
+        )
+
     if request.method == 'POST':
+        if motivo_bloqueo:
+            return render(
+                request,
+                'campeonatos/eliminar_campeonato.html',
+                {
+                    'campeonato': campeonato,
+                    'motivo_bloqueo': motivo_bloqueo,
+                    'partidos_asociados': partidos_asociados,
+                },
+                status=403,
+            )
+
         campeonato.delete()
         return redirect('lista_campeonatos')
-    return render(request, 'campeonatos/eliminar_campeonato.html', {
-        'campeonato': campeonato
-    })
+
+    return render(
+        request,
+        'campeonatos/eliminar_campeonato.html',
+        {
+            'campeonato': campeonato,
+            'motivo_bloqueo': motivo_bloqueo,
+            'partidos_asociados': partidos_asociados,
+        },
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def detalle_campeonato(request, campeonato_id):
@@ -641,16 +670,44 @@ def detalle_equipo(request, equipo_id):
         'atletas': atletas
     })
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def eliminar_equipo(request, equipo_id):
     equipo = get_object_or_404(Equipo, pk=equipo_id)
 
+    partidos_asociados = equipo.partidos.all()
+    motivo_bloqueo = None
+
+    if partidos_asociados.exists():
+        motivo_bloqueo = (
+            "No puedes eliminar este equipo porque tiene partidos asociados. "
+            "El historial deportivo del equipo debe conservarse."
+        )
+
     if request.method == 'POST':
-        nombre = equipo.nombre
+        if motivo_bloqueo:
+            return render(
+                request,
+                'equipos/eliminar_equipo.html',
+                {
+                    'equipo': equipo,
+                    'motivo_bloqueo': motivo_bloqueo,
+                    'partidos_asociados': partidos_asociados,
+                },
+                status=403,
+            )
+
         equipo.delete()
         return redirect('listar_equipos')
 
-    return render(request, 'equipos/eliminar_equipo.html', {'equipo': equipo})
+    return render(
+        request,
+        'equipos/eliminar_equipo.html',
+        {
+            'equipo': equipo,
+            'motivo_bloqueo': motivo_bloqueo,
+            'partidos_asociados': partidos_asociados,
+        },
+    )
 
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
@@ -856,13 +913,44 @@ def editar_partido(request, partido_id):
         'sets_con_datos': sets_con_datos,
     })
 
-@user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
+@user_passes_test(es_admin)
 def eliminar_partido(request, partido_id):
     partido = get_object_or_404(Partido, id=partido_id)
+
+    estadisticas_asociadas = partido.estadisticas.all()
+    motivo_bloqueo = None
+
+    if estadisticas_asociadas.exists():
+        motivo_bloqueo = (
+            "No puedes eliminar este partido porque tiene estadísticas asociadas. "
+            "Primero debe conservarse o revisarse ese historial estadístico."
+        )
+
     if request.method == 'POST':
+        if motivo_bloqueo:
+            return render(
+                request,
+                'partidos/eliminar_partido.html',
+                {
+                    'partido': partido,
+                    'motivo_bloqueo': motivo_bloqueo,
+                    'estadisticas_asociadas': estadisticas_asociadas,
+                },
+                status=403,
+            )
+
         partido.delete()
         return redirect('lista_partidos')
-    return render(request, 'partidos/eliminar_partido.html', {'partido': partido})
+
+    return render(
+        request,
+        'partidos/eliminar_partido.html',
+        {
+            'partido': partido,
+            'motivo_bloqueo': motivo_bloqueo,
+            'estadisticas_asociadas': estadisticas_asociadas,
+        },
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 @require_http_methods(["GET", "POST"])

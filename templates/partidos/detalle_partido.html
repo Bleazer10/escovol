@@ -77,9 +77,11 @@
         <a href="{% url 'editar_partido' partido.id %}" class="btn" style="background: #4caf50;">
           <i class="fas fa-edit"></i> Editar
         </a>
-        <a href="{% url 'eliminar_partido' partido.id %}" class="btn btn-danger">
-          <i class="fas fa-trash-alt"></i> Eliminar
-        </a>
+        {% if is_admin %}
+          <a href="{% url 'eliminar_partido' partido.id %}" class="btn btn-danger">
+            <i class="fas fa-trash-alt"></i> Eliminar
+          </a>
+        {% endif %}
         <a href="{% url 'lista_partidos' %}" class="btn" style="background: #f8b100;">
           <i class="fa-solid fa-arrow-left"></i> Volver
         </a>
