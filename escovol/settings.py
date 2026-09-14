@@ -143,3 +143,13 @@ LOGIN_URL = '/login/'
 
 LOGIN_REDIRECT_URL = '/atletas/menu/'  # o el nombre de la vista principal que quieres que se muestre tras iniciar sesión
 LOGOUT_REDIRECT_URL = 'bienvenida' 
+
+# Seguridad adicional para producción
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HSTS inicial conservador
+    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
