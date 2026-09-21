@@ -48,6 +48,7 @@ htmlcov/
 # Django
 # =========================
 *.log
+logs/
 local_settings.py
 
 # Database (SQLite)
