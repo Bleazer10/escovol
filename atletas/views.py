@@ -1235,50 +1235,76 @@ def resumen_estadisticas(request, atleta_id):
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def estadisticas_individuales(request):
     categoria_filtro = request.GET.get('categoria', '')
-    cedula_filtro = request.GET.get('cedula', '')
+    cedula_filtro = request.GET.get('cedula', '').strip()
 
-    atletas_qs = Estadistica.objects.values(
-        'atleta__id', 'atleta__nombre', 'atleta__apellido', 'atleta__cedula', 'atleta__categoria'
-    ).annotate(
-        puntos=Sum('puntos'),
-        saques=Sum('saques'),
-        remates=Sum('remates'),
-        bloqueos=Sum('bloqueos'),
-        recepciones=Sum('recepciones'),
-        armadas=Sum('armadas'),
-        errores=Sum('errores')
-    ).filter(
-        Q(puntos__gt=0) |
-        Q(saques__gt=0) |
-        Q(remates__gt=0) |
-        Q(bloqueos__gt=0) |
-        Q(recepciones__gt=0) |
-        Q(armadas__gt=0) |
-        Q(errores__gt=0)
+    atletas_qs = (
+        Estadistica.objects
+        .values(
+            'atleta__id',
+            'atleta__nombre',
+            'atleta__apellido',
+            'atleta__cedula',
+            'atleta__categoria'
+        )
+        .annotate(
+            puntos=Sum('puntos'),
+            saques=Sum('saques'),
+            remates=Sum('remates'),
+            bloqueos=Sum('bloqueos'),
+            recepciones=Sum('recepciones'),
+            armadas=Sum('armadas'),
+            errores=Sum('errores')
+        )
+        .filter(
+            Q(puntos__gt=0) |
+            Q(saques__gt=0) |
+            Q(remates__gt=0) |
+            Q(bloqueos__gt=0) |
+            Q(recepciones__gt=0) |
+            Q(armadas__gt=0) |
+            Q(errores__gt=0)
+        )
     )
 
     if categoria_filtro:
-        atletas_qs = atletas_qs.filter(atleta__categoria=categoria_filtro)
+        atletas_qs = atletas_qs.filter(
+            atleta__categoria=categoria_filtro
+        )
 
     if cedula_filtro:
-        atletas_qs = atletas_qs.filter(atleta__cedula__icontains=cedula_filtro)
+        atletas_qs = atletas_qs.filter(
+            atleta__cedula__icontains=cedula_filtro
+        )
 
-    paginator = Paginator(atletas_qs, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    atletas_qs = atletas_qs.order_by(
+        'atleta__apellido',
+        'atleta__nombre',
+        'atleta__id'
+    )
 
-    categorias = Atleta.objects.values_list('categoria', flat=True).distinct().order_by('categoria')
+    categorias = (
+        Atleta.objects
+        .values_list('categoria', flat=True)
+        .distinct()
+        .order_by('categoria')
+    )
 
     context = {
-        'estadisticas': page_obj,
-        'page_obj': page_obj,
+        'estadisticas': atletas_qs,
         'categorias': categorias,
         'valores': {
             'categoria': categoria_filtro,
             'cedula': cedula_filtro,
-        }
+        },
+        'is_admin': es_admin(request.user),
+        'is_entrenador': es_entrenador(request.user),
     }
-    return render(request, 'estadisticas/estadisticas_individuales.html', context)
+
+    return render(
+        request,
+        'estadisticas/estadisticas_individuales.html',
+        context
+    )
     
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def agregar_estadistica_general(request):
