@@ -315,15 +315,14 @@ def administracion(request):
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def lista_entrenadores(request):
-    entrenadores = Entrenador.objects.all().order_by('nombre')  # o el orden que prefieras
-
-    paginator = Paginator(entrenadores, 10)  
-    page = request.GET.get('page')
-    page_obj = paginator.get_page(page)
+    entrenadores = Entrenador.objects.all().order_by(
+        "nombre",
+        "apellido",
+        "id"
+    )
 
     return render(request, 'entrenadores/lista_entrenadores.html', {
-        'entrenadores': page_obj,
-        'page_obj': page_obj,
+        'entrenadores': entrenadores,
         'is_admin': es_admin(request.user),
         'is_entrenador': es_entrenador(request.user),
     })

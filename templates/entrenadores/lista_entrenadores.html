@@ -1,114 +1,435 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.css"
+>
+
+<style>
+    /* =========================
+       DATATABLE ENTRENADORES
+       ========================= */
+
+    #tablaEntrenadores th,
+    #tablaEntrenadores td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    #tablaEntrenadores thead th {
+        white-space: nowrap;
+    }
+
+    /* Evitar que DataTables alinee números a la derecha */
+    #tablaEntrenadores .dt-type-numeric {
+        text-align: center !important;
+    }
+
+    /* Controles superiores */
+    .dt-container .dt-length,
+    .dt-container .dt-search {
+        margin-bottom: 0.75rem;
+    }
+
+    .dt-container .dt-search input {
+        min-width: 180px;
+    }
+
+    /* Paginación */
+    .dt-container .dt-paging {
+        margin-top: 0.5rem;
+    }
+
+    /* Modal responsive */
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+    }
+
+    .modal .table td:first-child {
+        font-weight: 700;
+        background-color: #f8f9fa;
+        width: 40%;
+    }
+
+    /* =========================
+       MÓVIL
+       ========================= */
+
+    @media (max-width: 576px) {
+
+        .dt-container .dt-layout-row {
+            gap: 0.75rem;
+        }
+
+        .dt-container .dt-layout-cell {
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .dt-container .dt-search {
+            width: 100%;
+        }
+
+        .dt-container .dt-search label {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .dt-container .dt-search input {
+            display: block;
+            width: 100% !important;
+            min-width: 0;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dt-container .dt-info {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #tablaEntrenadores th,
+        #tablaEntrenadores td {
+            padding: 0.65rem 0.45rem;
+        }
+    }
+</style>
+{% endblock %}
+
+
 {% block content %}
 
-  <!-- Migas de pan + botón -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
+<!-- Migas de pan + botón -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+
     <nav aria-label="breadcrumb" class="mb-0">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <a href="{% url 'menu_principal' %}" class="text-dark">
-            <i class="fa-solid fa-house"></i>
-          </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Entrenadores</li>
-      </ol>
+        <ol class="breadcrumb mb-0">
+
+            <li class="breadcrumb-item">
+                <a
+                    href="{% url 'menu_principal' %}"
+                    class="text-dark"
+                >
+                    <i class="fa-solid fa-house"></i>
+                </a>
+            </li>
+
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Entrenadores
+            </li>
+
+        </ol>
     </nav>
+
     {% if is_admin %}
-      <a href="{% url 'registrar_entrenador' %}" class="btn " style="background: #f97316;">
-        ➕ Agregar 
-      </a>
+        <a
+            href="{% url 'registrar_entrenador' %}"
+            class="btn"
+            style="background: #f97316;"
+        >
+            ➕ Agregar
+        </a>
     {% endif %}
-  </div>
 
-  <div class="container mt-4"></div>
-  <div class="card shadow rounded-4">
-    <div class="card-header bg-dark text-white text-center rounded-top-4">
-      <h4 class="mb-0">Listado de Entrenadores</h4>
-    </div>
-    <div class="card-body bg-light rounded-bottom-4">
-
-      {% if entrenadores %}
-        <div class="table-responsive">
-          <table class="table table-bordered table-hover text-center align-middle">
-            <thead class="table-dark">
-              <tr>
-                <th>Nombre</th>
-                <th>Cédula</th>
-                <th>Teléfono</th>
-                <th style="width: 12%;">Edad</th>
-                {% if is_admin %}
-                  <th style="width: 20%;">Consultar</th>
-                {% endif %}
-              </tr>
-            </thead>
-            <tbody>
-              {% for entrenador in entrenadores %}
-              <tr>
-                <td>{{ entrenador.nombre }} {{ entrenador.apellido }}</td>
-                <td>{{ entrenador.cedula }}</td>
-                <td>{{ entrenador.telefono }}</td>
-                <td>{{ entrenador.edad }}</td>
-                {% if is_admin %}
-                  <td>
-                    <a href="{% url 'detalle_entrenador' entrenador.id %}"
-                      class="btn btn-sm" style="background: #06b6d4;"
-                      title="Ver Detalles">
-                      <i class="fas fa-search"></i>
-                    </a>
-                  </td>
-                {% endif %}
-              </tr>
-              {% endfor %}
-            </tbody>
-
-          </table>
-        </div>
-      {% else %}
-        <div class="alert alert-info text-center">No hay entrenadores registrados aún.</div>
-      {% endif %}
-
-      <!-- 🔄 Paginación SIEMPRE visible -->
-      <div class="d-flex justify-content-center mt-4">
-        <nav>
-          <ul class="pagination pagination-sm">
-            {% if page_obj.has_previous %}
-              <li class="page-item">
-                <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}">← Anterior</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled">
-                <span class="page-link px-3 py-1">← Anterior</span>
-              </li>
-            {% endif %}
-
-            {% for num in page_obj.paginator.page_range %}
-              {% if page_obj.number == num %}
-                <li class="page-item active">
-                  <span class="page-link px-3 py-1">{{ num }}</span>
-                </li>
-              {% else %}
-                <li class="page-item">
-                  <a class="page-link px-3 py-1" href="?page={{ num }}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-
-            {% if page_obj.has_next %}
-              <li class="page-item">
-                <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}">Siguiente →</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled">
-                <span class="page-link px-3 py-1">Siguiente →</span>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
-      </div>
-
-    </div> <!-- CIERRE del card-body -->
-  </div>
 </div>
+
+
+<div class="container mt-4">
+
+    <div class="card shadow rounded-4 border border-primary">
+
+        <div class="card-header text-center rounded-top-4">
+            <h4 class="mb-0 fw-bold">
+                Listado de Entrenadores
+            </h4>
+        </div>
+
+
+        <div class="card-body bg-light rounded-bottom-4">
+
+            {% if entrenadores %}
+
+                <div class="table-responsive p-3">
+
+                    <table
+                        id="tablaEntrenadores"
+                        data-admin="{{ is_admin|yesno:'true,false' }}"
+                        class="table table-bordered table-hover align-middle text-center w-100"
+                    >
+
+                        <thead class="table-dark">
+
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Cédula</th>
+                                <th>Teléfono</th>
+                                <th>Edad</th>
+
+                                {% if is_admin %}
+                                    <th>Consultar</th>
+                                {% endif %}
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for entrenador in entrenadores %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ entrenador.nombre }}
+                                        {{ entrenador.apellido }}
+                                    </td>
+
+                                    <td>
+                                        {{ entrenador.cedula }}
+                                    </td>
+
+                                    <td>
+                                        {{ entrenador.telefono }}
+                                    </td>
+
+                                    <td>
+                                        {{ entrenador.edad }}
+                                    </td>
+
+                                    {% if is_admin %}
+
+                                        <td>
+
+                                            <a
+                                                href="{% url 'detalle_entrenador' entrenador.id %}"
+                                                class="btn btn-sm"
+                                                style="background: #06b6d4;"
+                                                title="Ver Detalles"
+                                            >
+                                                <i class="fas fa-search"></i>
+                                            </a>
+
+                                        </td>
+
+                                    {% endif %}
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="alert alert-info text-center">
+                    No hay entrenadores registrados aún.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const tabla = document.querySelector("#tablaEntrenadores");
+
+    if (!tabla) {
+        return;
+    }
+
+    /*
+     * El rol viene desde el atributo data-admin del HTML.
+     * Así evitamos colocar etiquetas de Django dentro
+     * de los arrays JavaScript.
+     */
+    const esAdmin = tabla.dataset.admin === "true";
+
+
+    /*
+     * Configuración base de columnas.
+     * Todas quedan centradas.
+     */
+    const columnas = [
+        {
+            targets: "_all",
+            className: "dt-head-center dt-body-center"
+        },
+        {
+            targets: 0,
+            responsivePriority: 1
+        }
+    ];
+
+
+    /*
+     * Prioridades responsive según el rol.
+     *
+     * ADMIN:
+     * Nombre → Consultar → Edad → Cédula → Teléfono
+     *
+     * ENTRENADOR:
+     * Nombre → Edad → Cédula → Teléfono
+     */
+    if (esAdmin) {
+
+        columnas.push(
+            {
+                targets: 4,
+                responsivePriority: 2,
+                orderable: false,
+                searchable: false
+            },
+            {
+                targets: 3,
+                responsivePriority: 3
+            },
+            {
+                targets: 1,
+                responsivePriority: 4
+            },
+            {
+                targets: 2,
+                responsivePriority: 5
+            }
+        );
+
+    } else {
+
+        columnas.push(
+            {
+                targets: 3,
+                responsivePriority: 2
+            },
+            {
+                targets: 1,
+                responsivePriority: 3
+            },
+            {
+                targets: 2,
+                responsivePriority: 4
+            }
+        );
+    }
+
+
+    new DataTable("#tablaEntrenadores", {
+
+        layout: {
+            topStart: "pageLength",
+            topEnd: "search",
+            bottomStart: "info",
+            bottomEnd: "paging"
+        },
+
+        responsive: {
+
+            details: {
+
+                display: DataTable.Responsive.display.modal({
+
+                    header: function (row) {
+
+                        const temporal =
+                            document.createElement("div");
+
+                        temporal.innerHTML = row.data()[0];
+
+                        return "Datos de " +
+                            temporal.textContent.trim();
+                    }
+
+                }),
+
+                renderer:
+                    DataTable.Responsive.renderer.tableAll({
+                        tableClass:
+                            "table table-sm table-bordered align-middle"
+                    })
+            }
+        },
+
+        pageLength: 10,
+
+        lengthMenu: [
+            10,
+            25,
+            50,
+            100
+        ],
+
+        pagingType: "simple_numbers",
+
+        order: [
+            [0, "asc"]
+        ],
+
+        columnDefs: columnas,
+
+        language: {
+
+            search: "Buscar:",
+
+            lengthMenu:
+                "Mostrar _MENU_ filas",
+
+            info:
+                "Mostrando _START_ a _END_ de _TOTAL_ entrenadores",
+
+            infoEmpty:
+                "Mostrando 0 entrenadores",
+
+            infoFiltered:
+                "(filtrado de _MAX_ entrenadores)",
+
+            zeroRecords:
+                "No se encontraron entrenadores",
+
+            emptyTable:
+                "No hay entrenadores registrados",
+
+            paginate: {
+                previous: "Anterior",
+                next: "Siguiente"
+            }
+        }
+    });
+});
+</script>
+
 {% endblock %}
