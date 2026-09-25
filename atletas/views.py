@@ -3935,68 +3935,110 @@ def eliminar_administrador(request, administrador_id):
 def lista_usuarios(request):
     rol_filtro = request.GET.get('rol', '')
     estado_filtro = request.GET.get('estado', '')
-    nombre_filtro = request.GET.get('nombre', '')
+    nombre_filtro = request.GET.get('nombre', '').strip()
 
     usuarios = []
 
     # --- Entrenadores ---
-    for e in Entrenador.objects.select_related('user'):
-        if not e.user:
+    for entrenador in Entrenador.objects.select_related('user'):
+        if not entrenador.user:
             continue
+
         usuarios.append({
-            'id': e.id,
-            'nombre': e.nombre,
-            'apellido': e.apellido,
-            'usuario': e.user.username,
-            'email': e.user.email,
+            'id': entrenador.id,
+            'nombre': entrenador.nombre,
+            'apellido': entrenador.apellido,
+            'usuario': entrenador.user.username,
+            'email': entrenador.user.email,
             'rol': 'Entrenador',
-            'estado': 'Activo' if e.user.is_active else 'Inactivo',
+            'estado': (
+                'Activo'
+                if entrenador.user.is_active
+                else 'Inactivo'
+            ),
         })
 
     # --- Atletas ---
-    for a in Atleta.objects.select_related('user'):
-        if not a.user:
+    for atleta in Atleta.objects.select_related('user'):
+        if not atleta.user:
             continue
+
         usuarios.append({
-            'id': a.id,
-            'nombre': a.nombre,
-            'apellido': a.apellido,
-            'usuario': a.user.username,
-            'email': a.user.email,
+            'id': atleta.id,
+            'nombre': atleta.nombre,
+            'apellido': atleta.apellido,
+            'usuario': atleta.user.username,
+            'email': atleta.user.email,
             'rol': 'Atleta',
-            'estado': 'Activo' if a.user.is_active else 'Inactivo',
+            'estado': (
+                'Activo'
+                if atleta.user.is_active
+                else 'Inactivo'
+            ),
         })
 
     # --- Administradores ---
-    for ad in Administrador.objects.select_related('usuario'):
-        if not ad.usuario:
+    for administrador in Administrador.objects.select_related('usuario'):
+        if not administrador.usuario:
             continue
+
         usuarios.append({
-            'id': ad.id,
-            'nombre': ad.nombre,
-            'apellido': ad.apellido,
-            'usuario': ad.usuario.username,
-            'email': ad.usuario.email,
+            'id': administrador.id,
+            'nombre': administrador.nombre,
+            'apellido': administrador.apellido,
+            'usuario': administrador.usuario.username,
+            'email': administrador.usuario.email,
             'rol': 'Administrador',
-            'estado': 'Activo' if ad.usuario.is_active else 'Inactivo',
+            'estado': (
+                'Activo'
+                if administrador.usuario.is_active
+                else 'Inactivo'
+            ),
         })
 
     # --- FILTROS ---
     if rol_filtro:
-        usuarios = [u for u in usuarios if u['rol'] == rol_filtro]
+        usuarios = [
+            usuario
+            for usuario in usuarios
+            if usuario['rol'] == rol_filtro
+        ]
+
     if estado_filtro:
-        usuarios = [u for u in usuarios if u['estado'] == estado_filtro]
+        usuarios = [
+            usuario
+            for usuario in usuarios
+            if usuario['estado'] == estado_filtro
+        ]
+
     if nombre_filtro:
-        usuarios = [u for u in usuarios if nombre_filtro.lower() in u['nombre'].lower()]
+        termino = nombre_filtro.lower()
 
-    # --- PAGINACIÓN ---
-    paginator = Paginator(usuarios, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+        usuarios = [
+            usuario
+            for usuario in usuarios
+            if (
+                termino in usuario['nombre'].lower()
+                or termino in usuario['apellido'].lower()
+            )
+        ]
 
-    return render(request, 'usuarios/lista.html', {
-        'page_obj': page_obj,
-        'rol_filtro': rol_filtro,
-        'estado_filtro': estado_filtro,
-        'nombre_filtro': nombre_filtro,
-    })
+    # Orden estable antes de enviarlos al template
+    usuarios.sort(
+        key=lambda usuario: (
+            usuario['apellido'].lower(),
+            usuario['nombre'].lower(),
+            usuario['usuario'].lower(),
+        )
+    )
+
+    return render(
+        request,
+        'usuarios/lista.html',
+        {
+            'usuarios': usuarios,
+            'rol_filtro': rol_filtro,
+            'estado_filtro': estado_filtro,
+            'nombre_filtro': nombre_filtro,
+        }
+    )
