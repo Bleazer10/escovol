@@ -624,7 +624,12 @@ def registrar_equipo(request):
 # Vista para listar equipos
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def listar_equipos(request):
-    equipos = Equipo.objects.select_related('entrenador').all().order_by('nombre')
+    equipos = (
+        Equipo.objects
+        .select_related('entrenador')
+        .annotate(total_atletas=Count('atletas'))
+        .order_by('nombre', 'id')
+    )
 
     nombre = request.GET.get('nombre', '').strip()
     entrenador_id = request.GET.get('entrenador', '')
@@ -635,19 +640,26 @@ def listar_equipos(request):
     if entrenador_id:
         equipos = equipos.filter(entrenador_id=entrenador_id)
 
-    paginator = Paginator(equipos, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
     context = {
-        'page_obj': page_obj,
-        'entrenadores': Entrenador.objects.all(),
+        'equipos': equipos,
+        'entrenadores': Entrenador.objects.all().order_by(
+            'nombre',
+            'apellido',
+            'id'
+        ),
         'valores': {
             'nombre': nombre,
             'entrenador': entrenador_id,
-        }
+        },
+        'is_admin': es_admin(request.user),
+        'is_entrenador': es_entrenador(request.user),
     }
-    return render(request, 'equipos/listar_equipos.html', context)
+
+    return render(
+        request,
+        'equipos/listar_equipos.html',
+        context
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def detalle_equipo(request, equipo_id):
