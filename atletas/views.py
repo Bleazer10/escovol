@@ -1380,22 +1380,36 @@ def agregar_estadistica_general(request):
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def ver_estadisticas_equipos(request):
-    equipo_filtrado = request.GET.get('equipo')
+    equipo_filtrado = request.GET.get('equipo', '').strip()
 
-    equipos = Equipo.objects.all()
+    equipos = (
+        Equipo.objects
+        .prefetch_related('atletas')
+        .order_by('nombre', 'id')
+    )
+
     if equipo_filtrado:
         equipos = equipos.filter(id=equipo_filtrado)
 
     equipos_con_estadisticas = []
+
     for equipo in equipos:
         atletas = equipo.atletas.all()
-        # Filtrar estadísticas solo de partidos donde el equipo participó
-        partidos_del_equipo = Partido.objects.filter(equipo_local=equipo)
 
+        # Partidos donde este equipo fue el equipo local
+        partidos_del_equipo = Partido.objects.filter(
+            equipo_local=equipo
+        )
+
+        # Estadísticas de los atletas del equipo
+        # únicamente en sus partidos
         estadisticas = Estadistica.objects.filter(
             atleta__in=atletas,
             partido__in=partidos_del_equipo
         )
+
+        if not estadisticas.exists():
+            continue
 
         totales = estadisticas.aggregate(
             puntos=Sum('puntos'),
@@ -1407,21 +1421,27 @@ def ver_estadisticas_equipos(request):
             errores=Sum('errores'),
         )
 
-        if estadisticas.exists():
-            equipos_con_estadisticas.append({
-                'equipo': equipo,
-                'totales': totales,
-            })
-
-    paginator = Paginator(equipos_con_estadisticas, 10)  # 10 por página
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+        equipos_con_estadisticas.append({
+            'equipo': equipo,
+            'totales': totales,
+        })
 
     context = {
-        'page_obj': page_obj,
-        'todos_equipos': Equipo.objects.all(),
+        'equipos_con_estadisticas': equipos_con_estadisticas,
+        'todos_equipos': Equipo.objects.order_by(
+            'nombre',
+            'id'
+        ),
+        'equipo_filtrado': equipo_filtrado,
+        'is_admin': es_admin(request.user),
+        'is_entrenador': es_entrenador(request.user),
     }
-    return render(request, 'estadisticas/estadisticas_equipo.html', context)
+
+    return render(
+        request,
+        'estadisticas/estadisticas_equipo.html',
+        context
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def ver_estadisticas_equipo_detalle(request, equipo_id):

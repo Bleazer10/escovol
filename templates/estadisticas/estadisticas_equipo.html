@@ -1,144 +1,527 @@
 {% extends "base.html" %}
+
+{% block extra_head %}
+
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.css"
+>
+
+<style>
+    /* =========================
+       DATATABLE ESTADÍSTICAS
+       POR EQUIPO
+       ========================= */
+
+    #tablaEstadisticasEquipos th,
+    #tablaEstadisticasEquipos td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    #tablaEstadisticasEquipos thead th {
+        white-space: nowrap;
+    }
+
+    #tablaEstadisticasEquipos .dt-type-numeric {
+        text-align: center !important;
+    }
+
+    /* Controles superiores */
+    .dt-container .dt-length,
+    .dt-container .dt-search {
+        margin-bottom: 0.75rem;
+    }
+
+    .dt-container .dt-search input {
+        min-width: 180px;
+    }
+
+    /* Paginación */
+    .dt-container .dt-paging {
+        margin-top: 0.5rem;
+    }
+
+    /* =========================
+       MODAL RESPONSIVE
+       ========================= */
+
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+    }
+
+    .modal .table td:first-child {
+        font-weight: 700;
+        background-color: #f8f9fa;
+        width: 40%;
+    }
+
+    /* =========================
+       MÓVIL
+       ========================= */
+
+    @media (max-width: 576px) {
+
+        .dt-container .dt-layout-row {
+            gap: 0.75rem;
+        }
+
+        .dt-container .dt-layout-cell {
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .dt-container .dt-search {
+            width: 100%;
+        }
+
+        .dt-container .dt-search label {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .dt-container .dt-search input {
+            display: block;
+            width: 100% !important;
+            min-width: 0;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dt-container .dt-info {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #tablaEstadisticasEquipos th,
+        #tablaEstadisticasEquipos td {
+            padding: 0.65rem 0.45rem;
+        }
+    }
+</style>
+
+{% endblock %}
+
+
 {% block content %}
 
-<!-- 🧭 Migas de pan -->
+<!-- =========================
+     MIGAS DE PAN
+     ========================= -->
+
 <div class="container mt-3">
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item">
-        <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
-          <i class="fa-solid fa-house"></i>
-        </a>
-      </li>
-      <li class="breadcrumb-item active" aria-current="page">Estadísticas</li>
-    </ol>
-  </nav>
+
+    <nav aria-label="breadcrumb" class="mb-4">
+
+        <ol class="breadcrumb">
+
+            <li class="breadcrumb-item">
+
+                <a
+                    class="link-body-emphasis"
+                    href="{% url 'menu_principal' %}"
+                >
+                    <i class="fa-solid fa-house"></i>
+                </a>
+
+            </li>
+
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Estadísticas
+            </li>
+
+        </ol>
+
+    </nav>
+
 </div>
 
-<!-- 📋 Card principal -->
+
+<!-- =========================
+     CARD PRINCIPAL
+     ========================= -->
+
 <div class="container">
-  <div class="card shadow border border-primary">
-    <div class="card-header text-white fw-bold text-center fs-4">
-      📋 Estadísticas por Equipo
+
+    <div class="card shadow border border-primary">
+
+        <div class="card-header text-white fw-bold text-center fs-4">
+            📋 Estadísticas por Equipo
+        </div>
+
+
+        <div class="card-body">
+
+            <!-- =========================
+                 FILTRO POR EQUIPO
+                 ========================= -->
+
+            <form
+                method="get"
+                class="row g-3 mb-4 align-items-end"
+            >
+
+                <div class="col-lg-4 col-md-6">
+
+                    <label class="form-label fw-semibold">
+                        Equipo
+                    </label>
+
+                    <select
+                        name="equipo"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            -- Todos --
+                        </option>
+
+                        {% for eq in todos_equipos %}
+
+                            <option
+                                value="{{ eq.id }}"
+                                {% if equipo_filtrado == eq.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ eq.nombre }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-lg-2 col-6">
+
+                    <button
+                        type="submit"
+                        class="btn btn-outline-dark w-100 shadow"
+                    >
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
+
+                </div>
+
+
+                <div class="col-lg-2 col-6">
+
+                    <a
+                        href="{% url 'ver_estadisticas_equipos' %}"
+                        class="btn btn-secondary w-100 shadow"
+                    >
+                        <i class="fas fa-trash-alt"></i>
+                        Limpiar
+                    </a>
+
+                </div>
+
+            </form>
+
+
+            <!-- =========================
+                 TABLA
+                 ========================= -->
+
+            {% if equipos_con_estadisticas %}
+
+                <div class="table-responsive p-3">
+
+                    <table
+                        id="tablaEstadisticasEquipos"
+                        class="table table-striped table-bordered text-center align-middle w-100"
+                    >
+
+                        <thead class="table-dark">
+
+                            <tr>
+                                <th>Equipo</th>
+                                <th>🏐 Puntos</th>
+                                <th>🎯 Saques</th>
+                                <th>💥 Remates</th>
+                                <th>🧱 Bloqueos</th>
+                                <th>🎯 Armadas</th>
+                                <th>👐 Recepciones</th>
+                                <th>❌ Errores</th>
+                                <th>Consultar</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for item in equipos_con_estadisticas %}
+
+                                <tr>
+
+                                    <td class="fw-bold">
+                                        {{ item.equipo.nombre }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.puntos|default:0 }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.saques|default:0 }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.remates|default:0 }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.bloqueos|default:0 }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.armadas|default:0 }}
+                                    </td>
+
+                                    <td>
+                                        {{ item.totales.recepciones|default:0 }}
+                                    </td>
+
+                                    <td class="text-danger">
+                                        {{ item.totales.errores|default:0 }}
+                                    </td>
+
+                                    <td>
+
+                                        <a
+                                            href="{% url 'ver_estadisticas_equipo_detalle' item.equipo.id %}"
+                                            class="btn btn-sm"
+                                            style="background: #06b6d4;"
+                                            title="Ver Estadísticas"
+                                        >
+                                            <i class="fas fa-search"></i>
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+            {% else %}
+
+                <div class="alert alert-info text-center mt-4">
+                    No hay estadísticas de equipos disponibles.
+                </div>
+
+            {% endif %}
+
+        </div>
+
     </div>
 
-    <div class="card-body">
-
-      <!-- 🔍 Filtro por equipo -->
-      <form method="get" class="row g-3 mb-4 align-items-end ">
-        <div class="col-lg-4 col-md-6 ">
-          <label class="form-label fw-semibold">Equipo</label>
-          <select name="equipo" class="form-select">
-            <option value="">-- Todos --</option>
-            {% for eq in todos_equipos %}
-              <option value="{{ eq.id }}" {% if request.GET.equipo == eq.id|stringformat:"s" %}selected{% endif %}>{{ eq.nombre }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-lg-2 col-6">
-          <button type="submit" class="btn btn-outline-dark w-100 shadow">
-            <i class="fas fa-search"></i> Filtrar
-          </button>
-        </div>
-
-        <div class="col-lg-2 col-6">
-          <a href="{% url 'ver_estadisticas_equipos' %}" class="btn btn-secondary w-100 shadow">
-            <i class="fas fa-trash-alt"></i> Limpiar
-          </a>
-        </div>
-      </form>
-
-      <!-- 📊 Tabla de estadísticas -->
-      {% if page_obj %}
-        <div class="table-responsive">
-          <table class="table table-striped text-center align-middle">
-            <thead class="table-dark">
-              <tr>
-                <th>Equipo</th>
-                <th>🏐 Puntos</th>
-                <th>🎯 Saques</th>
-                <th>💥 Remates</th>
-                <th>🧱 Bloqueos</th>
-                <th>🎯 Armadas</th>
-                <th>👐 Recepciones</th>
-                <th class="text-danger">❌ Errores</th>
-                <th>Consultar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in page_obj %}
-              <tr>
-                <td class="fw-bold">{{ item.equipo.nombre }}</td>
-                <td>{{ item.totales.puntos|default:0 }}</td>
-                <td>{{ item.totales.saques|default:0 }}</td>
-                <td>{{ item.totales.remates|default:0 }}</td>
-                <td>{{ item.totales.bloqueos|default:0 }}</td>
-                <td>{{ item.totales.armadas|default:0 }}</td>
-                <td>{{ item.totales.recepciones|default:0 }}</td>
-                <td class="text-danger">{{ item.totales.errores|default:0 }}</td>
-                <td>
-                  <a href="{% url 'ver_estadisticas_equipo_detalle' item.equipo.id %}" class="btn" style="background: #06b6d4;">
-                    <i class="fas fa-search"></i>
-                  </a>
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td colspan="9">No hay estadísticas disponibles.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 🔄 Paginación -->
-        <div class="d-flex justify-content-center mt-4">
-          <nav>
-            <ul class="pagination pagination-sm">
-              {% if page_obj.has_previous %}
-                <li class="page-item">
-                  <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">← Anterior</a>
-                </li>
-              {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link px-3 py-1">← Anterior</span>
-                </li>
-              {% endif %}
-
-              {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                  <li class="page-item active">
-                    <span class="page-link px-3 py-1">{{ num }}</span>
-                  </li>
-                {% else %}
-                  <li class="page-item">
-                    <a class="page-link px-3 py-1" href="?page={{ num }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">{{ num }}</a>
-                  </li>
-                {% endif %}
-              {% endfor %}
-
-              {% if page_obj.has_next %}
-                <li class="page-item">
-                  <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if request.GET.equipo %}&equipo={{ request.GET.equipo }}{% endif %}">Siguiente →</a>
-                </li>
-              {% else %}
-                <li class="page-item disabled">
-                  <span class="page-link px-3 py-1">Siguiente →</span>
-                </li>
-              {% endif %}
-            </ul>
-          </nav>
-        </div>
-
-      {% else %}
-        <div class="alert alert-info text-center mt-4">
-          No hay estadísticas de equipos disponibles.
-        </div>
-      {% endif %}
-
-    </div>
-  </div>
 </div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const tabla =
+        document.querySelector("#tablaEstadisticasEquipos");
+
+    if (!tabla) {
+        return;
+    }
+
+
+    const columnas = [
+
+        /* Centrar todas */
+        {
+            targets: "_all",
+            className: "dt-head-center dt-body-center"
+        },
+
+        /* Equipo */
+        {
+            targets: 0,
+            responsivePriority: 1
+        },
+
+        /* Puntos */
+        {
+            targets: 1,
+            responsivePriority: 2
+        },
+
+        /* Errores */
+        {
+            targets: 7,
+            responsivePriority: 3
+        },
+
+        /* Consultar */
+        {
+            targets: 8,
+            responsivePriority: 4,
+            orderable: false,
+            searchable: false
+        },
+
+        /* Saques */
+        {
+            targets: 2,
+            responsivePriority: 5
+        },
+
+        /* Remates */
+        {
+            targets: 3,
+            responsivePriority: 6
+        },
+
+        /* Bloqueos */
+        {
+            targets: 4,
+            responsivePriority: 7
+        },
+
+        /* Armadas */
+        {
+            targets: 5,
+            responsivePriority: 8
+        },
+
+        /* Recepciones */
+        {
+            targets: 6,
+            responsivePriority: 9
+        }
+    ];
+
+
+    new DataTable(
+        "#tablaEstadisticasEquipos",
+        {
+
+            layout: {
+                topStart: "pageLength",
+                topEnd: "search",
+                bottomStart: "info",
+                bottomEnd: "paging"
+            },
+
+            responsive: {
+
+                details: {
+
+                    display:
+                        DataTable.Responsive.display.modal({
+
+                            header: function (row) {
+
+                                const temporal =
+                                    document.createElement("div");
+
+                                temporal.innerHTML =
+                                    row.data()[0];
+
+                                return "Estadísticas de " +
+                                    temporal.textContent.trim();
+                            }
+
+                        }),
+
+                    renderer:
+                        DataTable.Responsive.renderer.tableAll({
+                            tableClass:
+                                "table table-sm table-bordered align-middle"
+                        })
+                }
+            },
+
+            pageLength: 10,
+
+            lengthMenu: [
+                10,
+                25,
+                50,
+                100
+            ],
+
+            pagingType: "simple_numbers",
+
+            /*
+             * Equipo en orden alfabético inicialmente.
+             * Después se puede ordenar pulsando cualquier métrica.
+             */
+            order: [
+                [0, "asc"]
+            ],
+
+            columnDefs: columnas,
+
+            language: {
+
+                search:
+                    "Buscar:",
+
+                lengthMenu:
+                    "Mostrar _MENU_ filas",
+
+                info:
+                    "Mostrando _START_ a _END_ de _TOTAL_ equipos",
+
+                infoEmpty:
+                    "Mostrando 0 equipos",
+
+                infoFiltered:
+                    "(filtrado de _MAX_ equipos)",
+
+                zeroRecords:
+                    "No se encontraron estadísticas",
+
+                emptyTable:
+                    "No hay estadísticas de equipos registradas",
+
+                paginate: {
+                    previous: "Anterior",
+                    next: "Siguiente"
+                }
+            }
+        }
+    );
+});
+</script>
 
 {% endblock %}
