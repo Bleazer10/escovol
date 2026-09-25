@@ -1,4 +1,115 @@
 {% extends 'base.html' %}
+{% block extra_head %}
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.css"
+>
+
+<style>
+    /* =========================
+       DATATABLE ATLETAS
+       ========================= */
+
+    #tablaAtletas th,
+    #tablaAtletas td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    #tablaAtletas thead th {
+        white-space: nowrap;
+    }
+
+    /* Evitar alineación automática a la derecha de números */
+    #tablaAtletas .dt-type-numeric {
+        text-align: center !important;
+    }
+
+    /* Controles superiores */
+    .dt-container .dt-length,
+    .dt-container .dt-search {
+        margin-bottom: 0.75rem;
+    }
+
+    .dt-container .dt-search input {
+        min-width: 180px;
+    }
+
+    /* Paginación */
+    .dt-container .dt-paging {
+        margin-top: 0.5rem;
+    }
+
+    /* Modal responsive */
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+    }
+
+    .modal .table td:first-child {
+        font-weight: 700;
+        background-color: #f8f9fa;
+        width: 40%;
+    }
+
+    /* =========================
+       MÓVIL
+       ========================= */
+
+    @media (max-width: 576px) {
+
+        .dt-container .dt-layout-row {
+            gap: 0.75rem;
+        }
+
+        .dt-container .dt-layout-cell {
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .dt-container .dt-search {
+            width: 100%;
+        }
+
+        .dt-container .dt-search label {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .dt-container .dt-search input {
+            display: block;
+            width: 100% !important;
+            min-width: 0;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dt-container .dt-info {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #tablaAtletas th,
+        #tablaAtletas td {
+            padding: 0.65rem 0.45rem;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
   <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -113,7 +224,9 @@
 
       {% if atletas %}
       <div class="table-responsive p-3">
-        <table class="table table-hover table-bordered align-middle text-center">
+        <table
+              id="tablaAtletas"
+              class="table table-hover table-bordered align-middle text-center w-100">
           <thead class="table-dark">
             <tr>
               <th>Nombre</th>
@@ -132,10 +245,10 @@
             <tr>
               <td>{{ atleta.nombre }} {{ atleta.apellido }}</td>
               <td>{{ atleta.cedula }}</td>
-              <td>{{ atleta.sexo }}</td>
+              <td>{{ atleta.get_sexo_display }}</td>
               <td>{{ atleta.categoria }}</td>
               <td>{{ atleta.telefono }}</td>
-              <td>{{ atleta.numero_camisa }}</td>
+              <td>{{ atleta.numero_camisa|default_if_none:"—" }}</td>
               <td>{{ atleta.get_posicion_display }}</td>
               <td>{{ atleta.get_turno_display }}</td>
               <td>
@@ -156,49 +269,130 @@
         </div>
       {% endif %}
 
-      <!-- Paginación -->
-      {% with request.GET.urlencode as query_params %}
-        {% with query_params|cut:'page='|cut:'&page=' as base_query %}
-          <div class="d-flex justify-content-center mt-4">
-            <nav>
-              <ul class="pagination pagination-sm">
-                {% if atletas.has_previous %}
-                  <li class="page-item">
-                    <a class="page-link px-3 py-1" href="?page={{ atletas.previous_page_number }}&{{ base_query }}">← Anterior</a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link px-3 py-1">← Anterior</span>
-                  </li>
-                {% endif %}
-
-                {% for num in atletas.paginator.page_range %}
-                  {% if atletas.number == num %}
-                    <li class="page-item active">
-                      <span class="page-link px-3 py-1">{{ num }}</span>
-                    </li>
-                  {% else %}
-                    <li class="page-item">
-                      <a class="page-link px-3 py-1" href="?page={{ num }}&{{ base_query }}">{{ num }}</a>
-                    </li>
-                  {% endif %}
-                {% endfor %}
-
-                {% if atletas.has_next %}
-                  <li class="page-item">
-                    <a class="page-link px-3 py-1" href="?page={{ atletas.next_page_number }}&{{ base_query }}">Siguiente →</a>
-                  </li>
-                {% else %}
-                  <li class="page-item disabled">
-                    <span class="page-link px-3 py-1">Siguiente →</span>
-                  </li>
-                {% endif %}
-              </ul>
-            </nav>
-          </div>
-        {% endwith %}
-      {% endwith %}
-
   {% endif %}
 </div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    new DataTable("#tablaAtletas", {
+
+        layout: {
+            topStart: "pageLength",
+            topEnd: "search",
+            bottomStart: "info",
+            bottomEnd: "paging"
+        },
+
+        responsive: {
+            details: {
+                display: DataTable.Responsive.display.modal({
+                    header: function (row) {
+                        const temporal = document.createElement("div");
+                        temporal.innerHTML = row.data()[0];
+
+                        return "Datos de " + temporal.textContent.trim();
+                    }
+                }),
+
+                renderer: DataTable.Responsive.renderer.tableAll({
+                    tableClass: "table table-sm table-bordered align-middle"
+                })
+            }
+        },
+
+        pageLength: 10,
+
+        lengthMenu: [10, 25, 50, 100],
+
+        pagingType: "simple_numbers",
+
+        order: [[0, "asc"]],
+
+        columnDefs: [
+            /* Centrar absolutamente todas las columnas */
+            {
+                targets: "_all",
+                className: "dt-head-center dt-body-center"
+            },
+
+            /* Nombre: máxima prioridad */
+            {
+                targets: 0,
+                responsivePriority: 1
+            },
+
+            /* Categoría */
+            {
+                targets: 3,
+                responsivePriority: 2
+            },
+
+            /* Consultar siempre debe intentar permanecer visible */
+            {
+                targets: 8,
+                responsivePriority: 3,
+                orderable: false,
+                searchable: false
+            },
+
+            /* Cédula */
+            {
+                targets: 1,
+                responsivePriority: 4
+            },
+
+            /* Sexo */
+            {
+                targets: 2,
+                responsivePriority: 5
+            },
+
+            /* Posición */
+            {
+                targets: 6,
+                responsivePriority: 6
+            },
+
+            /* Turno */
+            {
+                targets: 7,
+                responsivePriority: 7
+            },
+
+            /* Número */
+            {
+                targets: 5,
+                responsivePriority: 8
+            },
+
+            /* Teléfono puede ocultarse primero */
+            {
+                targets: 4,
+                responsivePriority: 9
+            }
+        ],
+
+        language: {
+            search: "Buscar:",
+            lengthMenu: "Mostrar _MENU_ filas",
+
+            info: "Mostrando _START_ a _END_ de _TOTAL_ atletas",
+            infoEmpty: "Mostrando 0 atletas",
+            infoFiltered: "(filtrado de _MAX_ atletas)",
+
+            zeroRecords: "No se encontraron atletas",
+            emptyTable: "No hay atletas registrados",
+
+            paginate: {
+                previous: "Anterior",
+                next: "Siguiente"
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

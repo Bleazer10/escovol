@@ -80,12 +80,6 @@ def lista_atletas(request):
         atletas = atletas.filter(cedula__icontains=cedula)
 
     atletas = atletas.order_by("apellido", "nombre", "id")
-    
-    # paginar
-    from django.core.paginator import Paginator
-    paginator = Paginator(atletas, 8)
-    page_number = request.GET.get('page')
-    atletas = paginator.get_page(page_number)
 
     # para los selects
     categorias = Atleta.objects.values_list('categoria', flat=True).distinct()
