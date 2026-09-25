@@ -833,45 +833,55 @@ def registrar_partido(request):
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def lista_partidos(request):
-    partidos = Partido.objects.order_by('-fecha', '-hora')
+    partidos = (
+        Partido.objects
+        .select_related('equipo_local', 'campeonato')
+        .order_by('-fecha', '-hora', '-id')
+    )
 
-    # Obtener parámetros de filtro
     equipo_id = request.GET.get('equipo', '').strip()
     campeonato_id = request.GET.get('campeonato', '').strip()
     estado = request.GET.get('estado', '').strip()
 
     if equipo_id:
         partidos = partidos.filter(equipo_local_id=equipo_id)
+
     if campeonato_id:
         partidos = partidos.filter(campeonato_id=campeonato_id)
+
     if estado:
         partidos = partidos.filter(estado=estado)
 
-    paginator = Paginator(partidos, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    equipos = Equipo.objects.order_by(
+        'nombre',
+        'id'
+    )
 
-    # Pasar opciones de selects al template
-    equipos = Equipo.objects.order_by('nombre')
-    campeonatos = Campeonato.objects.order_by('-fecha_inicio')
-    estados = [
-        ("programado", "Programado"),
-        ("en_curso", "En curso"),
-        ("finalizado", "Finalizado"),
-    ]
+    campeonatos = Campeonato.objects.order_by(
+        '-anio',
+        'nombre',
+        'id'
+    )
 
     context = {
-        'page_obj': page_obj,
+        'partidos': partidos,
         'equipos': equipos,
         'campeonatos': campeonatos,
-        'estados': estados,
+        'estados': Partido.ESTADOS,
         'filtros': {
             'equipo': equipo_id,
             'campeonato': campeonato_id,
             'estado': estado,
-        }
+        },
+        'is_admin': es_admin(request.user),
+        'is_entrenador': es_entrenador(request.user),
     }
-    return render(request, 'partidos/lista_partidos.html', context)
+
+    return render(
+        request,
+        'partidos/lista_partidos.html',
+        context
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def detalle_partido(request, pk):
