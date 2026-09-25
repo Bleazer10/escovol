@@ -1,135 +1,506 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_head %}
+
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.css"
+>
+
+<style>
+    /* =========================
+       DATATABLE CAMPEONATOS
+       ========================= */
+
+    #tablaCampeonatos th,
+    #tablaCampeonatos td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    #tablaCampeonatos thead th {
+        white-space: nowrap;
+    }
+
+    #tablaCampeonatos .dt-type-numeric {
+        text-align: center !important;
+    }
+
+    /* Controles superiores */
+    .dt-container .dt-length,
+    .dt-container .dt-search {
+        margin-bottom: 0.75rem;
+    }
+
+    .dt-container .dt-search input {
+        min-width: 180px;
+    }
+
+    /* Paginación */
+    .dt-container .dt-paging {
+        margin-top: 0.5rem;
+    }
+
+    /* =========================
+       MODAL RESPONSIVE
+       ========================= */
+
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+    }
+
+    .modal .table td:first-child {
+        font-weight: 700;
+        background-color: #f8f9fa;
+        width: 40%;
+    }
+
+    /* =========================
+       MÓVIL
+       ========================= */
+
+    @media (max-width: 576px) {
+
+        .dt-container .dt-layout-row {
+            gap: 0.75rem;
+        }
+
+        .dt-container .dt-layout-cell {
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .dt-container .dt-search {
+            width: 100%;
+        }
+
+        .dt-container .dt-search label {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .dt-container .dt-search input {
+            display: block;
+            width: 100% !important;
+            min-width: 0;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dt-container .dt-info {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #tablaCampeonatos th,
+        #tablaCampeonatos td {
+            padding: 0.65rem 0.45rem;
+        }
+    }
+</style>
+
+{% endblock %}
+
+
 {% block content %}
 
+<!-- Migas de pan + botón -->
+<div class="d-flex justify-content-between align-items-center mb-3">
 
-  <!-- Migas de pan y botón -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
     <nav aria-label="breadcrumb" class="mb-0">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <a href="{% url 'menu_principal' %}" class="text-dark">
-            <i class="fa-solid fa-house"></i>
-          </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Campeonatos</li>
-      </ol>
+
+        <ol class="breadcrumb mb-0">
+
+            <li class="breadcrumb-item">
+
+                <a
+                    href="{% url 'menu_principal' %}"
+                    class="text-dark"
+                >
+                    <i class="fa-solid fa-house"></i>
+                </a>
+
+            </li>
+
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Campeonatos
+            </li>
+
+        </ol>
+
     </nav>
-    <a href="{% url 'registrar_campeonato' %}" class="btn" style="background: #f97316;">
-      ➕ Agregar
+
+
+    <a
+        href="{% url 'registrar_campeonato' %}"
+        class="btn"
+        style="background: #f97316;"
+    >
+        ➕ Agregar
     </a>
-  </div>
 
-  <div class="container mt-4"></div>
-  <div class="card shadow rounded-4">
-    <div class="card-header bg-dark text-white text-center rounded-top-4">
-      <h4 class="mb-0">Listado de Campeonatos</h4>
-    </div>
-    <div class="card-body bg-light rounded-bottom-4">
-
-      <!-- Formulario de filtros -->
-      <form method="get" class="row g-3 mb-4 align-items-end">
-        <div class="col-lg-4 col-md-6">
-          <label class="form-label fw-semibold">Tipo</label>
-          <select name="tipo" class="form-select">
-            <option value="">-- Todos --</option>
-            <option value="formal" {% if valores.tipo == 'formal' %}selected{% endif %}>Formal</option>
-            <option value="amistoso" {% if valores.tipo == 'amistoso' %}selected{% endif %}>Amistoso</option>
-          </select>
-        </div>
-        <div class="col-lg-4 col-md-6">
-          <label class="form-label fw-semibold">Año</label>
-          <input type="number" name="anio" class="form-control" placeholder="Ej: 2025" value="{{ valores.anio|default_if_none:'' }}">
-        </div>
-        <div class="col-lg-2 col-6">
-          <button type="submit" class="btn btn-outline-dark w-100 shadow">
-            <i class="fas fa-search"></i> Filtrar
-          </button>
-        </div>
-        <div class="col-lg-2 col-6">
-          <a href="{% url 'lista_campeonatos' %}" class="btn btn-secondary w-100 shadow"> <i class="fas fa-trash-alt"></i>
-            Limpiar
-          </a>
-        </div>
-      </form>
-
-      <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle text-center">
-          <thead class="table-dark">
-            <tr>
-              <th>Nombre</th>
-              <th>Tipo</th>
-              <th>Año</th>
-              <th>Fecha de Inicio</th>
-              <th>Consultar</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for campeonato in campeonatos %}
-              <tr>
-                <td>{{ campeonato.nombre }}</td>
-                <td>{{ campeonato.get_tipo_display }}</td>
-                <td>{{ campeonato.anio }}</td>
-                <td>{{ campeonato.fecha_inicio|date:"d/m/Y" }}</td>
-                <td>
-                  <a href="{% url 'detalle_campeonato' campeonato.id %}"
-                     class="btn btn-sm" style="background: #06b6d4;"
-                     title="Ver Detalles">
-                    <i class="fas fa-search"></i>
-                  </a>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="5">No hay campeonatos registrados.</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Paginación SIEMPRE visible -->
-      <div class="d-flex justify-content-center mt-4">
-        <nav>
-          <ul class="pagination pagination-sm">
-            {% if page_obj.has_previous %}
-              <li class="page-item">
-                <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">← Anterior</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled">
-                <span class="page-link px-3 py-1">← Anterior</span>
-              </li>
-            {% endif %}
-
-            {% for num in page_obj.paginator.page_range %}
-              {% if page_obj.number == num %}
-                <li class="page-item active">
-                  <span class="page-link px-3 py-1">{{ num }}</span>
-                </li>
-              {% else %}
-                <li class="page-item">
-                  <a class="page-link px-3 py-1" href="?page={{ num }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">{{ num }}</a>
-                </li>
-              {% endif %}
-            {% endfor %}
-
-            {% if page_obj.has_next %}
-              <li class="page-item">
-                <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}{% if valores.tipo %}&tipo={{ valores.tipo }}{% endif %}{% if valores.anio %}&anio={{ valores.anio }}{% endif %}">Siguiente →</a>
-              </li>
-            {% else %}
-              <li class="page-item disabled">
-                <span class="page-link px-3 py-1">Siguiente →</span>
-              </li>
-            {% endif %}
-          </ul>
-        </nav>
-      </div>
-
-
-    </div>
-  </div>
 </div>
+
+
+<div class="container mt-4">
+
+    <div class="card shadow rounded-4 border border-primary">
+
+        <div class="card-header text-center rounded-top-4">
+
+            <h4 class="mb-0 fw-bold">
+                Listado de Campeonatos
+            </h4>
+
+        </div>
+
+
+        <div class="card-body bg-light rounded-bottom-4">
+
+            <!-- =========================
+                 FILTROS
+                 ========================= -->
+
+            <form
+                method="get"
+                class="row g-3 mb-4 align-items-end"
+            >
+
+                <div class="col-lg-4 col-md-6">
+
+                    <label class="form-label fw-semibold">
+                        Tipo
+                    </label>
+
+                    <select
+                        name="tipo"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            -- Todos --
+                        </option>
+
+                        <option
+                            value="formal"
+                            {% if valores.tipo == 'formal' %}
+                                selected
+                            {% endif %}
+                        >
+                            Formal
+                        </option>
+
+                        <option
+                            value="amistoso"
+                            {% if valores.tipo == 'amistoso' %}
+                                selected
+                            {% endif %}
+                        >
+                            Amistoso
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-lg-4 col-md-6">
+
+                    <label class="form-label fw-semibold">
+                        Año
+                    </label>
+
+                    <input
+                        type="number"
+                        name="anio"
+                        class="form-control"
+                        placeholder="Ej: 2025"
+                        value="{{ valores.anio|default_if_none:'' }}"
+                    >
+
+                </div>
+
+
+                <div class="col-lg-2 col-6">
+
+                    <button
+                        type="submit"
+                        class="btn btn-outline-dark w-100 shadow"
+                    >
+                        <i class="fas fa-search"></i>
+                        Filtrar
+                    </button>
+
+                </div>
+
+
+                <div class="col-lg-2 col-6">
+
+                    <a
+                        href="{% url 'lista_campeonatos' %}"
+                        class="btn btn-secondary w-100 shadow"
+                    >
+                        <i class="fas fa-trash-alt"></i>
+                        Limpiar
+                    </a>
+
+                </div>
+
+            </form>
+
+
+            <!-- =========================
+                 TABLA
+                 ========================= -->
+
+            {% if campeonatos %}
+
+                <div class="table-responsive p-3">
+
+                    <table
+                        id="tablaCampeonatos"
+                        class="table table-bordered table-hover align-middle text-center w-100"
+                    >
+
+                        <thead class="table-dark">
+
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Año</th>
+                                <th>Fecha de Inicio</th>
+                                <th>Consultar</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for campeonato in campeonatos %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ campeonato.nombre }}
+                                    </td>
+
+                                    <td>
+                                        {{ campeonato.get_tipo_display }}
+                                    </td>
+
+                                    <td>
+                                        {{ campeonato.anio }}
+                                    </td>
+
+                                    <td>
+                                        {{ campeonato.fecha_inicio|date:"d/m/Y"|default:"—" }}
+                                    </td>
+
+                                    <td>
+
+                                        <a
+                                            href="{% url 'detalle_campeonato' campeonato.id %}"
+                                            class="btn btn-sm"
+                                            style="background: #06b6d4;"
+                                            title="Ver Detalles"
+                                        >
+                                            <i class="fas fa-search"></i>
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+            {% else %}
+
+                <div class="alert alert-info text-center">
+                    No hay campeonatos registrados.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const tabla = document.querySelector("#tablaCampeonatos");
+
+    if (!tabla) {
+        return;
+    }
+
+
+    const columnas = [
+
+        /* Centrar todas las columnas */
+        {
+            targets: "_all",
+            className: "dt-head-center dt-body-center"
+        },
+
+        /* Nombre */
+        {
+            targets: 0,
+            responsivePriority: 1
+        },
+
+        /* Consultar */
+        {
+            targets: 4,
+            responsivePriority: 2,
+            orderable: false,
+            searchable: false
+        },
+
+        /* Tipo */
+        {
+            targets: 1,
+            responsivePriority: 3
+        },
+
+        /* Año */
+        {
+            targets: 2,
+            responsivePriority: 4
+        },
+
+        /* Fecha de Inicio */
+        {
+            targets: 3,
+            responsivePriority: 5
+        }
+    ];
+
+
+    new DataTable("#tablaCampeonatos", {
+
+        layout: {
+            topStart: "pageLength",
+            topEnd: "search",
+            bottomStart: "info",
+            bottomEnd: "paging"
+        },
+
+        responsive: {
+
+            details: {
+
+                display: DataTable.Responsive.display.modal({
+
+                    header: function (row) {
+
+                        const temporal =
+                            document.createElement("div");
+
+                        temporal.innerHTML = row.data()[0];
+
+                        return "Datos de " +
+                            temporal.textContent.trim();
+                    }
+
+                }),
+
+                renderer:
+                    DataTable.Responsive.renderer.tableAll({
+                        tableClass:
+                            "table table-sm table-bordered align-middle"
+                    })
+            }
+        },
+
+        pageLength: 10,
+
+        lengthMenu: [
+            10,
+            25,
+            50,
+            100
+        ],
+
+        pagingType: "simple_numbers",
+
+        /*
+         * Mantener por defecto los campeonatos
+         * más recientes primero.
+         */
+        order: [
+            [2, "desc"],
+            [0, "asc"]
+        ],
+
+        columnDefs: columnas,
+
+        language: {
+
+            search:
+                "Buscar:",
+
+            lengthMenu:
+                "Mostrar _MENU_ filas",
+
+            info:
+                "Mostrando _START_ a _END_ de _TOTAL_ campeonatos",
+
+            infoEmpty:
+                "Mostrando 0 campeonatos",
+
+            infoFiltered:
+                "(filtrado de _MAX_ campeonatos)",
+
+            zeroRecords:
+                "No se encontraron campeonatos",
+
+            emptyTable:
+                "No hay campeonatos registrados",
+
+            paginate: {
+                previous: "Anterior",
+                next: "Siguiente"
+            }
+        }
+    });
+});
+</script>
+
 {% endblock %}

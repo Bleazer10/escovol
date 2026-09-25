@@ -477,30 +477,36 @@ def registrar_campeonato(request):
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def lista_campeonatos(request):
-    campeonatos = Campeonato.objects.all().order_by('-anio')
+    campeonatos = Campeonato.objects.all().order_by(
+        '-anio',
+        'nombre',
+        'id'
+    )
 
-    tipo = request.GET.get('tipo')
-    anio = request.GET.get('anio')
+    tipo = request.GET.get('tipo', '')
+    anio = request.GET.get('anio', '')
 
     if tipo:
         campeonatos = campeonatos.filter(tipo=tipo)
+
     if anio:
         campeonatos = campeonatos.filter(anio=anio)
-
-    paginator = Paginator(campeonatos, 10)  # Número de campeonatos por página
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
 
     valores = {
         'tipo': tipo,
         'anio': anio,
     }
 
-    return render(request, 'campeonatos/lista_campeonatos.html', {
-        'campeonatos': page_obj,  # <- este es el objeto paginado
-        'page_obj': page_obj,     # <- este es necesario para la paginación
-        'valores': valores,
-    })
+    return render(
+        request,
+        'campeonatos/lista_campeonatos.html',
+        {
+            'campeonatos': campeonatos,
+            'valores': valores,
+            'is_admin': es_admin(request.user),
+            'is_entrenador': es_entrenador(request.user),
+        }
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def editar_campeonato(request, campeonato_id):
