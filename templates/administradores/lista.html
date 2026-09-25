@@ -1,94 +1,435 @@
 {% extends "base.html" %}
+
+{% block extra_head %}
+
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.css"
+>
+
+<style>
+    /* =========================
+       DATATABLE ADMINISTRADORES
+       ========================= */
+
+    #tablaAdministradores th,
+    #tablaAdministradores td {
+        text-align: center !important;
+        vertical-align: middle !important;
+    }
+
+    #tablaAdministradores thead th {
+        white-space: nowrap;
+    }
+
+    #tablaAdministradores .dt-type-numeric {
+        text-align: center !important;
+    }
+
+    /* Controles superiores */
+    .dt-container .dt-length,
+    .dt-container .dt-search {
+        margin-bottom: 0.75rem;
+    }
+
+    .dt-container .dt-search input {
+        min-width: 180px;
+    }
+
+    /* Paginación */
+    .dt-container .dt-paging {
+        margin-top: 0.5rem;
+    }
+
+    /* =========================
+       MODAL RESPONSIVE
+       ========================= */
+
+    .modal .table {
+        margin-bottom: 0;
+    }
+
+    .modal .table td {
+        vertical-align: middle;
+        padding: 0.75rem;
+    }
+
+    .modal .table td:first-child {
+        font-weight: 700;
+        background-color: #f8f9fa;
+        width: 40%;
+    }
+
+    /* =========================
+       MÓVIL
+       ========================= */
+
+    @media (max-width: 576px) {
+
+        .dt-container .dt-layout-row {
+            gap: 0.75rem;
+        }
+
+        .dt-container .dt-layout-cell {
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .dt-container .dt-search {
+            width: 100%;
+        }
+
+        .dt-container .dt-search label {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .dt-container .dt-search input {
+            display: block;
+            width: 100% !important;
+            min-width: 0;
+            margin: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            width: 100%;
+            text-align: center;
+        }
+
+        .dt-container .dt-info {
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #tablaAdministradores th,
+        #tablaAdministradores td {
+            padding: 0.65rem 0.45rem;
+        }
+    }
+</style>
+
+{% endblock %}
+
+
 {% block content %}
+
 <div class="container mt-4">
 
-  <!-- Migas de pan + botón -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <nav aria-label="breadcrumb" class="mb-0">
-      <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-          <a href="{% url 'menu_principal' %}" class="text-dark">
-            <i class="fa-solid fa-house"></i>
-          </a>
-        </li>
-        <li class="breadcrumb-item active" aria-current="page">Administradores</li>
-      </ol>
-    </nav>
-    <a href="{% url 'agregar_administrador' %}" class="btn" style="background: #f97316;">
-      ➕ Agregar
-    </a>
-  </div>
+    <!-- =========================
+         MIGAS DE PAN + BOTÓN
+         ========================= -->
 
-  <div class="card shadow rounded-4">
-    <div class="card-header bg-dark text-white text-center rounded-top-4">
-      <h4 class="mb-0">Listado de Administradores</h4>
-    </div>
-    <div class="card-body bg-light rounded-bottom-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
 
-      {% if administradores %}
-        <div class="table-responsive">
-          <table class="table table-hover align-middle text-center">
-            <thead class="table-dark">
-              <tr>
-                <th>Cédula</th>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Edad</th>
-                <th>Teléfono</th>
-                <th>Consultar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for admin in administradores %}
-              <tr>
-                <td>{{ admin.cedula }}</td>
-                <td>{{ admin.nombre }}</td>
-                <td>{{ admin.apellido }}</td>
-                <td>{{ admin.edad }}</td>
-                <td>{{ admin.telefono }}</td>
-                <td>
-                  <a href="{% url 'detalle_administrador' admin.id %}" 
-                     class="btn btn-sm" style="background:#06b6d4">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        <div class="alert alert-info text-center">No hay administradores registrados.</div>
-      {% endif %}
+        <nav aria-label="breadcrumb" class="mb-0">
 
-      <!-- 🔄 Paginación SIEMPRE visible -->
-      <div class="d-flex justify-content-center mt-4">
-        <nav>
-          <ul class="pagination pagination-sm">
-            {% if page_obj.has_previous %}
-              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">← Anterior</a></li>
-            {% else %}
-              <li class="page-item disabled"><span class="page-link">← Anterior</span></li>
-            {% endif %}
+            <ol class="breadcrumb mb-0">
 
-            {% for num in page_obj.paginator.page_range %}
-              {% if page_obj.number == num %}
-                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-              {% else %}
-                <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-              {% endif %}
-            {% endfor %}
+                <li class="breadcrumb-item">
 
-            {% if page_obj.has_next %}
-              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente →</a></li>
-            {% else %}
-              <li class="page-item disabled"><span class="page-link">Siguiente →</span></li>
-            {% endif %}
-          </ul>
+                    <a
+                        href="{% url 'menu_principal' %}"
+                        class="text-dark"
+                    >
+                        <i class="fa-solid fa-house"></i>
+                    </a>
+
+                </li>
+
+                <li
+                    class="breadcrumb-item active"
+                    aria-current="page"
+                >
+                    Administradores
+                </li>
+
+            </ol>
+
         </nav>
-      </div>
+
+
+        <a
+            href="{% url 'agregar_administrador' %}"
+            class="btn"
+            style="background: #f97316;"
+        >
+            ➕ Agregar
+        </a>
 
     </div>
-  </div>
+
+
+    <div class="card shadow rounded-4 border border-primary">
+
+        <div class="card-header text-center rounded-top-4">
+
+            <h4 class="mb-0 fw-bold">
+                Listado de Administradores
+            </h4>
+
+        </div>
+
+
+        <div class="card-body bg-light rounded-bottom-4">
+
+            {% if administradores %}
+
+                <div class="table-responsive p-3">
+
+                    <table
+                        id="tablaAdministradores"
+                        class="table table-bordered table-hover align-middle text-center w-100"
+                    >
+
+                        <thead class="table-dark">
+
+                            <tr>
+                                <th>Cédula</th>
+                                <th>Nombre</th>
+                                <th>Apellido</th>
+                                <th>Edad</th>
+                                <th>Teléfono</th>
+                                <th>Consultar</th>
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for admin in administradores %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ admin.cedula }}
+                                    </td>
+
+                                    <td>
+                                        {{ admin.nombre }}
+                                    </td>
+
+                                    <td>
+                                        {{ admin.apellido }}
+                                    </td>
+
+                                    <td>
+                                        {{ admin.edad }}
+                                    </td>
+
+                                    <td>
+                                        {{ admin.telefono|default:"—" }}
+                                    </td>
+
+                                    <td>
+
+                                        <a
+                                            href="{% url 'detalle_administrador' admin.id %}"
+                                            class="btn btn-sm"
+                                            style="background:#06b6d4;"
+                                            title="Ver Detalles"
+                                        >
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </a>
+
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+            {% else %}
+
+                <div class="alert alert-info text-center">
+                    No hay administradores registrados.
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
 </div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script src="https://cdn.datatables.net/v/bs5/dt-3.0.4/r-4.0.3/datatables.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const tabla =
+        document.querySelector("#tablaAdministradores");
+
+    if (!tabla) {
+        return;
+    }
+
+
+    const columnas = [
+
+        /* Centrar todas las columnas */
+        {
+            targets: "_all",
+            className: "dt-head-center dt-body-center"
+        },
+
+        /* Nombre */
+        {
+            targets: 1,
+            responsivePriority: 1
+        },
+
+        /* Apellido */
+        {
+            targets: 2,
+            responsivePriority: 2
+        },
+
+        /* Consultar */
+        {
+            targets: 5,
+            responsivePriority: 3,
+            orderable: false,
+            searchable: false
+        },
+
+        /* Edad */
+        {
+            targets: 3,
+            responsivePriority: 4
+        },
+
+        /* Cédula */
+        {
+            targets: 0,
+            responsivePriority: 5
+        },
+
+        /* Teléfono puede ocultarse primero */
+        {
+            targets: 4,
+            responsivePriority: 6
+        }
+    ];
+
+
+    new DataTable("#tablaAdministradores", {
+
+        layout: {
+            topStart: "pageLength",
+            topEnd: "search",
+            bottomStart: "info",
+            bottomEnd: "paging"
+        },
+
+        responsive: {
+
+            details: {
+
+                display: DataTable.Responsive.display.modal({
+
+                    header: function (row) {
+
+                        const temporalNombre =
+                            document.createElement("div");
+
+                        const temporalApellido =
+                            document.createElement("div");
+
+                        temporalNombre.innerHTML =
+                            row.data()[1];
+
+                        temporalApellido.innerHTML =
+                            row.data()[2];
+
+                        const nombre =
+                            temporalNombre.textContent.trim();
+
+                        const apellido =
+                            temporalApellido.textContent.trim();
+
+                        return "Datos de " +
+                            nombre +
+                            " " +
+                            apellido;
+                    }
+
+                }),
+
+                renderer:
+                    DataTable.Responsive.renderer.tableAll({
+                        tableClass:
+                            "table table-sm table-bordered align-middle"
+                    })
+            }
+        },
+
+        pageLength: 10,
+
+        lengthMenu: [
+            10,
+            25,
+            50,
+            100
+        ],
+
+        pagingType: "simple_numbers",
+
+        order: [
+            [2, "asc"],
+            [1, "asc"]
+        ],
+
+        columnDefs: columnas,
+
+        language: {
+
+            search:
+                "Buscar:",
+
+            lengthMenu:
+                "Mostrar _MENU_ filas",
+
+            info:
+                "Mostrando _START_ a _END_ de _TOTAL_ administradores",
+
+            infoEmpty:
+                "Mostrando 0 administradores",
+
+            infoFiltered:
+                "(filtrado de _MAX_ administradores)",
+
+            zeroRecords:
+                "No se encontraron administradores",
+
+            emptyTable:
+                "No hay administradores registrados",
+
+            paginate: {
+                previous: "Anterior",
+                next: "Siguiente"
+            }
+        }
+    });
+});
+</script>
+
 {% endblock %}

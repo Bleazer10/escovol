@@ -3798,15 +3798,19 @@ admin.site.register(Mensualidad)
 
 @user_passes_test(es_admin)
 def lista_administradores(request):
-    administradores = Administrador.objects.all().order_by("apellido")
-    paginator = Paginator(administradores, 8)  # 5 admins por página
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    administradores = Administrador.objects.all().order_by(
+        "apellido",
+        "nombre",
+        "id"
+    )
 
-    return render(request, "administradores/lista.html", {
-        "page_obj": page_obj,
-        "administradores": page_obj.object_list
-    })
+    return render(
+        request,
+        "administradores/lista.html",
+        {
+            "administradores": administradores,
+        }
+    )
 
 @user_passes_test(es_admin)
 def agregar_administrador(request):
