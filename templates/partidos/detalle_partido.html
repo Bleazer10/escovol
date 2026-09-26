@@ -1,92 +1,445 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block extra_head %}
+<style>
+  /* =========================
+     DETALLE DE PARTIDO
+     ========================= */
+
+  .detalle-partido-dato {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+  }
+
+  .detalle-partido-observaciones {
+    min-height: 80px;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+
+  .tabla-sets th,
+  .tabla-sets td {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  /* =========================
+     BOTONES DE ACCIÓN
+     ========================= */
+
+  .acciones-detalle {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .acciones-detalle .btn {
+    min-width: 120px;
+  }
+
+  /* =========================
+     MÓVIL
+     ========================= */
+
+  @media (max-width: 576px) {
+
+    .acciones-detalle {
+      flex-direction: column;
+      width: 100%;
+      gap: 0.65rem;
+    }
+
+    .acciones-detalle .btn {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .detalle-partido-dato {
+      min-height: auto;
+    }
+
+    .card-body {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+</style>
+{% endblock %}
+
+
 {% block content %}
+
 <div class="container mt-4">
+
+  <!-- =========================
+       MIGAS DE PAN
+       ========================= -->
+
   <nav aria-label="breadcrumb" class="mb-4">
+
     <ol class="breadcrumb">
+
       <li class="breadcrumb-item">
-        <a href="{% url 'menu_principal' %}" class="text-dark">
+
+        <a
+          href="{% url 'menu_principal' %}"
+          class="text-dark"
+        >
           <i class="fa-solid fa-house"></i>
         </a>
+
       </li>
+
       <li class="breadcrumb-item">
-        <a href="{% url 'lista_partidos' %}" class="text-dark"> Partidos</a>
+
+        <a
+          href="{% url 'lista_partidos' %}"
+          class="text-dark"
+        >
+          Partidos
+        </a>
+
       </li>
-      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
+
+      <li
+        class="breadcrumb-item active"
+        aria-current="page"
+      >
+        Detalle
+      </li>
+
     </ol>
+
   </nav>
 
-  <div class="card shadow rounded-4">
-    <div class="card-header text-white fw-bold text-center fs-4 rounded-top-4">
+
+  <!-- =========================
+       CARD PRINCIPAL
+       ========================= -->
+
+  <div class="card shadow rounded-4 border border-primary">
+
+    <div
+      class="card-header text-white fw-bold text-center fs-4 rounded-top-4"
+    >
       Detalle del Partido
     </div>
+
+
     <div class="card-body bg-light rounded-bottom-4">
+
+      <!-- =========================
+           INFORMACIÓN DEL PARTIDO
+           ========================= -->
+
       <div class="row g-3 mb-3">
-        <div class="col-md-6"><strong>Fecha:</strong> {{ partido.fecha|date:"d/m/Y" }}</div>
-        <div class="col-md-6"><strong>Hora:</strong> {{ partido.hora }}</div>
-        <div class="col-md-6"><strong>Equipo Local:</strong> {{ partido.equipo_local.nombre }}</div>
-        <div class="col-md-6"><strong>Equipo Externo:</strong> {{ partido.equipo_externo }}</div>
-        <div class="col-md-6"><strong>Lugar:</strong> {{ partido.lugar }}</div>
-        <div class="col-md-6"><strong>Campeonato:</strong> {{ partido.campeonato.nombre }}</div>
-        <div class="col-md-6"><strong>Estado:</strong> {{ partido.estado|capfirst }}</div>
-        <div class="col-md-6"><strong>Formato:</strong> {{ partido.formato_partido }}</div>
-        {% if partido.estado == "finalizado" %}
-          <div class="col-md-6"><strong>Ganador:</strong> 
-            {% if partido.ganador == "local" %}
-              Local
-            {% elif partido.ganador == "externo" %}
-              Equipo Externo
-            {% else %}
-              —
-            {% endif %}
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Fecha:</strong>
+              {{ partido.fecha|date:"d/m/Y" }}
+            </div>
+
           </div>
-        {% endif %}
-        <div class="col-12">
-          <strong>Observaciones:</strong>
-          <div class="border rounded p-2 mt-1 bg-white" style="min-height: 80px; font-size: 0.95rem;">
-            {{ partido.observaciones|linebreaksbr }}
-          </div>
+
         </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Hora:</strong>
+              {{ partido.hora|time:"H:i" }}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Equipo Local:</strong>
+              {{ partido.equipo_local.nombre }}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Equipo Externo:</strong>
+              {{ partido.equipo_externo }}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Lugar:</strong>
+              {{ partido.lugar|default:"—" }}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Campeonato:</strong>
+
+              {% if partido.campeonato %}
+                {{ partido.campeonato.nombre }}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Estado:</strong>
+
+              <span class="badge
+                {% if partido.estado == 'programado' %}
+                  bg-secondary
+                {% elif partido.estado == 'en_curso' %}
+                  bg-warning text-dark
+                {% elif partido.estado == 'finalizado' %}
+                  bg-success
+                {% elif partido.estado == 'cancelado' %}
+                  bg-danger
+                {% else %}
+                  bg-dark
+                {% endif %}
+              ">
+                {{ partido.get_estado_display }}
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="col-md-6">
+
+          <div class="detalle-partido-dato">
+
+            <div>
+              <strong>Formato:</strong>
+              {{ partido.get_formato_partido_display }}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {% if partido.estado == "finalizado" %}
+
+          <div class="col-md-6">
+
+            <div class="detalle-partido-dato">
+
+              <div>
+                <strong>Ganador:</strong>
+
+                {% if partido.ganador == "local" %}
+
+                  {{ partido.equipo_local.nombre }}
+
+                {% elif partido.ganador == "externo" %}
+
+                  {{ partido.equipo_externo }}
+
+                {% else %}
+
+                  —
+
+                {% endif %}
+
+              </div>
+
+            </div>
+
+          </div>
+
+        {% endif %}
+
+
+        <!-- =========================
+             OBSERVACIONES
+             ========================= -->
+
+        <div class="col-12">
+
+          <strong>
+            Observaciones:
+          </strong>
+
+          <div
+            class="border rounded p-3 mt-1 bg-white detalle-partido-observaciones"
+          >
+
+            {% if partido.observaciones %}
+
+              {{ partido.observaciones|linebreaksbr }}
+
+            {% else %}
+
+              <span class="text-muted">
+                Sin observaciones.
+              </span>
+
+            {% endif %}
+
+          </div>
+
+        </div>
+
       </div>
+
+
+      <!-- =========================
+           RESULTADO POR SETS
+           ========================= -->
 
       {% if sets %}
-      <hr>
-      <h5 class="text-center fw-bold mb-3">Resultado por Sets</h5>
-      <table class="table table-bordered text-center">
-        <thead class="table-dark">
-          <tr>
-            <th>Set</th>
-            <th>Local</th>
-            <th>Externo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for num, local, externo in sets %}
-          <tr>
-            <td>{{ num }}</td>
-            <td>{{ local }}</td>
-            <td>{{ externo }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+
+        <hr>
+
+        <h5 class="text-center fw-bold mb-3">
+          Resultado por Sets
+        </h5>
+
+
+        <div class="table-responsive">
+
+          <table
+            class="table table-bordered tabla-sets align-middle"
+          >
+
+            <thead class="table-dark">
+
+              <tr>
+                <th>Set</th>
+                <th>Local</th>
+                <th>Externo</th>
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              {% for num, local, externo in sets %}
+
+                <tr>
+
+                  <td class="fw-semibold">
+                    {{ num }}
+                  </td>
+
+                  <td>
+                    {{ local }}
+                  </td>
+
+                  <td>
+                    {{ externo }}
+                  </td>
+
+                </tr>
+
+              {% endfor %}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
       {% endif %}
 
-      <div class="d-flex justify-content-center gap-3 mt-4">
-        <a href="{% url 'editar_partido' partido.id %}" class="btn" style="background: #4caf50;">
-          <i class="fas fa-edit"></i> Editar
+
+      <!-- =========================
+           BOTONES DE ACCIÓN
+           ========================= -->
+
+      <div class="acciones-detalle">
+
+        <a
+          href="{% url 'editar_partido' partido.id %}"
+          class="btn"
+          style="background: #4caf50;"
+        >
+          <i class="fas fa-edit me-1"></i>
+          Editar
         </a>
+
+
         {% if is_admin %}
-          <a href="{% url 'eliminar_partido' partido.id %}" class="btn btn-danger">
-            <i class="fas fa-trash-alt"></i> Eliminar
+
+          <a
+            href="{% url 'eliminar_partido' partido.id %}"
+            class="btn btn-danger"
+          >
+            <i class="fas fa-trash-alt me-1"></i>
+            Eliminar
           </a>
+
         {% endif %}
-        <a href="{% url 'lista_partidos' %}" class="btn" style="background: #f8b100;">
-          <i class="fa-solid fa-arrow-left"></i> Volver
+
+
+        <a
+          href="{% url 'lista_partidos' %}"
+          class="btn"
+          style="background: #f8b100;"
+        >
+          <i class="fa-solid fa-arrow-left me-1"></i>
+          Volver
         </a>
+
       </div>
+
     </div>
+
   </div>
+
 </div>
+
 {% endblock %}
