@@ -2060,9 +2060,20 @@ def exportar_pagos_pdf(request):
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def reporte_atletas_view(request):
-    categorias = ['U9', 'U11', 'U13', 'U15', 'U17', 'U19', 'U21', 'U23', 'Libre']
+    categorias = [
+        'U9',
+        'U11',
+        'U13',
+        'U15',
+        'U17',
+        'U19',
+        'U21',
+        'U23',
+        'Libre'
+    ]
+
     atletas = Atleta.objects.all()
-    
+
     cedula = request.GET.get('cedula', '').strip()
     nombre = request.GET.get('nombre', '').strip()
     categoria = request.GET.get('categoria', '')
@@ -2071,24 +2082,61 @@ def reporte_atletas_view(request):
     sexo = request.GET.get('sexo', '').strip()
 
     if cedula:
-        atletas = atletas.filter(cedula__icontains=cedula)
-    if nombre:
-        atletas = atletas.filter(nombre__icontains=nombre) | atletas.filter(apellido__icontains=nombre)
-    if categoria:
-        atletas = atletas.filter(categoria=categoria)
-    if edad_min:
-        atletas = atletas.filter(fecha_nacimiento__year__lte=timezone.localdate().year - int(edad_min))
-    if edad_max:
-        atletas = atletas.filter(fecha_nacimiento__year__gte=timezone.localdate().year - int(edad_max))
-    if sexo:
-        atletas = atletas.filter(sexo__iexact=sexo)
+        atletas = atletas.filter(
+            cedula__icontains=cedula
+        )
 
-    años_disponibles = sorted({a.fecha_registro.year for a in Atleta.objects.all()})
+    if nombre:
+        atletas = (
+            atletas.filter(nombre__icontains=nombre)
+            |
+            atletas.filter(apellido__icontains=nombre)
+        )
+
+    if categoria:
+        atletas = atletas.filter(
+            categoria=categoria
+        )
+
+    if edad_min:
+        atletas = atletas.filter(
+            fecha_nacimiento__year__lte=
+            timezone.localdate().year - int(edad_min)
+        )
+
+    if edad_max:
+        atletas = atletas.filter(
+            fecha_nacimiento__year__gte=
+            timezone.localdate().year - int(edad_max)
+        )
+
+    if sexo:
+        atletas = atletas.filter(
+            sexo__iexact=sexo
+        )
+
+    años_disponibles = sorted({
+        atleta.fecha_registro.year
+        for atleta in Atleta.objects.all()
+    })
+
+    # Orden estable para evitar
+    # UnorderedObjectListWarning en la paginación
+    atletas = atletas.order_by(
+        'apellido',
+        'nombre',
+        'id'
+    )
 
     # PAGINACIÓN
     from django.core.paginator import Paginator
-    paginator = Paginator(atletas, 15)  # 15 atletas por página
-    page_number = request.GET.get("page")
+
+    paginator = Paginator(
+        atletas,
+        15
+    )
+
+    page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
@@ -2105,7 +2153,12 @@ def reporte_atletas_view(request):
         },
         'page_obj': page_obj,
     }
-    return render(request, 'reportes/reporte_atletas.html', context)
+
+    return render(
+        request,
+        'reportes/reporte_atletas.html',
+        context
+    )
 
 def aplicar_filtros(request):
     atletas = Atleta.objects.all()
@@ -3010,40 +3063,84 @@ def reporte_equipos(request):
     sexo_param = request.GET.get("sexo", "").strip()
     entrenador_id = request.GET.get("entrenador_id", "").strip()
 
-    equipos = Equipo.objects.all().annotate(num_atletas=Count("atletas"))
+    equipos = (
+        Equipo.objects
+        .all()
+        .annotate(num_atletas=Count("atletas"))
+    )
 
     # filtro por nombre
     if nombre:
-        equipos = equipos.filter(nombre__icontains=nombre)
+        equipos = equipos.filter(
+            nombre__icontains=nombre
+        )
 
     # filtro por sexo
     sexo_normalizado = ""
+
     if sexo_param:
         s = sexo_param.lower()
-        if s in ("masculino", "femenino", "mixto"):
+
+        if s in (
+            "masculino",
+            "femenino",
+            "mixto"
+        ):
             sexo_normalizado = s
+
         elif s == "m":
             sexo_normalizado = "masculino"
+
         elif s == "f":
             sexo_normalizado = "femenino"
+
     if sexo_normalizado:
-        equipos = equipos.filter(sexo_equipo=sexo_normalizado)
+        equipos = equipos.filter(
+            sexo_equipo=sexo_normalizado
+        )
 
     # filtro por entrenador
     if entrenador_id and entrenador_id.isdigit():
-        equipos = equipos.filter(entrenador__id=int(entrenador_id))
+        equipos = equipos.filter(
+            entrenador__id=int(entrenador_id)
+        )
 
-    paginator = Paginator(equipos, 10)
-    page_obj = paginator.get_page(request.GET.get("page"))
+    # Orden estable para evitar
+    # UnorderedObjectListWarning en la paginación
+    equipos = equipos.order_by(
+        "nombre",
+        "id"
+    )
+
+    paginator = Paginator(
+        equipos,
+        10
+    )
+
+    page_obj = paginator.get_page(
+        request.GET.get("page")
+    )
 
     context = {
         "page_obj": page_obj,
-        "entrenadores": Entrenador.objects.all().order_by("nombre", "apellido"),
+        "entrenadores": (
+            Entrenador.objects
+            .all()
+            .order_by(
+                "nombre",
+                "apellido"
+            )
+        ),
         "nombre": nombre,
         "sexo": sexo_normalizado or sexo_param,
         "entrenador_id": entrenador_id,
     }
-    return render(request, "reportes/reporte_equipos.html", context)
+
+    return render(
+        request,
+        "reportes/reporte_equipos.html",
+        context
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def exportar_equipo_pdf(request, equipo_id):
@@ -3147,10 +3244,18 @@ def exportar_equipo_pdf(request, equipo_id):
 # VISTA PRINCIPAL DEL REPORTE DE ENTRENADORES
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def reporte_entrenadores_view(request):
-    entrenadores = Entrenador.objects.all()
+    entrenadores = Entrenador.objects.all().order_by(
+        "apellido",
+        "nombre",
+        "id"
+    )
 
     # PAGINACIÓN
-    paginator = Paginator(entrenadores, 10)  # 10 entrenadores por página
+    paginator = Paginator(
+        entrenadores,
+        10
+    )
+
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
@@ -3158,8 +3263,12 @@ def reporte_entrenadores_view(request):
         "entrenadores": page_obj,
         "page_obj": page_obj,
     }
-    return render(request, "reportes/reporte_entrenadores.html", context)
 
+    return render(
+        request,
+        "reportes/reporte_entrenadores.html",
+        context
+    )
 
 # EXPORTACIÓN EXCEL
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
