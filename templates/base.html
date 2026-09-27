@@ -42,6 +42,128 @@
         .pagination .page-item .page-link {
             border-color: #2A73B6;
         }
+
+        /* =========================================
+        PAGINACIÓN RESPONSIVE
+        ========================================= */
+
+        /*
+        * Escritorio conserva la paginación
+        * tradicional con todos los números.
+        */
+        .pagination {
+            justify-content: center;
+        }
+
+
+        /* =========================================
+        MÓVIL
+        ========================================= */
+
+        @media (max-width: 576px) {
+
+            /*
+            * En móvil mostramos solamente:
+            *
+            * Anterior | página actual | Siguiente
+            *
+            * Los demás números siguen existiendo
+            * normalmente en escritorio.
+            */
+            .pagination {
+                width: 100%;
+                max-width: 100%;
+                margin-bottom: 0;
+
+                display: flex;
+                flex-wrap: nowrap;
+                justify-content: center;
+                align-items: center;
+
+                gap: 0.4rem;
+            }
+
+            /*
+            * Ocultamos únicamente los números
+            * de página que no sean el actual.
+            *
+            * El primer elemento es "Anterior".
+            * El último es "Siguiente".
+            */
+            .pagination
+            .page-item:not(:first-child):not(:last-child):not(.active) {
+                display: none;
+            }
+
+            /*
+            * Botones compactos y consistentes.
+            */
+            .pagination .page-link {
+                min-width: 42px;
+                padding: 0.45rem 0.75rem !important;
+
+                text-align: center;
+                white-space: nowrap;
+
+                border-radius: 0.4rem !important;
+                font-size: 0.875rem;
+                line-height: 1.25;
+            }
+
+            /*
+            * Anterior y Siguiente pueden ocupar
+            * un poco más de espacio.
+            */
+            .pagination .page-item:first-child .page-link,
+            .pagination .page-item:last-child .page-link {
+                min-width: 88px;
+            }
+        }
+
+
+        /* =========================================
+        TELÉFONOS MUY PEQUEÑOS
+        320px - 340px
+        ========================================= */
+
+        @media (max-width: 340px) {
+
+            .pagination {
+                gap: 0.3rem;
+            }
+
+            /*
+            * En 320px dejamos únicamente las
+            * flechas para evitar cualquier
+            * posibilidad de desbordamiento.
+            */
+            .pagination .page-item:first-child .page-link,
+            .pagination .page-item:last-child .page-link {
+                min-width: 44px;
+                padding-left: 0.55rem !important;
+                padding-right: 0.55rem !important;
+
+                font-size: 0;
+            }
+
+            .pagination .page-item:first-child .page-link::after {
+                content: "←";
+                font-size: 0.9rem;
+            }
+
+            .pagination .page-item:last-child .page-link::after {
+                content: "→";
+                font-size: 0.9rem;
+            }
+
+            /*
+            * Página actual.
+            */
+            .pagination .page-item.active .page-link {
+                min-width: 44px;
+                font-size: 0.9rem;
+            }
+        }
             
     </style>
 
