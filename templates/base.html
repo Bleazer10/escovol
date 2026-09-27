@@ -176,10 +176,24 @@
     <nav class="navbar navbar-expand-lg bg-escovol navbar-dark shadow-sm">
         <div class="container-fluid px-4">
 
-            <!-- Logo -->
-            <a class="navbar-brand d-flex align-items-center">
-                <img src="{% static 'img/logo-olympo.jpeg' %}" alt="Logo Olympo" width="55" height="55" class="me-2 rounded-circle shadow">
-                <span class="fw-bold text-white">OLYMPO</span>
+            <!-- Logo / acceso al Dashboard -->
+            <a
+                class="navbar-brand d-flex align-items-center"
+                href="{% url 'menu_principal' %}"
+                title="Ir al menú principal"
+                aria-label="Ir al menú principal"
+            >
+                <img
+                    src="{% static 'img/logo-olympo.jpeg' %}"
+                    alt="Logo OLYMPO"
+                    width="55"
+                    height="55"
+                    class="me-2 rounded-circle shadow"
+                >
+
+                <span class="fw-bold text-white">
+                    OLYMPO
+                </span>
             </a>
 
             <!-- Botón móvil -->
