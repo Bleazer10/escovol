@@ -739,24 +739,37 @@
             </li>
 
 
-            <li class="breadcrumb-item">
+            {% if modo_atleta %}
 
-                <a
-                    href="{% url 'administracion' %}"
-                    class="link-body-emphasis"
+                <li
+                    class="breadcrumb-item active"
+                    aria-current="page"
                 >
-                    Administración
-                </a>
+                    Mi mensualidad
+                </li>
 
-            </li>
+            {% else %}
+
+                <li class="breadcrumb-item">
+
+                    <a
+                        href="{% url 'administracion' %}"
+                        class="link-body-emphasis"
+                    >
+                        Administración
+                    </a>
+
+                </li>
 
 
-            <li
-                class="breadcrumb-item active"
-                aria-current="page"
-            >
-                Ficha financiera
-            </li>
+                <li
+                    class="breadcrumb-item active"
+                    aria-current="page"
+                >
+                    Ficha financiera
+                </li>
+
+            {% endif %}
 
         </ol>
 
@@ -829,7 +842,7 @@
         >
 
 
-            <div class="col-lg-6">
+            <div class="{% if modo_atleta %}col-lg-8{% else %}col-lg-6{% endif %}">
 
                 <div
                     class="
@@ -862,7 +875,13 @@
                     >
 
                         <div class="small opacity-75">
-                            Ficha financiera
+
+                            {% if modo_atleta %}
+                                Mi mensualidad
+                            {% else %}
+                                Ficha financiera
+                            {% endif %}
+
                         </div>
 
                         <h2 class="mb-1">
@@ -892,7 +911,7 @@
 
 
 
-            <div class="col-lg-3">
+            <div class="{% if modo_atleta %}col-lg-4{% else %}col-lg-3{% endif %}">
 
                 <form
                     method="get"
@@ -949,40 +968,41 @@
 
 
 
-            <div class="col-lg-3">
+            {% if not modo_atleta %}
 
-                <div
-                    class="
-                        d-flex
-                        justify-content-lg-end
-                        justify-content-center
-                        acciones-header
-                    "
-                >
+                <div class="col-lg-3">
 
-                    <a
-                        href="{% url 'administracion' %}"
+                    <div
                         class="
-                            btn
-                            btn-light
+                            d-flex
+                            justify-content-lg-end
+                            justify-content-center
+                            acciones-header
                         "
                     >
 
-                        <i
-                            class="
-                                fa-solid
-                                fa-arrow-left
-                                me-1
-                            "
-                        ></i>
+                        <a
+                            href="{% url 'administracion' %}"
+                            class="btn btn-light"
+                        >
 
-                        Administración
+                            <i
+                                class="
+                                    fa-solid
+                                    fa-arrow-left
+                                    me-1
+                                "
+                            ></i>
 
-                    </a>
+                            Administración
+
+                        </a>
+
+                    </div>
 
                 </div>
 
-            </div>
+            {% endif %}
 
 
         </div>
@@ -994,6 +1014,8 @@
     <!-- =====================================
          RESUMEN GENERAL
          ===================================== -->
+
+    {% if not modo_atleta %}
 
     <div class="row g-3 mb-4">
 
@@ -1256,6 +1278,7 @@
 
     </div>
 
+    {% endif %}
 
 
     <!-- =====================================
@@ -1275,11 +1298,23 @@
         <div class="card-body">
 
             <h5 class="mb-1 fw-bold">
-                Resumen de períodos
+
+                {% if modo_atleta %}
+                    Estado de mis mensualidades
+                {% else %}
+                    Resumen de períodos
+                {% endif %}
+
             </h5>
 
             <div class="small text-muted mb-3">
-                Distribución de estados durante {{ año_seleccionado }}
+
+                {% if modo_atleta %}
+                    Consulta cómo se encuentra cada mes durante {{ año_seleccionado }}.
+                {% else %}
+                    Distribución de estados durante {{ año_seleccionado }}
+                {% endif %}
+
             </div>
 
 
@@ -1455,7 +1490,9 @@
 
                             <th>Movimientos</th>
 
-                            <th>Acción</th>
+                            {% if not modo_atleta %}
+                                <th>Acción</th>
+                            {% endif %}
 
                         </tr>
 
@@ -1745,6 +1782,8 @@
 
 
 
+                                {% if not modo_atleta %}
+
                                 <!-- Acción -->
 
                                 <td>
@@ -1929,6 +1968,8 @@
 
                                 </td>
 
+
+                                {% endif %}
 
                             </tr>
 
@@ -2225,6 +2266,8 @@
 
 
 
+                        {% if not modo_atleta %}
+
                         {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "parcial" or periodo.estado_codigo == "sin_registro" %}
 
                             <a
@@ -2305,6 +2348,8 @@
 
                         {% endif %}
 
+                        {% endif %}
+
 
                     </div>
 
@@ -2322,6 +2367,8 @@
     <!-- =====================================
          MODALES EXONERACIÓN
          ===================================== -->
+
+    {% if not modo_atleta %}
 
     {% for periodo in periodos %}
 
@@ -2723,6 +2770,7 @@
 
     {% endfor %}
 
+    {% endif %}
 
 
     <!-- =====================================
@@ -3160,6 +3208,7 @@
 
                                     {% if movimiento.estado == "activo" %}
 
+                                        {% if not modo_atleta %}
 
                                         <div class="acciones-movimiento">
 
@@ -3420,6 +3469,8 @@
                                             </div>
 
                                         </div>
+
+                                        {% endif %}
 
 
 

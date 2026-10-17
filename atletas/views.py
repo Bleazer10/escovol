@@ -1246,7 +1246,11 @@ def exonerar_periodo_financiero(
         "administracion"
     )
 
-@user_passes_test(es_admin)
+@user_passes_test(
+    lambda u:
+        es_admin(u)
+        or es_atleta(u)
+)
 def detalle_financiero_atleta(
     request,
     atleta_id,
@@ -1271,6 +1275,27 @@ def detalle_financiero_atleta(
         Atleta,
         pk=atleta_id,
     )
+
+    # =========================================
+    # MODO DE VISUALIZACIÓN
+    # =========================================
+
+    modo_atleta = (
+        es_atleta(request.user)
+        and not es_admin(request.user)
+    )
+
+
+    # Un atleta solamente puede consultar
+    # su propia información financiera.
+    if (
+        modo_atleta
+        and atleta.user_id
+        != request.user.id
+    ):
+        return redirect(
+            "bienvenida"
+        )
 
     hoy = timezone.localdate()
 
@@ -2175,6 +2200,8 @@ def detalle_financiero_atleta(
         "fecha_hoy":
             hoy,
 
+        "modo_atleta":
+            modo_atleta,
     }
 
 

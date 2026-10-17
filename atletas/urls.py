@@ -55,6 +55,11 @@ urlpatterns = [
         views.exonerar_periodo_financiero,
         name='exonerar_periodo_financiero',
     ),
+    path(
+        'mi-mensualidad/<int:atleta_id>/',
+        views.detalle_financiero_atleta,
+        name='mi_mensualidad',
+    ),
     path('atletas/<int:atleta_id>/estadisticas/agregar/', views.agregar_estadistica, name='agregar_estadistica'),
     path('atletas/<int:atleta_id>/estadisticas/', views.ver_estadisticas, name='ver_estadisticas'),
     path('estadisticas/<int:pk>/editar/', views.editar_estadistica, name='editar_estadistica'),

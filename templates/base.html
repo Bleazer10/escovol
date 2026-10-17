@@ -266,11 +266,32 @@
 
                     {% if is_athlete %}
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'ver_estadisticas' atleta_id=atleta_id %}">Mis estadísticas</a>
+                            <a
+                                class="nav-link text-white"
+                                href="{% url 'detalle_atleta' atleta_id=atleta_id %}"
+                            >
+                                Mi Perfil
+                            </a>
                         </li>
+
                         <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'detalle_atleta' atleta_id=atleta_id %}">Mi Perfil</a>
+                            <a
+                                class="nav-link text-white"
+                                href="{% url 'ver_estadisticas' atleta_id=atleta_id %}"
+                            >
+                                Mis estadísticas
+                            </a>
                         </li>
+
+                        <li class="nav-item">
+                            <a
+                                class="nav-link text-white"
+                                href="{% url 'mi_mensualidad' atleta_id=atleta_id %}"
+                            >
+                                Mensualidad
+                            </a>
+                        </li>
+
                     {% endif %}
                 </ul>
 
