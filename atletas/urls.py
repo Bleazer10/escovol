@@ -8,7 +8,53 @@ urlpatterns = [
     path('<int:atleta_id>/editar/', views.editar_atleta, name='editar_atleta'),
     path('<int:atleta_id>/eliminar/', views.eliminar_atleta, name='eliminar_atleta'),
     path('administracion/', views.administracion, name='administracion'),
-    path('mensualidad/<int:mensualidad_id>/actualizar/', views.actualizar_mensualidad, name='actualizar_mensualidad'),
+    path(
+        'administracion/pago/registrar/',
+        views.registrar_pago_administracion,
+        name='registrar_pago_administracion'
+    ),
+
+    path(
+        'administracion/tasa/actualizar/',
+        views.actualizar_tasa_bcv,
+        name='actualizar_tasa_bcv'
+    ),
+    path(
+        'administracion/tarifa/guardar/',
+        views.guardar_tarifa_mensual,
+        name='guardar_tarifa_mensual'
+    ),
+    path(
+        'administracion/tasa/manual/',
+        views.guardar_tasa_manual,
+        name='guardar_tasa_manual'
+    ),
+    path(
+        'administracion/pago/<int:pago_id>/anular/',
+        views.anular_pago_administracion,
+        name='anular_pago_administracion'
+    ),
+    path(
+        'administracion/mensualidad/<int:mensualidad_id>/exonerar/',
+        views.exonerar_mensualidad_administracion,
+        name='exonerar_mensualidad_administracion'
+    ),
+
+    path(
+        'administracion/mensualidad/<int:mensualidad_id>/quitar-exoneracion/',
+        views.quitar_exoneracion_administracion,
+        name='quitar_exoneracion_administracion'
+    ),
+    path(
+        'administracion/atleta/<int:atleta_id>/finanzas/',
+        views.detalle_financiero_atleta,
+        name='detalle_financiero_atleta',
+    ),
+    path(
+        'administracion/atleta/<int:atleta_id>/finanzas/exonerar-periodo/',
+        views.exonerar_periodo_financiero,
+        name='exonerar_periodo_financiero',
+    ),
     path('atletas/<int:atleta_id>/estadisticas/agregar/', views.agregar_estadistica, name='agregar_estadistica'),
     path('atletas/<int:atleta_id>/estadisticas/', views.ver_estadisticas, name='ver_estadisticas'),
     path('estadisticas/<int:pk>/editar/', views.editar_estadistica, name='editar_estadistica'),

@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from datetime import datetime
-from atletas.models import Atleta, Mensualidad, Equipo, Partido, Estadistica
+from atletas.models import Atleta, Equipo, Partido, Estadistica
 from datetime import datetime, timedelta
 from django.db.models import Sum, Max
 from collections import defaultdict
@@ -17,27 +17,59 @@ from django.contrib import messages
 @login_required
 def menu_principal(request):
     hoy = timezone.localtime()
-    semana_offset = int(request.GET.get('semana', 0))  # Desplazamiento de semanas
-    inicio_semana = hoy - timedelta(days=hoy.weekday()) + timedelta(weeks=semana_offset)
-    fin_semana = inicio_semana + timedelta(days=6)
 
-    # Totales generales
+    # =========================================
+    # SEMANA DEL CALENDARIO
+    # =========================================
+
+    semana_offset = int(
+        request.GET.get(
+            'semana',
+            0
+        )
+    )
+
+    inicio_semana = (
+        hoy
+        - timedelta(
+            days=hoy.weekday()
+        )
+        + timedelta(
+            weeks=semana_offset
+        )
+    )
+
+    fin_semana = (
+        inicio_semana
+        + timedelta(
+            days=6
+        )
+    )
+
+
+    # =========================================
+    # DATOS GENERALES
+    # =========================================
+
     mes_actual = hoy.month
     año_actual = hoy.year
-    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
-    año_mes_anterior = año_actual if mes_actual > 1 else año_actual - 1
 
-    total_atletas = Atleta.objects.count()
-    total_recaudado = Mensualidad.objects.filter(
-        mes=mes_actual, año=año_actual
-    ).aggregate(total=Sum('monto_pagado'))['total'] or 0
+    mes_anterior = (
+        mes_actual - 1
+        if mes_actual > 1
+        else 12
+    )
 
-    # Establecer fechas
-    hoy = timezone.localtime()
-    mes_actual = hoy.month
-    año_actual = hoy.year
-    mes_anterior = mes_actual - 1 if mes_actual > 1 else 12
-    año_mes_anterior = año_actual if mes_actual > 1 else año_actual - 1
+    año_mes_anterior = (
+        año_actual
+        if mes_actual > 1
+        else año_actual - 1
+    )
+
+
+    total_atletas = (
+        Atleta.objects.count()
+    )
 
     # Estadísticas del mes actual para roles
     estadisticas_mes_actual = Estadistica.objects.select_related('atleta').filter(
@@ -204,7 +236,6 @@ def menu_principal(request):
         'total_atletas': total_atletas,
         'partidos_ganados_mes': partidos_ganados_mes,
         'total_partidos_mes': total_partidos_mes,
-        'total_recaudado': total_recaudado,
         'jugador_destacado': jugador_destacado,
         'mejores_por_rol': mejores_por_rol_list,
         'equipo_destacado': equipo_destacado,

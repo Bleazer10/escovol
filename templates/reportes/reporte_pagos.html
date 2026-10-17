@@ -1,193 +1,2456 @@
 {% extends "base.html" %}
-{% load static %}
+{% load humanize %}
+{% load l10n %}
+
+{% block extra_head %}
+
+<style>
+
+/* =========================================
+   REPORTE FINANCIERO
+   ========================================= */
+
+.reporte-financiero {
+    min-width: 0;
+}
+
+
+/* =========================================
+   HEADER
+   ========================================= */
+
+.reporte-header {
+    background:
+        linear-gradient(
+            135deg,
+            #2A73B6,
+            #158EFF
+        );
+
+    color: white;
+
+    border-radius: 1rem;
+
+    padding: 1.4rem;
+
+    margin-bottom: 1.25rem;
+
+    box-shadow:
+        0 .45rem 1.2rem
+        rgba(0, 0, 0, .10);
+}
+
+.reporte-header-titulo {
+    margin: 0;
+
+    font-weight: 700;
+}
+
+.reporte-header-descripcion {
+    margin-top: .3rem;
+
+    opacity: .88;
+
+    font-size: .9rem;
+}
+
+
+/* =========================================
+   FILTROS
+   ========================================= */
+
+.filtros-card {
+    border: 0;
+
+    border-radius: 1rem;
+
+    box-shadow:
+        0 .25rem .9rem
+        rgba(0, 0, 0, .08);
+}
+
+.filtros-card .card-body {
+    padding: 1.15rem;
+}
+
+.filtros-titulo {
+    display: flex;
+
+    align-items: center;
+
+    gap: .5rem;
+
+    font-weight: 700;
+}
+
+.filtros-card .form-label {
+    margin-bottom: .35rem;
+
+    color: #495057;
+
+    font-size: .78rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+
+    letter-spacing: .02em;
+}
+
+.filtros-card .form-control,
+.filtros-card .form-select {
+    border-radius: .6rem;
+}
+
+.btn-filtrar,
+.btn-limpiar {
+    border-radius: .6rem;
+
+    font-weight: 600;
+}
+
+
+/* =========================================
+   TARJETAS RESUMEN
+   ========================================= */
+
+.resumen-card {
+    height: 100%;
+
+    border: 0;
+
+    border-radius: 1rem;
+
+    box-shadow:
+        0 .2rem .75rem
+        rgba(0, 0, 0, .07);
+}
+
+.resumen-card .card-body {
+    padding: 1rem;
+}
+
+.resumen-icono {
+    width: 40px;
+    height: 40px;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: .75rem;
+
+    font-size: 1rem;
+}
+
+.resumen-label {
+    margin-top: .7rem;
+
+    color: #6c757d;
+
+    font-size: .74rem;
+    font-weight: 700;
+
+    text-transform: uppercase;
+}
+
+.resumen-valor {
+    margin-top: .15rem;
+
+    font-size: 1.25rem;
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================
+   RESUMEN DE ESTADOS
+   ========================================= */
+
+.estados-reporte {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: .5rem;
+}
+
+.estado-resumen {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: .4rem;
+
+    padding: .42rem .65rem;
+
+    border: 1px solid #e3e7ea;
+
+    border-radius: .65rem;
+
+    background: #fff;
+
+    font-size: .8rem;
+}
+
+.estado-resumen .badge {
+    min-width: 26px;
+}
+
+
+/* =========================================
+   CABECERA DE TABLA
+   ========================================= */
+
+.reporte-tabla-card {
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 .3rem 1rem rgba(0, 0, 0, .08);
+    overflow: hidden;
+}
+
+.reporte-tabla-header {
+    padding: .9rem 1rem;
+
+    background:
+        linear-gradient(
+            to right,
+            #2A73B6,
+            #158EFF,
+            #158EFF
+        );
+
+    color: white;
+
+    border-bottom: 0;
+}
+
+.reporte-tabla-controles {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.reporte-cantidad {
+    color: rgba(
+        255,
+        255,
+        255,
+        .82
+    );
+
+    font-size: .8rem;
+}
+
+.selector-filas {
+    display: flex;
+
+    align-items: center;
+
+    gap: .5rem;
+
+    white-space: nowrap;
+}
+
+.selector-filas label {
+    margin: 0;
+
+    color: rgba(
+        255,
+        255,
+        255,
+        .9
+    );
+
+    font-size: .8rem;
+
+    font-weight: 500;
+}
+
+.selector-filas .form-select {
+    width: 76px;
+
+    border: 0;
+
+    border-radius: .55rem;
+
+    background-color: white;
+
+    color: #212529;
+
+    font-size: .82rem;
+
+    font-weight: 600;
+
+    box-shadow:
+        0 .15rem .4rem
+        rgba(0, 0, 0, .10);
+}
+
+.selector-filas .form-select:focus {
+    border-color: transparent;
+
+    box-shadow:
+        0 0 0 .18rem
+        rgba(255, 255, 255, .28);
+}
+
+.selector-filas .text-muted {
+    color:
+        rgba(
+            255,
+            255,
+            255,
+            .9
+        ) !important;
+}
+
+
+/* =========================================
+   TABLA - ESTILO CLÁSICO MEJORADO
+   ========================================= */
+
+.reporte-tabla-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.tabla-reporte {
+    width: 100%;
+    min-width: 1460px;
+    margin: 0;
+}
+
+.tabla-reporte th,
+.tabla-reporte td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+.tabla-reporte thead th {
+    padding: .68rem .4rem;
+    background: #212529;
+    color: white;
+    border-color: #343a40;
+    white-space: nowrap;
+    font-size: .73rem;
+}
+
+.tabla-reporte tbody td {
+    padding: .58rem .4rem;
+    font-size: .79rem;
+}
+
+.col-atleta {
+    min-width: 165px;
+}
+
+.col-identificacion {
+    min-width: 90px;
+}
+
+.col-categoria {
+    min-width: 86px;
+}
+
+.col-periodo {
+    min-width: 80px;
+    width: 80px;
+}
+
+.col-pagado {
+    min-width: 118px;
+}
+
+.col-pendiente {
+    min-width: 90px;
+}
+
+.col-cobertura {
+    min-width: 82px;
+}
+
+
+/* =========================================
+   ATLETA
+   ========================================= */
+
+.atleta-info {
+    text-align: left;
+}
+
+.atleta-nombre {
+    font-weight: 700;
+    color: #212529;
+}
+
+.atleta-ficha {
+    margin-top: .18rem;
+    font-size: .7rem;
+}
+
+
+/* =========================================
+   ESTADO DEL MES
+   ========================================= */
+
+.estado-mes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .18rem;
+}
+
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    max-width: 76px;
+    min-height: 29px;
+    padding: .32rem .35rem;
+    border-radius: .48rem;
+    font-size: .64rem;
+    font-weight: 700;
+    line-height: 1.05;
+    white-space: normal;
+    text-align: center;
+}
+
+.estado-al-dia {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.estado-parcial {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+.estado-pendiente {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.estado-exonerado {
+    background: #cff4fc;
+    color: #055160;
+}
+
+.estado-sin-registro {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.estado-proximo {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+.estado-sin-tarifa {
+    background: #343a40;
+    color: #fff;
+}
+
+.estado-monto {
+    color: #6c757d;
+    font-size: .62rem;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+
+/* =========================================
+   PAGADO - BS + USD EN UNA SOLA COLUMNA
+   ========================================= */
+
+.pagado-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .16rem;
+}
+
+.pagado-bs {
+    color: #198754;
+    font-size: .69rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pagado-usd {
+    color: #0d6efd;
+    font-size: .78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.total-pendiente {
+    color: #dc3545;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sin-deuda {
+    color: #198754;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cobertura-valor {
+    font-size: .83rem;
+    font-weight: 700;
+}
+
+.cobertura-texto {
+    margin-top: .08rem;
+    color: #6c757d;
+    font-size: .61rem;
+}
+
+
+/* =========================================
+   LEYENDA
+   ========================================= */
+
+.leyenda-reporte {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .45rem .8rem;
+    padding: .9rem 1rem;
+    border-top: 1px solid #edf0f2;
+    background: #fafbfc;
+}
+
+.leyenda-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    color: #6c757d;
+    font-size: .73rem;
+}
+
+.leyenda-muestra {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+
+/* =========================================
+   AVISO DE SCROLL
+   ========================================= */
+
+.scroll-info {
+    display: none;
+    padding: .55rem .8rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-bottom: 1px solid #edf0f2;
+    font-size: .72rem;
+}
+
+
+/* =========================================
+   PAGINACIÓN
+   ========================================= */
+
+.paginacion-contenedor {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    margin-bottom: 1.5rem;
+}
+
+.paginacion-info {
+    color: #6c757d;
+
+    font-size: .8rem;
+}
+
+
+/* Contenedor */
+
+.paginacion-navegacion {
+    min-width: 0;
+
+    overflow-x: auto;
+
+    scrollbar-width: none;
+}
+
+.paginacion-navegacion::-webkit-scrollbar {
+    display: none;
+}
+
+
+/* Lista */
+
+.paginacion-reporte {
+    display: flex;
+
+    align-items: center;
+
+    flex-wrap: nowrap !important;
+
+    gap: .2rem;
+
+    margin: 0;
+
+    white-space: nowrap;
+}
+
+.paginacion-reporte .page-item {
+    flex: 0 0 auto;
+}
+
+
+/* Botones */
+
+.paginacion-reporte .page-link {
+    min-width: 35px;
+    height: 35px;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: .35rem .55rem;
+
+    border-radius: .5rem !important;
+
+    color: #2A73B6;
+
+    font-size: .8rem;
+    font-weight: 600;
+
+    line-height: 1;
+
+    box-shadow: none;
+}
+
+
+/* Hover */
+
+.paginacion-reporte
+.page-item:not(.disabled):not(.active)
+.page-link:hover {
+    background: #edf5ff;
+
+    border-color: #b8d8f5;
+
+    color: #1b67a9;
+}
+
+
+/* Página seleccionada */
+
+.paginacion-reporte
+.page-item.active
+.page-link {
+    background: #2A73B6;
+
+    border-color: #2A73B6;
+
+    color: white;
+}
+
+
+/* Deshabilitados */
+
+.paginacion-reporte
+.page-item.disabled
+.page-link {
+    background: #f8f9fa;
+
+    border-color: #dee2e6;
+
+    color: #adb5bd;
+
+    pointer-events: none;
+}
+
+
+/* Flechas */
+
+.paginacion-reporte
+.page-link-paso {
+    min-width: 38px;
+}
+
+
+/* =========================================
+   PAGINACIÓN RESPONSIVE
+   ========================================= */
+
+@media (max-width: 767.98px) {
+
+    .paginacion-contenedor {
+        flex-direction: column;
+
+        align-items: center;
+        justify-content: center;
+
+        gap: .65rem;
+
+        text-align: center;
+    }
+
+
+    .paginacion-navegacion {
+        width: 100%;
+
+        display: flex;
+
+        justify-content: center;
+
+        overflow-x: auto;
+    }
+
+
+    .paginacion-reporte {
+        width: max-content;
+
+        max-width: 100%;
+
+        justify-content: center;
+
+        flex-wrap: nowrap !important;
+    }
+
+
+    .paginacion-reporte .page-link {
+        min-width: 33px;
+        height: 33px;
+
+        padding: .3rem .45rem;
+
+        font-size: .76rem;
+    }
+
+}
+
+/* =========================================
+   RESPONSIVE DE TABLA
+   ========================================= */
+
+@media (max-width: 1199.98px) {
+    .scroll-info {
+        display: block;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .col-atleta {
+        min-width: 150px;
+    }
+
+    .col-identificacion {
+        min-width: 86px;
+    }
+
+    .col-categoria {
+        min-width: 82px;
+    }
+
+    .col-periodo {
+        min-width: 76px;
+        width: 76px;
+    }
+
+    .tabla-reporte {
+        min-width: 1380px;
+    }
+
+}
+
+
+
+/* =========================================
+   VACÍO
+   ========================================= */
+
+.reporte-vacio {
+    padding: 3rem 1rem;
+
+    text-align: center;
+
+    color: #6c757d;
+}
+
+.reporte-vacio i {
+    margin-bottom: .8rem;
+
+    font-size: 2.2rem;
+}
+
+
+/* =========================================
+   RESPONSIVE GENERAL
+   ========================================= */
+
+@media (max-width: 767.98px) {
+
+    .reporte-header {
+        padding: 1.15rem;
+    }
+
+    .reporte-header-titulo {
+        font-size: 1.35rem;
+    }
+
+    .resumen-valor {
+        font-size: 1.1rem;
+    }
+
+}
+
+</style>
+
+{% endblock %}
+
+
 
 {% block content %}
-<div class="container mt-4">
 
-  <!-- Migas de pan -->
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
+<div class="reporte-financiero">
+
+
+    <!-- =====================================
+         BREADCRUMB
+         ===================================== -->
+
+    <nav
+        aria-label="breadcrumb"
+        class="mb-4"
+    >
+
+        <ol class="breadcrumb mb-0">
+
             <li class="breadcrumb-item">
-                <a class="link-body-emphasis" href="{% url 'menu_principal' %}">
+
+                <a
+                    href="{% url 'menu_principal' %}"
+                    class="link-body-emphasis"
+                >
+
                     <i class="fa-solid fa-house"></i>
-                    <span class="visually-hidden">Inicio</span>
+
+                    <span class="visually-hidden">
+                        Inicio
+                    </span>
+
                 </a>
+
             </li>
-      <li class="breadcrumb-item active" aria-current="page">Reporte de Pagos</li>
-    </ol>
-  </nav>
 
-  <div class="card shadow">
-    <div class="card-header bg-danger text-white text-center fw-bold fs-4">
-      Reporte de Mensualidades por Atleta
-    </div>
-    <div class="card-body">
 
-      <!-- Filtros -->
-      <form method="get" class="row g-3 mb-4 align-items-end">
-        <div class="col-md-2">
-          <label for="año" class="form-label">Año</label>
-          <input type="number" class="form-control" id="año" name="año" value="{{ año_seleccionado }}">
-        </div>
-        <div class="col-md-2">
-          <label for="categoria" class="form-label">Categoría</label>
-          <select class="form-select" id="categoria" name="categoria">
-            <option value="">Todas</option>
-            {% for cat in categorias %}
-              <option value="{{ cat }}" {% if categoria_seleccionada == cat %}selected{% endif %}>{{ cat }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="cedula" class="form-label">Cédula</label>
-          <input type="text" class="form-control" id="cedula" name="cedula" value="{{ cedula }}">
-        </div>
-        <div class="col-md-2">
-          <label for="nombre" class="form-label">Nombre</label>
-          <input type="text" class="form-control" id="nombre" name="nombre" value="{{ nombre }}">
-        </div>
-        <div class="col-md-2">
-          <label for="mes_inicio" class="form-label">Mes inicio</label>
-          <select class="form-select" id="mes_inicio" name="mes_inicio">
-            {% for mes in meses %}
-              <option value="{{ mes.0 }}" {% if mes_inicio == mes.0 %}selected{% endif %}>{{ mes.1 }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="mes_fin" class="form-label">Mes fin</label>
-          <select class="form-select" id="mes_fin" name="mes_fin">
-            {% for mes in meses %}
-              <option value="{{ mes.0 }}" {% if mes_fin == mes.0 %}selected{% endif %}>{{ mes.1 }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label for="estado" class="form-label">Estado</label>
-          <select class="form-select" id="estado" name="estado">
-            <option value="">Todos</option>
-            <option value="pagado" {% if estado == "pagado" %}selected{% endif %}>Pagado</option>
-            <option value="parcial" {% if estado == "parcial" %}selected{% endif %}>Parcial</option>
-            <option value="no_pagado" {% if estado == "no_pagado" %}selected{% endif %}>No Pagado</option>
-            <option value="exonerado" {% if estado == "exonerado" %}selected{% endif %}>Exonerado</option>
-          </select>
-        </div>
-        <div class="col-md-2 d-grid">
-          <button type="submit" class="btn btn-danger"><i class="fas fa-search"></i> Filtrar</button>
-        </div>
-        <div class="col-md-2 d-grid">
-          <a href="{% url 'reporte_pagos_view' %}" class="btn btn-outline-secondary"> <i class="fas fa-trash-alt"></i> Limpiar</a>
-        </div>
-      </form>
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Reporte de mensualidades
+            </li>
 
-      <!-- Exportación -->
-      <div class="mb-3 text-end">
-        <a href="{% url 'exportar_pagos_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-warning">
-          <i class="fa-solid fa-file-pdf"></i> Exportar a PDF
-        </a>
-        <a href="{% url 'exportar_pagos_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success">
-          <i class="fa-solid fa-file-excel"></i> Exportar a Excel
-        </a>
-      </div>
+        </ol>
 
-      <!-- Tabla -->
-      <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle mb-0">
-          <thead class="table-dark">
-            <tr>
-              <th>Nombre</th>
-              <th>Cédula</th>
-              <th>Categoría</th>
-              {% for mes in meses %}
-                <th>{{ mes.1|slice:":3" }}</th>
-              {% endfor %}
-              <th>Pagado</th>
-              <th>Pendiente</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for atleta in resumen %}
-              <tr>
-                <td>{{ atleta.nombre }}</td>
-                <td>{{ atleta.cedula }}</td>
-                <td>{{ atleta.categoria }}</td>
-                {% for pago in atleta.pagos %}
-                  <td
-                    {% if pago.estado == "pagado" %}
-                      class="bg-success text-white"
-                    {% elif pago.estado == "parcial" %}
-                      class="bg-warning text-dark"
-                    {% elif pago.estado == "exonerado" %}
-                      class="bg-primary text-white"
-                    {% else %}
-                      class="bg-danger text-white"
-                    {% endif %}
-                  >
-                    {% if pago.monto > 0 %}
-                      ${{ pago.monto|floatformat:2 }}
-                    {% else %}
-                      — 
-                    {% endif %}
-                  </td>
-                {% endfor %}
-                <td class="fw-bold">${{ atleta.total_pagado|floatformat:2 }}</td>
-                <td class="fw-bold text-danger">${{ atleta.total_pendiente|floatformat:2 }}</td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="16" class="text-center text-muted">No hay datos para mostrar.</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    </nav>
 
-      <!-- Paginación -->
-      {% if page_obj.has_other_pages %}
-        {% with request.GET.urlencode as query_params %}
-          {% with query_params|cut:'page='|cut:'&page=' as base_query %}
-            <div class="d-flex justify-content-center mt-4">
-              <nav>
-                <ul class="pagination pagination-sm">
-                  {% if page_obj.has_previous %}
-                    <li class="page-item">
-                      <a class="page-link px-3 py-1" href="?page={{ page_obj.previous_page_number }}&{{ base_query }}">← Anterior</a>
-                    </li>
-                  {% else %}
-                    <li class="page-item disabled">
-                      <span class="page-link px-3 py-1">← Anterior</span>
-                    </li>
-                  {% endif %}
 
-                  {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                      <li class="page-item active">
-                        <span class="page-link px-3 py-1">{{ num }}</span>
-                      </li>
-                    {% else %}
-                      <li class="page-item">
-                        <a class="page-link px-3 py-1" href="?page={{ num }}&{{ base_query }}">{{ num }}</a>
-                      </li>
-                    {% endif %}
-                  {% endfor %}
 
-                  {% if page_obj.has_next %}
-                    <li class="page-item">
-                      <a class="page-link px-3 py-1" href="?page={{ page_obj.next_page_number }}&{{ base_query }}">Siguiente →</a>
-                    </li>
-                  {% else %}
-                    <li class="page-item disabled">
-                      <span class="page-link px-3 py-1">Siguiente →</span>
-                    </li>
-                  {% endif %}
-                </ul>
-              </nav>
+    <!-- =====================================
+         HEADER
+         ===================================== -->
+
+    <section class="reporte-header">
+
+        <div
+            class="
+                d-flex
+                justify-content-between
+                align-items-center
+                flex-wrap
+                gap-3
+            "
+        >
+
+            <div>
+
+                <div class="small opacity-75">
+                    Administración financiera
+                </div>
+
+                <h2 class="reporte-header-titulo">
+                    Reporte de mensualidades
+                </h2>
+
+                <div class="reporte-header-descripcion">
+
+                    Consulta pagos, saldos y estados
+                    financieros de los atletas.
+
+                </div>
+
             </div>
-          {% endwith %}
-        {% endwith %}
-      {% endif %}
+
+
+            <div
+                class="
+                    d-flex
+                    flex-column
+                    align-items-lg-end
+                    align-items-start
+                    gap-2
+                "
+            >
+
+                <!-- Año -->
+
+                <div class="text-lg-end">
+
+                    <div class="small opacity-75">
+                        Año seleccionado
+                    </div>
+
+                    <div class="fs-4 fw-bold">
+                        {{ año_seleccionado }}
+                    </div>
+
+                </div>
+
+
+                <!-- Exportaciones -->
+
+                <div
+                    class="
+                        d-flex
+                        flex-wrap
+                        gap-2
+                        justify-content-lg-end
+                    "
+                >
+
+
+                    <!-- Excel -->
+
+                    <a
+                        href="{% url 'exportar_pagos_excel' %}?año={{ año_seleccionado }}&amp;mes_inicio={{ mes_inicio }}&amp;mes_fin={{ mes_fin }}&amp;categoria={{ categoria_seleccionada|urlencode }}&amp;estado={{ estado|urlencode }}&amp;nombre={{ nombre|urlencode }}&amp;cedula={{ cedula|urlencode }}"
+                        class="
+                            btn
+                            btn-light
+                            btn-sm
+                            fw-semibold
+                        "
+                    >
+
+                        <i
+                            class="
+                                fa-solid
+                                fa-file-excel
+                                me-1
+                                text-success
+                            "
+                        ></i>
+
+                        Exportar Excel
+
+                    </a>
+
+
+                    <!-- PDF -->
+
+                    <a
+                        href="{% url 'exportar_pagos_pdf' %}?año={{ año_seleccionado }}&amp;mes_inicio={{ mes_inicio }}&amp;mes_fin={{ mes_fin }}&amp;categoria={{ categoria_seleccionada|urlencode }}&amp;estado={{ estado|urlencode }}&amp;nombre={{ nombre|urlencode }}&amp;cedula={{ cedula|urlencode }}"
+                        class="
+                            btn
+                            btn-light
+                            btn-sm
+                            fw-semibold
+                        "
+                    >
+
+                        <i
+                            class="
+                                fa-solid
+                                fa-file-pdf
+                                me-1
+                                text-danger
+                            "
+                        ></i>
+
+                        Exportar PDF
+
+                    </a>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================
+         FILTROS
+         ===================================== -->
+
+    <div
+        class="
+            card
+            filtros-card
+            mb-4
+        "
+    >
+
+        <div class="card-body">
+
+            <div
+                class="
+                    filtros-titulo
+                    mb-3
+                "
+            >
+
+                <i class="fa-solid fa-filter"></i>
+
+                Filtros del reporte
+
+            </div>
+
+
+            <form
+                method="get"
+                action="{% url 'reporte_pagos_view' %}"
+            >
+
+                <div class="row g-3">
+
+
+                    <!-- Año -->
+
+                    <div class="col-xl-2 col-md-4 col-6">
+
+                        <label
+                            for="filtroAnio"
+                            class="form-label"
+                        >
+                            Año
+                        </label>
+
+
+                        <select
+                            name="año"
+                            id="filtroAnio"
+                            class="form-select"
+                        >
+
+                            {% for año in años_disponibles %}
+
+                                <option
+                                    value="{{ año }}"
+
+                                    {% if año == año_seleccionado %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ año }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Desde -->
+
+                    <div class="col-xl-2 col-md-4 col-6">
+
+                        <label
+                            for="mesInicio"
+                            class="form-label"
+                        >
+                            Desde
+                        </label>
+
+
+                        <select
+                            name="mes_inicio"
+                            id="mesInicio"
+                            class="form-select"
+                        >
+
+                            {% for numero, nombre_mes in meses_selector %}
+
+                                <option
+                                    value="{{ numero }}"
+
+                                    {% if numero == mes_inicio %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ nombre_mes }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Hasta -->
+
+                    <div class="col-xl-2 col-md-4 col-6">
+
+                        <label
+                            for="mesFin"
+                            class="form-label"
+                        >
+                            Hasta
+                        </label>
+
+
+                        <select
+                            name="mes_fin"
+                            id="mesFin"
+                            class="form-select"
+                        >
+
+                            {% for numero, nombre_mes in meses_selector %}
+
+                                <option
+                                    value="{{ numero }}"
+
+                                    {% if numero == mes_fin %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ nombre_mes }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Categoría -->
+
+                    <div class="col-xl-3 col-md-6">
+
+                        <label
+                            for="categoria"
+                            class="form-label"
+                        >
+                            Categoría
+                        </label>
+
+
+                        <select
+                            name="categoria"
+                            id="categoria"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                Todas
+                            </option>
+
+
+                            {% for categoria in categorias %}
+
+                                <option
+                                    value="{{ categoria }}"
+
+                                    {% if categoria == categoria_seleccionada %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ categoria }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Estado -->
+
+                    <div class="col-xl-3 col-md-6">
+
+                        <label
+                            for="estado"
+                            class="form-label"
+                        >
+                            Estado
+                        </label>
+
+
+                        <select
+                            name="estado"
+                            id="estado"
+                            class="form-select"
+                        >
+
+                            <option value="">
+                                Todos
+                            </option>
+
+
+                            {% for codigo, etiqueta in estados_disponibles %}
+
+                                <option
+                                    value="{{ codigo }}"
+
+                                    {% if codigo == estado %}
+                                        selected
+                                    {% endif %}
+                                >
+                                    {{ etiqueta }}
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- Nombre -->
+
+                    <div class="col-xl-4 col-md-6">
+
+                        <label
+                            for="nombre"
+                            class="form-label"
+                        >
+                            Nombre o apellido
+                        </label>
+
+
+                        <input
+                            type="text"
+                            name="nombre"
+                            id="nombre"
+                            class="form-control"
+                            value="{{ nombre }}"
+                            placeholder="Buscar atleta..."
+                        >
+
+                    </div>
+
+
+
+                    <!-- Cédula -->
+
+                    <div class="col-xl-3 col-md-6">
+
+                        <label
+                            for="cedula"
+                            class="form-label"
+                        >
+                            Cédula
+                        </label>
+
+
+                        <input
+                            type="text"
+                            name="cedula"
+                            id="cedula"
+                            class="form-control"
+                            value="{{ cedula }}"
+                            placeholder="Número de cédula"
+                        >
+
+                    </div>
+
+
+
+                    <!-- Mantener cantidad -->
+
+                    <input
+                        type="hidden"
+                        name="por_pagina"
+                        value="{{ por_pagina }}"
+                    >
+
+
+
+                    <!-- Botones -->
+
+                    <div
+                        class="
+                            col-xl-5
+                            d-flex
+                            align-items-end
+                            flex-wrap
+                            gap-2
+                        "
+                    >
+
+                        <button
+                            type="submit"
+                            class="
+                                btn
+                                btn-primary
+                                btn-filtrar
+                            "
+                        >
+
+                            <i
+                                class="
+                                    fa-solid
+                                    fa-magnifying-glass
+                                    me-1
+                                "
+                            ></i>
+
+                            Aplicar filtros
+
+                        </button>
+
+
+                        <a
+                            href="{% url 'reporte_pagos_view' %}"
+                            class="
+                                btn
+                                btn-outline-secondary
+                                btn-limpiar
+                            "
+                        >
+
+                            <i
+                                class="
+                                    fa-solid
+                                    fa-rotate-left
+                                    me-1
+                                "
+                            ></i>
+
+                            Limpiar
+
+                        </a>
+
+                    </div>
+
+
+                </div>
+
+            </form>
+
+        </div>
 
     </div>
-  </div>
+
+
+
+    <!-- =====================================
+         RESUMEN
+         ===================================== -->
+
+    <div class="row g-3 mb-4">
+
+
+        <div class="col-xl col-md-4 col-6">
+
+            <div class="card resumen-card">
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-icono
+                            bg-secondary-subtle
+                            text-secondary
+                        "
+                    >
+
+                        <i class="fa-solid fa-users"></i>
+
+                    </div>
+
+                    <div class="resumen-label">
+                        Atletas
+                    </div>
+
+                    <div class="resumen-valor">
+                        {{ reporte.total_atletas }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-xl col-md-4 col-6">
+
+            <div class="card resumen-card">
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-icono
+                            bg-success-subtle
+                            text-success
+                        "
+                    >
+
+                        <i class="fa-solid fa-bolivar-sign"></i>
+
+                    </div>
+
+                    <div class="resumen-label">
+                        Recaudado Bs
+                    </div>
+
+                    <div
+                        class="
+                            resumen-valor
+                            text-success
+                        "
+                    >
+
+                        Bs
+                        {{ totales.pagado_bs|floatformat:2|intcomma }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-xl col-md-4 col-6">
+
+            <div class="card resumen-card">
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-icono
+                            bg-info-subtle
+                            text-info-emphasis
+                        "
+                    >
+
+                        <i class="fa-solid fa-dollar-sign"></i>
+
+                    </div>
+
+                    <div class="resumen-label">
+                        Equiv. USD
+                    </div>
+
+                    <div
+                        class="
+                            resumen-valor
+                            text-info-emphasis
+                        "
+                    >
+
+                        $
+                        {{ totales.pagado_usd|floatformat:2 }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-xl col-md-4 col-6">
+
+            <div class="card resumen-card">
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-icono
+                            bg-danger-subtle
+                            text-danger
+                        "
+                    >
+
+                        <i class="fa-solid fa-clock"></i>
+
+                    </div>
+
+                    <div class="resumen-label">
+                        Saldo pendiente
+                    </div>
+
+                    <div
+                        class="
+                            resumen-valor
+                            text-danger
+                        "
+                    >
+
+                        $
+                        {{ totales.pendiente_usd|floatformat:2 }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-xl col-md-4 col-6">
+
+            <div class="card resumen-card">
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-icono
+                            bg-primary-subtle
+                            text-primary
+                        "
+                    >
+
+                        <i class="fa-solid fa-calendar-check"></i>
+
+                    </div>
+
+                    <div class="resumen-label">
+                        Cubiertos / gestionados
+                    </div>
+
+                    <div
+                        class="
+                            resumen-valor
+                            text-primary
+                        "
+                    >
+
+                        {{ totales.meses_cubiertos }}
+                        /
+                        {{ totales.meses_gestionados }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================
+         ESTADOS
+         ===================================== -->
+
+    <div
+        class="
+            card
+            border-0
+            shadow-sm
+            rounded-4
+            mb-4
+        "
+    >
+
+        <div class="card-body">
+
+            <div class="fw-bold mb-3">
+
+                <i
+                    class="
+                        fa-solid
+                        fa-chart-simple
+                        me-1
+                    "
+                ></i>
+
+                Estados del rango seleccionado
+
+            </div>
+
+
+            <div class="estados-reporte">
+
+
+                <div class="estado-resumen">
+
+                    <span class="badge bg-success">
+                        {{ totales.estados.al_dia }}
+                    </span>
+
+                    Al día
+
+                </div>
+
+
+                <div class="estado-resumen">
+
+                    <span
+                        class="
+                            badge
+                            bg-warning
+                            text-dark
+                        "
+                    >
+                        {{ totales.estados.parcial }}
+                    </span>
+
+                    Parcial
+
+                </div>
+
+
+                <div class="estado-resumen">
+
+                    <span class="badge bg-danger">
+                        {{ totales.estados.pendiente }}
+                    </span>
+
+                    Pendiente
+
+                </div>
+
+
+                <div class="estado-resumen">
+
+                    <span
+                        class="
+                            badge
+                            bg-info
+                            text-dark
+                        "
+                    >
+                        {{ totales.estados.exonerado }}
+                    </span>
+
+                    Exonerado
+
+                </div>
+
+
+                <div class="estado-resumen">
+
+                    <span class="badge bg-secondary">
+                        {{ totales.estados.sin_registro }}
+                    </span>
+
+                    Sin registro
+
+                </div>
+
+
+                <div class="estado-resumen">
+
+                    <span
+                        class="
+                            badge
+                            bg-light
+                            text-dark
+                            border
+                        "
+                    >
+                        {{ totales.estados.proximo }}
+                    </span>
+
+                    Próximo
+
+                </div>
+
+
+                {% if totales.estados.sin_tarifa > 0 %}
+
+                    <div class="estado-resumen">
+
+                        <span class="badge bg-dark">
+                            {{ totales.estados.sin_tarifa }}
+                        </span>
+
+                        Sin tarifa
+
+                    </div>
+
+                {% endif %}
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================
+         TABLA
+         ===================================== -->
+
+    <div
+        class="
+            card
+            reporte-tabla-card
+            mb-4
+        "
+    >
+
+        <div class="reporte-tabla-header">
+
+            <div class="reporte-tabla-controles">
+
+                <div>
+
+                    <div class="fw-bold">
+                        Detalle por atleta
+                    </div>
+
+                    <div class="reporte-cantidad">
+
+                        {{ reporte.total_atletas }}
+                        atleta{{ reporte.total_atletas|pluralize }}
+
+                        ·
+
+                        {{ meses|length }}
+                        período{{ meses|length|pluralize }}
+
+                    </div>
+
+                </div>
+
+
+                <!-- Selector de filas -->
+
+                <form
+                    method="get"
+                    class="selector-filas"
+                >
+
+                    <input type="hidden" name="año" value="{{ año_seleccionado }}">
+                    <input type="hidden" name="mes_inicio" value="{{ mes_inicio }}">
+                    <input type="hidden" name="mes_fin" value="{{ mes_fin }}">
+                    <input type="hidden" name="categoria" value="{{ categoria_seleccionada }}">
+                    <input type="hidden" name="estado" value="{{ estado }}">
+                    <input type="hidden" name="nombre" value="{{ nombre }}">
+                    <input type="hidden" name="cedula" value="{{ cedula }}">
+
+                    <label for="porPagina">
+                        Mostrar
+                    </label>
+
+                    <select
+                        name="por_pagina"
+                        id="porPagina"
+                        class="form-select form-select-sm"
+                        onchange="this.form.submit()"
+                    >
+
+                        <option
+                            value="15"
+                            {% if por_pagina == 15 %}selected{% endif %}
+                        >
+                            15
+                        </option>
+
+                        <option
+                            value="20"
+                            {% if por_pagina == 20 %}selected{% endif %}
+                        >
+                            20
+                        </option>
+
+                        <option
+                            value="50"
+                            {% if por_pagina == 50 %}selected{% endif %}
+                        >
+                            50
+                        </option>
+
+                    </select>
+
+                    <span class="text-muted small">
+                        filas
+                    </span>
+
+                </form>
+
+            </div>
+
+        </div>
+
+
+        {% if page_obj.object_list %}
+
+            <div class="scroll-info">
+
+                <i class="fa-solid fa-arrows-left-right me-1"></i>
+
+                Desplázate horizontalmente para consultar todos los meses.
+
+            </div>
+
+
+            <div class="reporte-tabla-wrapper">
+
+                <table
+                    class="
+                        table
+                        table-hover
+                        table-bordered
+                        tabla-reporte
+                    "
+                >
+
+                    <thead>
+
+                        <tr>
+
+                            <th class="col-atleta">
+                                Atleta
+                            </th>
+
+                            <th class="col-identificacion">
+                                C.I.
+                            </th>
+
+                            <th class="col-categoria">
+                                Categoría
+                            </th>
+
+
+                            {% for mes in meses %}
+
+                                <th
+                                    class="col-periodo"
+                                    title="{{ mes.nombre }} {{ año_seleccionado }}"
+                                >
+                                    {{ mes.abreviatura }}
+                                </th>
+
+                            {% endfor %}
+
+
+                            <th class="col-pagado">
+                                Pagado
+                            </th>
+
+                            <th class="col-pendiente">
+                                Pendiente
+                            </th>
+
+                            <th class="col-cobertura">
+                                Cubiertos
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for fila in page_obj %}
+
+                            <tr>
+
+
+                                <!-- Atleta -->
+
+                                <td>
+
+                                    <div class="atleta-info">
+
+                                        <div class="atleta-nombre">
+                                            {{ fila.nombre }}
+                                            {{ fila.apellido }}
+                                        </div>
+
+                                        <div class="atleta-ficha">
+
+                                            <a
+                                                href="{% url 'detalle_financiero_atleta' fila.id %}?año={{ año_seleccionado }}"
+                                                class="text-decoration-none fw-semibold"
+                                            >
+
+                                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>
+                                                Ficha financiera
+
+                                            </a>
+
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Cédula -->
+
+                                <td>
+                                    {{ fila.cedula|default:"—" }}
+                                </td>
+
+
+                                <!-- Categoría -->
+
+                                <td>
+                                    {{ fila.categoria|default:"—" }}
+                                </td>
+
+
+                                <!-- Meses -->
+
+                                {% for periodo in fila.periodos %}
+
+                                    <td class="col-periodo">
+
+                                        <div class="estado-mes">
+
+                                            {% if periodo.estado_codigo == "al_dia" %}
+
+                                                <span
+                                                    class="estado-badge estado-al-dia"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Al día"
+                                                >
+                                                    Al día
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "parcial" %}
+
+                                                <span
+                                                    class="estado-badge estado-parcial"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Parcial"
+                                                >
+                                                    Parcial
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "pendiente" %}
+
+                                                <span
+                                                    class="estado-badge estado-pendiente"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Pendiente"
+                                                >
+                                                    Pendiente
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "exonerado" %}
+
+                                                <span
+                                                    class="estado-badge estado-exonerado"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Exonerado"
+                                                >
+                                                    Exonerado
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "sin_registro" %}
+
+                                                <span
+                                                    class="estado-badge estado-sin-registro"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Sin registro · No genera deuda"
+                                                >
+                                                    Sin registro
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "proximo" %}
+
+                                                <span
+                                                    class="estado-badge estado-proximo"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Próximo"
+                                                >
+                                                    Próximo
+                                                </span>
+
+                                            {% else %}
+
+                                                <span
+                                                    class="estado-badge estado-sin-tarifa"
+                                                    title="{{ periodo.nombre_mes }} {{ periodo.año }} · Sin tarifa"
+                                                >
+                                                    Sin tarifa
+                                                </span>
+
+                                            {% endif %}
+
+
+                                            {% if periodo.estado_codigo == "al_dia" or periodo.estado_codigo == "parcial" %}
+
+                                                <span class="estado-monto">
+
+                                                    ${{ periodo.pagado_usd|floatformat:2 }}
+
+                                                    {% if periodo.cuota_usd is not None %}
+                                                        / ${{ periodo.cuota_usd|floatformat:2 }}
+                                                    {% endif %}
+
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "pendiente" %}
+
+                                                <span class="estado-monto text-danger">
+                                                    Saldo ${{ periodo.saldo_usd|floatformat:2 }}
+                                                </span>
+
+                                            {% elif periodo.estado_codigo == "exonerado" %}
+
+                                                <span class="estado-monto">
+                                                    Cubierto
+                                                </span>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    </td>
+
+                                {% endfor %}
+
+
+                                <!-- Pagado: Bs + USD -->
+
+                                <td class="col-pagado">
+
+                                    <div class="pagado-total">
+
+                                        {% if fila.total_pagado_bs > 0 %}
+
+                                            <span class="pagado-bs">
+                                                Bs {{ fila.total_pagado_bs|floatformat:2|intcomma }}
+                                            </span>
+
+                                        {% else %}
+
+                                            <span class="text-muted small">
+                                                Bs —
+                                            </span>
+
+                                        {% endif %}
+
+                                        <span class="pagado-usd">
+                                            ${{ fila.total_pagado_usd|floatformat:2 }}
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+
+                                <!-- Pendiente -->
+
+                                <td class="col-pendiente">
+
+                                    {% if fila.total_pendiente_usd > 0 %}
+
+                                        <span class="total-pendiente">
+                                            ${{ fila.total_pendiente_usd|floatformat:2 }}
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="sin-deuda">
+                                            $0.00
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+                                <!-- Cubiertos -->
+
+                                <td class="col-cobertura">
+
+                                    <div class="cobertura-valor">
+                                        {{ fila.meses_cubiertos }}
+                                        /
+                                        {{ fila.meses_gestionados }}
+                                    </div>
+
+                                    <div class="cobertura-texto">
+                                        cubiertos
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            <!-- Leyenda -->
+
+            <div class="leyenda-reporte">
+
+                <strong class="small text-dark me-1">
+                    Estados:
+                </strong>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#198754;"></span>
+                    Al día
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#ffc107;"></span>
+                    Parcial
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#dc3545;"></span>
+                    Pendiente
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#0dcaf0;"></span>
+                    Exonerado
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#6c757d;"></span>
+                    Sin registro
+                </div>
+
+                <div class="leyenda-item">
+                    <span class="leyenda-muestra" style="background:#dee2e6;"></span>
+                    Próximo
+                </div>
+
+                {% if totales.estados.sin_tarifa > 0 %}
+
+                    <div class="leyenda-item">
+                        <span class="leyenda-muestra" style="background:#343a40;"></span>
+                        Sin tarifa
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+
+        {% else %}
+
+            <div class="reporte-vacio">
+
+                <i class="fa-solid fa-folder-open"></i>
+
+                <div class="fw-bold">
+                    No se encontraron resultados
+                </div>
+
+                <div class="small mt-1">
+                    Prueba modificando los filtros seleccionados.
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+
+        <!-- =====================================
+        PAGINACIÓN
+        ===================================== -->
+
+    {% if page_obj.paginator.count > 0 %}
+
+        <div class="paginacion-contenedor">
+
+
+            <!-- =================================
+                INFORMACIÓN
+                ================================= -->
+
+            <div class="paginacion-info">
+
+                Mostrando
+
+                <strong>
+                    {{ page_obj.start_index }}
+                </strong>
+
+                –
+
+                <strong>
+                    {{ page_obj.end_index }}
+                </strong>
+
+                de
+
+                <strong>
+                    {{ page_obj.paginator.count }}
+                </strong>
+
+                atletas
+
+
+                {% if page_obj.paginator.num_pages > 1 %}
+
+                    · Página
+
+                    <strong>
+                        {{ page_obj.number }}
+                    </strong>
+
+                    de
+
+                    <strong>
+                        {{ page_obj.paginator.num_pages }}
+                    </strong>
+
+                {% endif %}
+
+            </div>
+
+
+
+            <!-- =================================
+                NAVEGACIÓN
+                ================================= -->
+
+            {% if page_obj.paginator.num_pages > 1 %}
+
+                <nav
+                    class="paginacion-navegacion"
+                    aria-label="Paginación del reporte"
+                >
+
+                    <ul
+                        class="
+                            pagination
+                            pagination-sm
+                            paginacion-reporte
+                        "
+                    >
+
+
+                        <!-- =========================
+                            ANTERIOR
+                            ========================= -->
+
+                        <li
+                            class="
+                                page-item
+
+                                {% if not page_obj.has_previous %}
+                                    disabled
+                                {% endif %}
+                            "
+                        >
+
+                            {% if page_obj.has_previous %}
+
+                                <a
+                                    class="
+                                        page-link
+                                        page-link-paso
+                                    "
+                                    href="?{% if querystring_sin_page %}{{ querystring_sin_page }}&amp;{% endif %}page={{ page_obj.previous_page_number }}"
+                                    aria-label="Página anterior"
+                                    title="Página anterior"
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-chevron-left
+                                        "
+                                    ></i>
+
+                                </a>
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        page-link
+                                        page-link-paso
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-chevron-left
+                                        "
+                                    ></i>
+
+                                </span>
+
+                            {% endif %}
+
+                        </li>
+
+
+
+                        <!-- =========================
+                            NÚMEROS
+                            Máximo 5
+                            ========================= -->
+
+                        {% for numero_pagina in paginas_paginacion %}
+
+                            <li
+                                class="
+                                    page-item
+
+                                    {% if numero_pagina == page_obj.number %}
+                                        active
+                                    {% endif %}
+                                "
+                            >
+
+                                {% if numero_pagina == page_obj.number %}
+
+                                    <span
+                                        class="page-link"
+                                        aria-current="page"
+                                    >
+
+                                        {{ numero_pagina }}
+
+                                    </span>
+
+                                {% else %}
+
+                                    <a
+                                        class="page-link"
+                                        href="?{% if querystring_sin_page %}{{ querystring_sin_page }}&amp;{% endif %}page={{ numero_pagina }}"
+                                        title="Ir a la página {{ numero_pagina }}"
+                                    >
+
+                                        {{ numero_pagina }}
+
+                                    </a>
+
+                                {% endif %}
+
+                            </li>
+
+                        {% endfor %}
+
+
+
+                        <!-- =========================
+                            SIGUIENTE
+                            ========================= -->
+
+                        <li
+                            class="
+                                page-item
+
+                                {% if not page_obj.has_next %}
+                                    disabled
+                                {% endif %}
+                            "
+                        >
+
+                            {% if page_obj.has_next %}
+
+                                <a
+                                    class="
+                                        page-link
+                                        page-link-paso
+                                    "
+                                    href="?{% if querystring_sin_page %}{{ querystring_sin_page }}&amp;{% endif %}page={{ page_obj.next_page_number }}"
+                                    aria-label="Página siguiente"
+                                    title="Página siguiente"
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-chevron-right
+                                        "
+                                    ></i>
+
+                                </a>
+
+                            {% else %}
+
+                                <span
+                                    class="
+                                        page-link
+                                        page-link-paso
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-chevron-right
+                                        "
+                                    ></i>
+
+                                </span>
+
+                            {% endif %}
+
+                        </li>
+
+
+                    </ul>
+
+                </nav>
+
+            {% endif %}
+
+
+        </div>
+
+
+    {% endif %}
+
+
 </div>
+
 {% endblock %}

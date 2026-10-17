@@ -1,11 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Atleta, Mensualidad, Estadistica, Entrenador, Campeonato, Partido, Equipo, Administrador
 from .forms import AtletaForm, EstadisticaForm, EntrenadorForm, CampeonatoForm, PartidoForm, EquipoForm, UsuarioForm, AdministradorForm
 from django.core.paginator import Paginator
 from datetime import date
 from django.views.decorators.http import require_POST, require_http_methods
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Prefetch
 from django.db.models.functions import ExtractYear
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -48,11 +47,35 @@ from .utils.roles import es_admin, es_entrenador, es_atleta
 from django.contrib import admin
 from django.utils.formats import date_format
 from django.contrib.auth.hashers import make_password
+from django.core.exceptions import ValidationError
+from django.urls import reverse
+from decimal import Decimal, ROUND_HALF_UP
+from .models import TasaCambio
+from .models import (
+    Atleta,
+    Mensualidad,
+    Estadistica,
+    Entrenador,
+    Campeonato,
+    Partido,
+    Equipo,
+    Administrador,
+    PagoMensualidad,
+    TarifaMensual,
+    Pago,
+)
 from .services import (
     crear_usuario_para_atleta,
     crear_usuario_para_administrador,
     crear_usuario_para_entrenador,
     eliminar_usuario_sin_perfil,
+    registrar_pago,
+    obtener_tasa_actual,
+    obtener_tarifa_mensual,
+    TasaCambioNoDisponible,
+    anular_pago,
+    exonerar_mensualidad,
+    quitar_exoneracion,
 )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
@@ -211,107 +234,2793 @@ def eliminar_atleta(request, atleta_id):
 
 @user_passes_test(es_admin)
 @require_POST
-def actualizar_mensualidad(request, mensualidad_id):
-    mensualidad = get_object_or_404(Mensualidad, id=mensualidad_id)
-    monto = request.POST.get("monto", 0)
-    exonerado = 'exonerado' in request.POST
+def guardar_tarifa_mensual(request):
+    """
+    Crea o actualiza una tarifa a partir de un mes determinado.
+
+    Ejemplo:
+    $8 desde enero 2027.
+
+    Los períodos anteriores conservan sus tarifas anteriores.
+    """
+
+    monto_texto = request.POST.get(
+        "monto_usd",
+        ""
+    ).strip()
+
+    tolerancia_texto = request.POST.get(
+        "tolerancia_usd",
+        ""
+    ).strip()
+
+    periodo_texto = request.POST.get(
+        "vigente_desde",
+        ""
+    ).strip()
 
     try:
-        mensualidad.monto_pagado = float(monto)
-    except ValueError:
-        mensualidad.monto_pagado = 0
 
-    mensualidad.exonerado = exonerado
-    mensualidad.save()
+        monto = Decimal(
+            monto_texto
+        ).quantize(
+            Decimal("0.01")
+        )
 
-    return redirect('administracion')
+        tolerancia = Decimal(
+            tolerancia_texto
+        ).quantize(
+            Decimal("0.01")
+        )
+
+    except Exception:
+
+        messages.error(
+            request,
+            "El monto o la tolerancia no son válidos."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    if monto <= Decimal("0.00"):
+
+        messages.error(
+            request,
+            "La cuota debe ser mayor que cero."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    if tolerancia < Decimal("0.00"):
+
+        messages.error(
+            request,
+            "La tolerancia no puede ser negativa."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    if tolerancia >= monto:
+
+        messages.error(
+            request,
+            (
+                "La tolerancia debe ser menor "
+                "que el valor de la mensualidad."
+            )
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    try:
+
+        año_texto, mes_texto = (
+            periodo_texto.split("-")
+        )
+
+        año = int(
+            año_texto
+        )
+
+        mes = int(
+            mes_texto
+        )
+
+        vigente_desde = date(
+            año,
+            mes,
+            1
+        )
+
+    except (
+        ValueError,
+        TypeError,
+    ):
+
+        messages.error(
+            request,
+            "Debe seleccionar un período válido."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    tarifa, creada = (
+        TarifaMensual.objects
+        .update_or_create(
+            vigente_desde=vigente_desde,
+            defaults={
+                "monto_usd":
+                    monto,
+                "tolerancia_usd":
+                    tolerancia,
+            },
+        )
+    )
+
+    if creada:
+
+        messages.success(
+            request,
+            (
+                "Nueva tarifa registrada: "
+                f"${tarifa.monto_usd:.2f} "
+                f"desde {mes:02d}/{año}."
+            )
+        )
+
+    else:
+
+        messages.success(
+            request,
+            (
+                "Tarifa actualizada: "
+                f"${tarifa.monto_usd:.2f} "
+                f"desde {mes:02d}/{año}."
+            )
+        )
+
+    return redirect(
+        "administracion"
+    )
+
+@user_passes_test(es_admin)
+@require_POST
+def registrar_pago_administracion(request):
+    """
+    Registra una transacción real de pago.
+
+    Los períodos se reciben como YYYY-MM.
+
+    Si un período antiguo todavía no tiene una Mensualidad,
+    se crea únicamente cuando realmente se está registrando
+    un pago para dicho período.
+    """
+
+    atleta_id = request.POST.get(
+        "atleta_id"
+    )
+
+    periodos = request.POST.getlist(
+        "periodos"
+    )
+
+    moneda = request.POST.get(
+        "moneda",
+        ""
+    ).strip().upper()
+
+    monto_total = request.POST.get(
+        "monto_total",
+        ""
+    ).strip()
+
+    metodo = request.POST.get(
+        "metodo",
+        ""
+    ).strip()
+
+    referencia = request.POST.get(
+        "referencia",
+        ""
+    ).strip()
+
+    observacion = request.POST.get(
+        "observacion",
+        ""
+    ).strip()
+
+    fecha_pago_texto = request.POST.get(
+        "fecha_pago",
+        ""
+    ).strip()
+
+    mes_retorno = request.POST.get(
+        "mes_retorno"
+    )
+
+    año_retorno = request.POST.get(
+        "año_retorno"
+    )
+
+    categoria_retorno = request.POST.get(
+        "categoria_retorno",
+        ""
+    ).strip()
+
+    def volver_administracion():
+
+        parametros = []
+
+        if mes_retorno:
+            parametros.append(
+                f"mes={mes_retorno}"
+            )
+
+        if año_retorno:
+            parametros.append(
+                f"año={año_retorno}"
+            )
+
+        if categoria_retorno:
+
+            from urllib.parse import quote
+
+            parametros.append(
+                "categoria="
+                + quote(
+                    categoria_retorno
+                )
+            )
+
+        url = reverse(
+            "administracion"
+        )
+
+        if parametros:
+            url += (
+                "?"
+                + "&".join(parametros)
+            )
+
+        return redirect(url)
+
+    if not atleta_id:
+
+        messages.error(
+            request,
+            "Debe seleccionarse un atleta."
+        )
+
+        return volver_administracion()
+
+    if not periodos:
+
+        messages.error(
+            request,
+            "Debe seleccionar al menos un mes."
+        )
+
+        return volver_administracion()
+
+    if not monto_total:
+
+        messages.error(
+            request,
+            "Debe ingresar el monto recibido."
+        )
+
+        return volver_administracion()
+
+    atleta = get_object_or_404(
+        Atleta,
+        pk=atleta_id
+    )
+
+    # -----------------------------------------
+    # FECHA REAL DEL PAGO
+    # -----------------------------------------
+
+    fecha_pago = timezone.localdate()
+
+    if fecha_pago_texto:
+
+        fecha_parseada = parse_date(
+            fecha_pago_texto
+        )
+
+        if fecha_parseada is None:
+
+            messages.error(
+                request,
+                "La fecha del pago no es válida."
+            )
+
+            return volver_administracion()
+
+        fecha_pago = fecha_parseada
+
+    try:
+
+        with transaction.atomic():
+
+            mensualidades_ids = []
+
+            periodos_unicos = set()
+
+            for periodo in periodos:
+
+                if periodo in periodos_unicos:
+                    continue
+
+                periodos_unicos.add(
+                    periodo
+                )
+
+                try:
+
+                    año_texto, mes_texto = (
+                        periodo.split("-")
+                    )
+
+                    año = int(
+                        año_texto
+                    )
+
+                    mes = int(
+                        mes_texto
+                    )
+
+                except (
+                    ValueError,
+                    TypeError,
+                ) as error:
+
+                    raise ValidationError(
+                        "Se recibió un período inválido."
+                    ) from error
+
+                if mes < 1 or mes > 12:
+
+                    raise ValidationError(
+                        "Se recibió un mes inválido."
+                    )
+
+                tarifa = obtener_tarifa_mensual(
+                    año,
+                    mes
+                )
+
+                if tarifa is None:
+
+                    raise ValidationError(
+                        (
+                            "No existe una tarifa configurada "
+                            f"para {mes:02d}/{año}."
+                        )
+                    )
+
+                mensualidad, _ = (
+                    Mensualidad.objects
+                    .get_or_create(
+                        atleta=atleta,
+                        año=año,
+                        mes=mes,
+                        defaults={
+                            "monto_pagado":
+                                Decimal("0.00"),
+                            "exonerado":
+                                False,
+                        },
+                    )
+                )
+
+                mensualidades_ids.append(
+                    mensualidad.id
+                )
+
+            pago = registrar_pago(
+                atleta=atleta,
+                mensualidades=mensualidades_ids,
+                moneda=moneda,
+                monto_total=monto_total,
+                usuario=request.user,
+                metodo=metodo,
+                referencia=referencia,
+                observacion=observacion,
+                fecha_pago=fecha_pago,
+            )
+
+    except TasaCambioNoDisponible:
+
+        messages.error(
+            request,
+            (
+                "No fue posible obtener una tasa BCV "
+                "y tampoco existe una tasa guardada."
+            )
+        )
+
+        return volver_administracion()
+
+    except ValidationError as error:
+
+        if hasattr(
+            error,
+            "message_dict"
+        ):
+
+            mensajes = []
+
+            for errores in (
+                error.message_dict.values()
+            ):
+                mensajes.extend(
+                    errores
+                )
+
+        else:
+            mensajes = error.messages
+
+        for mensaje in mensajes:
+
+            messages.error(
+                request,
+                mensaje
+            )
+
+        return volver_administracion()
+
+    messages.success(
+        request,
+        (
+            "Pago registrado correctamente. "
+            f"Equivalente aproximado: "
+            f"${pago.equivalente_usd:.2f}"
+        )
+    )
+
+    return volver_administracion()
+
+@user_passes_test(es_admin)
+@require_POST
+def actualizar_tasa_bcv(request):
+    """
+    Fuerza una nueva consulta de la tasa BCV.
+
+    Si existe una tasa manual y la consulta automática
+    falla, la tasa manual continúa almacenada y el
+    administrador recibe el aviso correspondiente.
+    """
+
+    try:
+        tasa = obtener_tasa_actual(
+            forzar_actualizacion=True
+        )
+
+    except TasaCambioNoDisponible:
+        messages.error(
+            request,
+            (
+                "No fue posible actualizar la tasa desde BCV. "
+                "La última tasa guardada continuará disponible."
+            )
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    messages.success(
+        request,
+        (
+            "Tasa BCV actualizada correctamente: "
+            f"Bs {tasa.tasa_bs_usd:.2f} / USD "
+            f"({tasa.fecha_valor.strftime('%d/%m/%Y')})."
+        )
+    )
+
+    return redirect(
+        "administracion"
+    )
+
+
+@user_passes_test(es_admin)
+@require_POST
+def guardar_tasa_manual(request):
+    """
+    Registra manualmente una tasa Bs/USD.
+
+    La tasa manual pasa a ser la tasa activa hasta que
+    una actualización automática desde BCV se complete
+    correctamente.
+    """
+
+    tasa_texto = request.POST.get(
+        "tasa_bs_usd",
+        ""
+    ).strip()
+
+    fecha_texto = request.POST.get(
+        "fecha_valor",
+        ""
+    ).strip()
+
+    observacion = request.POST.get(
+        "observacion",
+        ""
+    ).strip()
+
+    try:
+        tasa = Decimal(
+            tasa_texto
+        ).quantize(
+            Decimal("0.000001")
+        )
+
+    except Exception:
+        messages.error(
+            request,
+            "La tasa ingresada no es válida."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    if tasa <= Decimal("0.00"):
+        messages.error(
+            request,
+            "La tasa debe ser mayor que cero."
+        )
+
+        return redirect(
+            "administracion"
+        )
+
+    fecha_valor = timezone.localdate()
+
+    if fecha_texto:
+        fecha_parseada = parse_date(
+            fecha_texto
+        )
+
+        if fecha_parseada is None:
+            messages.error(
+                request,
+                "La fecha valor no es válida."
+            )
+
+            return redirect(
+                "administracion"
+            )
+
+        fecha_valor = fecha_parseada
+
+    tasa_manual = TasaCambio.objects.create(
+        tasa_bs_usd=tasa,
+        fecha_valor=fecha_valor,
+        fuente="BCV - Registro manual",
+        origen="manual",
+        observacion=(
+            observacion
+            or (
+                "Tasa registrada manualmente "
+                "por un administrador."
+            )
+        ),
+    )
+
+    messages.success(
+        request,
+        (
+            "Tasa manual registrada correctamente: "
+            f"Bs {tasa_manual.tasa_bs_usd:.2f} / USD."
+        )
+    )
+
+    return redirect(
+        "administracion"
+    )
+
+@user_passes_test(es_admin)
+@require_POST
+def anular_pago_administracion(
+    request,
+    pago_id,
+):
+    """
+    Anula una transacción financiera conservando
+    completamente su historial.
+    """
+
+    pago = get_object_or_404(
+        Pago,
+        pk=pago_id
+    )
+
+    motivo = request.POST.get(
+        "motivo_anulacion",
+        ""
+    ).strip()
+
+    siguiente = request.POST.get(
+        "next",
+        ""
+    ).strip()
+
+    try:
+
+        pago = anular_pago(
+            pago=pago,
+            usuario=request.user,
+            motivo=motivo,
+        )
+
+    except ValidationError as error:
+
+        for mensaje in error.messages:
+
+            messages.error(
+                request,
+                mensaje
+            )
+
+    else:
+
+        messages.success(
+            request,
+            (
+                f"Pago #{pago.id} "
+                "anulado correctamente."
+            )
+        )
+
+    if (
+        siguiente
+        and siguiente.startswith("/")
+        and not siguiente.startswith("//")
+    ):
+        return redirect(
+            siguiente
+        )
+
+    return redirect(
+        "administracion"
+    )
+
+@user_passes_test(es_admin)
+@require_POST
+def exonerar_mensualidad_administracion(
+    request,
+    mensualidad_id,
+):
+    """
+    Exonera una mensualidad concreta.
+    """
+
+    mensualidad = get_object_or_404(
+        Mensualidad,
+        pk=mensualidad_id,
+    )
+
+    motivo = request.POST.get(
+        "motivo_exoneracion",
+        ""
+    ).strip()
+
+    siguiente = request.POST.get(
+        "next",
+        ""
+    ).strip()
+
+    try:
+
+        mensualidad = exonerar_mensualidad(
+            mensualidad=mensualidad,
+            usuario=request.user,
+            motivo=motivo,
+        )
+
+    except ValidationError as error:
+
+        for mensaje in error.messages:
+
+            messages.error(
+                request,
+                mensaje
+            )
+
+    else:
+
+        messages.success(
+            request,
+            (
+                f"{mensualidad.atleta.nombre} "
+                f"{mensualidad.atleta.apellido} "
+                f"ha sido exonerado(a) para "
+                f"{mensualidad.mes:02d}/"
+                f"{mensualidad.año}."
+            )
+        )
+
+    if (
+        siguiente
+        and siguiente.startswith("/")
+        and not siguiente.startswith("//")
+    ):
+        return redirect(
+            siguiente
+        )
+
+    return redirect(
+        "administracion"
+    )
+
+
+@user_passes_test(es_admin)
+@require_POST
+def quitar_exoneracion_administracion(
+    request,
+    mensualidad_id,
+):
+    """
+    Retira la exoneración de una mensualidad.
+    """
+
+    mensualidad = get_object_or_404(
+        Mensualidad,
+        pk=mensualidad_id,
+    )
+
+    siguiente = request.POST.get(
+        "next",
+        ""
+    ).strip()
+
+    try:
+
+        mensualidad = quitar_exoneracion(
+            mensualidad
+        )
+
+    except ValidationError as error:
+
+        for mensaje in error.messages:
+
+            messages.error(
+                request,
+                mensaje
+            )
+
+    else:
+
+        messages.success(
+            request,
+            (
+                "Exoneración retirada correctamente "
+                f"para {mensualidad.atleta.nombre} "
+                f"{mensualidad.atleta.apellido}."
+            )
+        )
+
+    if (
+        siguiente
+        and siguiente.startswith("/")
+        and not siguiente.startswith("//")
+    ):
+        return redirect(
+            siguiente
+        )
+
+    return redirect(
+        "administracion"
+    )
+
+@user_passes_test(es_admin)
+@require_POST
+def exonerar_periodo_financiero(
+    request,
+    atleta_id,
+):
+    """
+    Exonera un período directamente desde
+    la ficha financiera del atleta.
+
+    Si la mensualidad todavía no existe
+    físicamente, se crea únicamente en el
+    momento de realizar la exoneración.
+    """
+
+    atleta = get_object_or_404(
+        Atleta,
+        pk=atleta_id,
+    )
+
+    siguiente = (
+        request.POST
+        .get(
+            "next",
+            "",
+        )
+        .strip()
+    )
+
+    motivo = (
+        request.POST
+        .get(
+            "motivo_exoneracion",
+            "",
+        )
+        .strip()
+    )
+
+
+    # =========================================
+    # VALIDAR AÑO Y MES
+    # =========================================
+
+    try:
+
+        año = int(
+            request.POST.get(
+                "año"
+            )
+        )
+
+        mes = int(
+            request.POST.get(
+                "mes"
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        messages.error(
+            request,
+            "El período seleccionado no es válido.",
+        )
+
+        if (
+            siguiente
+            and siguiente.startswith("/")
+            and not siguiente.startswith("//")
+        ):
+            return redirect(
+                siguiente
+            )
+
+        return redirect(
+            "administracion"
+        )
+
+
+    if (
+        año < 2000
+        or año > 2100
+        or mes < 1
+        or mes > 12
+    ):
+
+        messages.error(
+            request,
+            "El período seleccionado no es válido.",
+        )
+
+        if (
+            siguiente
+            and siguiente.startswith("/")
+            and not siguiente.startswith("//")
+        ):
+            return redirect(
+                siguiente
+            )
+
+        return redirect(
+            "administracion"
+        )
+
+
+    # =========================================
+    # VERIFICAR QUE EXISTA TARIFA
+    # =========================================
+
+    tarifa = obtener_tarifa_mensual(
+        año,
+        mes,
+    )
+
+
+    if tarifa is None:
+
+        messages.error(
+            request,
+            (
+                "No se puede exonerar este período "
+                "porque no tiene una tarifa configurada."
+            ),
+        )
+
+        if (
+            siguiente
+            and siguiente.startswith("/")
+            and not siguiente.startswith("//")
+        ):
+            return redirect(
+                siguiente
+            )
+
+        return redirect(
+            "administracion"
+        )
+
+
+    # =========================================
+    # OBTENER O CREAR MENSUALIDAD
+    # =========================================
+
+    mensualidad, _ = (
+        Mensualidad.objects
+        .get_or_create(
+            atleta=atleta,
+            año=año,
+            mes=mes,
+            defaults={
+                "monto_pagado":
+                    Decimal("0.00"),
+
+                "exonerado":
+                    False,
+
+                "en_control":
+                    False,
+            },
+        )
+    )
+
+
+    # =========================================
+    # EXONERAR
+    # =========================================
+
+    try:
+
+        mensualidad = (
+            exonerar_mensualidad(
+                mensualidad=mensualidad,
+                usuario=request.user,
+                motivo=motivo,
+            )
+        )
+
+    except ValidationError as error:
+
+        for mensaje in error.messages:
+
+            messages.error(
+                request,
+                mensaje,
+            )
+
+    else:
+
+        messages.success(
+            request,
+            (
+                f"{atleta.nombre} "
+                f"{atleta.apellido} fue "
+                f"exonerado(a) para "
+                f"{mes:02d}/{año}."
+            ),
+        )
+
+
+    # =========================================
+    # REGRESAR
+    # =========================================
+
+    if (
+        siguiente
+        and siguiente.startswith("/")
+        and not siguiente.startswith("//")
+    ):
+
+        return redirect(
+            siguiente
+        )
+
+
+    return redirect(
+        "administracion"
+    )
+
+@user_passes_test(es_admin)
+def detalle_financiero_atleta(
+    request,
+    atleta_id,
+):
+    """
+    Ficha financiera anual de un atleta.
+
+    Muestra:
+    - los 12 meses del año;
+    - estado real de cada período;
+    - cuota aplicable;
+    - pagos activos;
+    - pagos anulados;
+    - bolívares realmente recibidos;
+    - equivalente en USD;
+    - saldo;
+    - exoneraciones;
+    - cantidad de movimientos.
+    """
+
+    atleta = get_object_or_404(
+        Atleta,
+        pk=atleta_id,
+    )
+
+    hoy = timezone.localdate()
+
+
+    # =========================================
+    # AÑO SELECCIONADO
+    # =========================================
+
+    try:
+
+        año_seleccionado = int(
+            request.GET.get(
+                "año",
+                hoy.year,
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        año_seleccionado = (
+            hoy.year
+        )
+
+
+    if not (
+        2000
+        <= año_seleccionado
+        <= 2100
+    ):
+
+        año_seleccionado = (
+            hoy.year
+        )
+
+
+    # =========================================
+    # AÑOS DISPONIBLES
+    # =========================================
+
+    años_disponibles = set(
+
+        Mensualidad.objects
+        .filter(
+            atleta=atleta
+        )
+        .values_list(
+            "año",
+            flat=True,
+        )
+
+    )
+
+    años_disponibles.add(
+        hoy.year
+    )
+
+    años_disponibles.add(
+        año_seleccionado
+    )
+
+    años_disponibles = sorted(
+        años_disponibles,
+        reverse=True,
+    )
+
+
+    # =========================================
+    # CARGAR MENSUALIDADES DEL AÑO
+    # =========================================
+
+    aplicaciones_qs = (
+
+        PagoMensualidad.objects
+        .select_related(
+            "pago"
+        )
+        .prefetch_related(
+            "pago__aplicaciones__mensualidad"
+        )
+        .order_by(
+            "pago__fecha_pago",
+            "pago__creado_en",
+            "id",
+        )
+
+    )
+
+
+    mensualidades = (
+
+        Mensualidad.objects
+        .filter(
+            atleta=atleta,
+            año=año_seleccionado,
+        )
+        .prefetch_related(
+
+            Prefetch(
+                "pagos",
+                queryset=aplicaciones_qs,
+            )
+
+        )
+
+    )
+
+
+    mensualidades_por_mes = {
+
+        mensualidad.mes:
+            mensualidad
+
+        for mensualidad
+        in mensualidades
+
+    }
+
+
+    # =========================================
+    # NOMBRES DE MESES
+    # =========================================
+
+    nombres_meses = {
+
+        1: "Enero",
+        2: "Febrero",
+        3: "Marzo",
+        4: "Abril",
+        5: "Mayo",
+        6: "Junio",
+        7: "Julio",
+        8: "Agosto",
+        9: "Septiembre",
+        10: "Octubre",
+        11: "Noviembre",
+        12: "Diciembre",
+
+    }
+
+
+    # =========================================
+    # ACUMULADORES ANUALES
+    # =========================================
+
+    total_usd = Decimal(
+        "0.0000"
+    )
+
+    total_bs = Decimal(
+        "0.00"
+    )
+
+
+    al_dia = 0
+    parciales = 0
+    pendientes = 0
+    exonerados = 0
+    sin_registro = 0
+    sin_tarifa = 0
+    proximos = 0
+
+    meses_gestionados = 0
+    meses_cubiertos = 0
+
+
+    periodos = []
+
+
+    # =========================================
+    # CONSTRUIR LOS 12 MESES
+    # =========================================
+
+    for mes in range(
+        1,
+        13,
+    ):
+
+        mensualidad = (
+            mensualidades_por_mes
+            .get(
+                mes
+            )
+        )
+
+
+        tarifa = (
+            obtener_tarifa_mensual(
+                año_seleccionado,
+                mes,
+            )
+        )
+
+
+        es_futuro = (
+
+            (
+                año_seleccionado,
+                mes,
+            )
+            >
+            (
+                hoy.year,
+                hoy.month,
+            )
+
+        )
+
+
+        # =====================================
+        # DATOS BASE
+        # =====================================
+
+        cuota_usd = (
+
+            tarifa.monto_usd
+            if tarifa
+            else None
+
+        )
+
+
+        tolerancia_usd = (
+
+            tarifa.tolerancia_usd
+            if tarifa
+            else None
+
+        )
+
+
+        pagado_usd = Decimal(
+            "0.0000"
+        )
+
+        saldo_usd = None
+
+        movimientos = []
+
+        pagado_bs = Decimal(
+            "0.00"
+        )
+
+
+        # =====================================
+        # SI EXISTE MENSUALIDAD
+        # =====================================
+
+        if mensualidad:
+
+            pagado_usd = (
+                mensualidad
+                .total_pagado_usd
+            )
+
+
+            # ---------------------------------
+            # ESTADO REAL
+            # ---------------------------------
+
+            estado_codigo = (
+                mensualidad
+                .estado_codigo
+            )
+
+
+            # Un mes futuro sin ninguna gestión
+            # debe verse como "Próximo".
+            if (
+
+                es_futuro
+
+                and not mensualidad.en_control
+
+                and not mensualidad.exonerado
+
+                and pagado_usd
+                    <= Decimal("0.00")
+
+            ):
+
+                estado_codigo = (
+                    "proximo"
+                )
+
+
+            # ---------------------------------
+            # SALDO
+            # ---------------------------------
+
+            if estado_codigo not in {
+                "proximo",
+                "sin_registro",
+            }:
+
+                saldo_usd = (
+                    mensualidad
+                    .saldo_pendiente_usd
+                )
+
+
+            # ---------------------------------
+            # MOVIMIENTOS
+            # ---------------------------------
+
+            for aplicacion in (
+                mensualidad
+                .pagos
+                .all()
+            ):
+
+                pago = aplicacion.pago
+
+
+                if not pago:
+
+                    continue
+
+                # =================================
+                # TODAS LAS MENSUALIDADES CUBIERTAS
+                # POR ESTE PAGO
+                # =================================
+
+                aplicaciones_del_pago = []
+
+
+                for otra_aplicacion in (
+                    pago.aplicaciones.all()
+                ):
+
+                    otra_mensualidad = (
+                        otra_aplicacion.mensualidad
+                    )
+
+
+                    if not otra_mensualidad:
+
+                        continue
+
+
+                    nombre_otro_mes = (
+                        nombres_meses.get(
+                            otra_mensualidad.mes,
+                            str(otra_mensualidad.mes),
+                        )
+                    )
+
+
+                    monto_aplicado_bs = Decimal(
+                        "0.00"
+                    )
+
+
+                    # Si el pago fue realizado en bolívares,
+                    # calculamos qué parte aproximada de esos
+                    # bolívares corresponde a esta mensualidad.
+                    if (
+
+                        pago.moneda == "VES"
+
+                        and pago.equivalente_usd
+
+                        and pago.equivalente_usd
+                            > Decimal("0.00")
+
+                    ):
+
+                        proporcion_aplicacion = (
+
+                            otra_aplicacion
+                            .monto_aplicado_usd
+
+                            /
+
+                            pago.equivalente_usd
+
+                        )
+
+
+                        monto_aplicado_bs = (
+
+                            proporcion_aplicacion
+                            *
+                            pago.monto_total
+
+                        ).quantize(
+
+                            Decimal("0.01"),
+
+                            rounding=ROUND_HALF_UP,
+
+                        )
+
+
+                    aplicaciones_del_pago.append({
+
+                        "aplicacion_id":
+                            otra_aplicacion.id,
+
+                        "mensualidad_id":
+                            otra_mensualidad.id,
+
+                        "mes":
+                            otra_mensualidad.mes,
+
+                        "nombre_mes":
+                            nombre_otro_mes,
+
+                        "año":
+                            otra_mensualidad.año,
+
+                        "monto_aplicado_usd":
+                            otra_aplicacion
+                            .monto_aplicado_usd,
+
+                        "monto_aplicado_bs":
+                            monto_aplicado_bs,
+
+                    })
+
+
+                # Siempre mostrar las aplicaciones
+                # ordenadas cronológicamente.
+                aplicaciones_del_pago.sort(
+                    key=lambda item: (
+                        item["año"],
+                        item["mes"],
+                    )
+                )
+
+                aplicado_bs = Decimal(
+                    "0.00"
+                )
+
+
+                # ---------------------------------
+                # CALCULAR PARTE DEL PAGO EN BS
+                # ---------------------------------
+
+                if (
+
+                    pago.estado
+                    == "activo"
+
+                    and pago.moneda
+                    == "VES"
+
+                    and pago.equivalente_usd
+
+                    and pago.equivalente_usd
+                        > Decimal("0.00")
+
+                ):
+
+                    proporcion = (
+
+                        aplicacion
+                        .monto_aplicado_usd
+
+                        /
+
+                        pago
+                        .equivalente_usd
+
+                    )
+
+
+                    aplicado_bs = (
+
+                        proporcion
+                        *
+                        pago.monto_total
+
+                    ).quantize(
+
+                        Decimal("0.01"),
+
+                        rounding=(
+                            ROUND_HALF_UP
+                        ),
+
+                    )
+
+
+                    pagado_bs += (
+                        aplicado_bs
+                    )
+
+
+                # ---------------------------------
+                # MOVIMIENTO PARA HISTORIAL
+                # ---------------------------------
+
+                movimientos.append({
+
+                    "aplicacion_id":
+                        aplicacion.id,
+
+                    "pago":
+                        pago,
+
+                    "pago_id":
+                        pago.id,
+
+                    "estado":
+                        pago.estado,
+
+                    "fecha_pago":
+                        pago.fecha_pago,
+
+                    "moneda":
+                        pago.moneda,
+
+                    "moneda_nombre":
+                        pago.get_moneda_display(),
+
+                    "monto_total":
+                        pago.monto_total,
+
+                    "equivalente_usd":
+                        pago.equivalente_usd,
+
+                    "monto_aplicado_usd":
+                        aplicacion.monto_aplicado_usd,
+
+                    "monto_aplicado_bs":
+                        aplicado_bs,
+
+                    "metodo":
+                        pago.get_metodo_display(),
+
+                    "referencia":
+                        pago.referencia,
+
+                    "tasa":
+                        pago.tasa_bs_usd,
+
+                    "fecha_tasa":
+                        pago.fecha_tasa,
+
+                    "fuente_tasa":
+                        pago.fuente_tasa,
+
+                    "observacion":
+                        pago.observacion,
+
+                    "aplicaciones_pago":
+                        aplicaciones_del_pago,
+
+                    "cantidad_aplicaciones":
+                        len(
+                            aplicaciones_del_pago
+                        ),
+
+                })
+
+
+        # =====================================
+        # SI NO EXISTE MENSUALIDAD
+        # =====================================
+
+        else:
+
+            if es_futuro:
+
+                estado_codigo = (
+                    "proximo"
+                )
+
+            elif tarifa is None:
+
+                estado_codigo = (
+                    "sin_tarifa"
+                )
+
+            else:
+
+                estado_codigo = (
+                    "sin_registro"
+                )
+
+
+        # =====================================
+        # NOMBRE DEL ESTADO
+        # =====================================
+
+        nombres_estado = {
+
+            "al_dia":
+                "Al día",
+
+            "parcial":
+                "Parcial",
+
+            "pendiente":
+                "Pendiente",
+
+            "exonerado":
+                "Exonerado",
+
+            "sin_registro":
+                "Sin registro",
+
+            "sin_tarifa":
+                "Sin tarifa",
+
+            "proximo":
+                "Próximo",
+
+        }
+
+
+        estado_nombre = (
+
+            nombres_estado
+            .get(
+                estado_codigo,
+                "Sin registro",
+            )
+
+        )
+
+
+        # =====================================
+        # CONTADORES
+        # =====================================
+
+        if estado_codigo == "al_dia":
+
+            al_dia += 1
+
+            meses_cubiertos += 1
+
+
+        elif estado_codigo == "parcial":
+
+            parciales += 1
+
+
+        elif estado_codigo == "pendiente":
+
+            pendientes += 1
+
+
+        elif estado_codigo == "exonerado":
+
+            exonerados += 1
+
+            meses_cubiertos += 1
+
+
+        elif estado_codigo == "sin_registro":
+
+            sin_registro += 1
+
+
+        elif estado_codigo == "sin_tarifa":
+
+            sin_tarifa += 1
+
+
+        elif estado_codigo == "proximo":
+
+            proximos += 1
+
+
+        # =====================================
+        # MESES GESTIONADOS
+        # =====================================
+
+        if (
+
+            mensualidad
+
+            and (
+                mensualidad.en_control
+                or estado_codigo
+                in {
+                    "al_dia",
+                    "parcial",
+                    "pendiente",
+                    "exonerado",
+                }
+            )
+
+        ):
+
+            meses_gestionados += 1
+
+
+        # =====================================
+        # TOTALES
+        # =====================================
+
+        total_usd += (
+            pagado_usd
+        )
+
+        total_bs += (
+            pagado_bs
+        )
+
+
+        # =====================================
+        # FILA DEL MES
+        # =====================================
+
+        periodos.append({
+
+            "mes":
+                mes,
+
+            "nombre_mes":
+                nombres_meses[mes],
+
+            "año":
+                año_seleccionado,
+
+            "mensualidad":
+                mensualidad,
+
+            "estado_codigo":
+                estado_codigo,
+
+            "estado_nombre":
+                estado_nombre,
+
+            "cuota_usd":
+                cuota_usd,
+
+            "tolerancia_usd":
+                tolerancia_usd,
+
+            "pagado_usd":
+                pagado_usd,
+
+            "pagado_bs":
+                pagado_bs,
+
+            "saldo_usd":
+                saldo_usd,
+
+            "movimientos":
+                movimientos,
+
+            "cantidad_movimientos":
+                len(
+                    movimientos
+                ),
+
+            "exonerado":
+                (
+                    mensualidad.exonerado
+                    if mensualidad
+                    else False
+                ),
+
+            "motivo_exoneracion":
+                (
+                    mensualidad
+                    .motivo_exoneracion
+
+                    if mensualidad
+                    else ""
+                ),
+
+            "exonerado_en":
+                (
+                    mensualidad
+                    .exonerado_en
+
+                    if mensualidad
+                    else None
+                ),
+
+            "exonerado_por":
+                (
+                    mensualidad
+                    .exonerado_por
+
+                    if mensualidad
+                    else None
+                ),
+
+        })
+
+
+    # =========================================
+    # ESTADO GENERAL DEL AÑO
+    # =========================================
+
+    if meses_gestionados == 0:
+
+        estado_anual_codigo = (
+            "sin_gestion"
+        )
+
+        estado_anual = (
+            "Sin gestión"
+        )
+
+
+    elif sin_tarifa > 0:
+
+        estado_anual_codigo = (
+            "revision"
+        )
+
+        estado_anual = (
+            "Revisar configuración"
+        )
+
+
+    elif (
+        pendientes > 0
+        or parciales > 0
+    ):
+
+        estado_anual_codigo = (
+            "pendiente"
+        )
+
+        estado_anual = (
+            "Con pendientes"
+        )
+
+
+    else:
+
+        estado_anual_codigo = (
+            "al_dia"
+        )
+
+        estado_anual = (
+            "Sin pendientes"
+        )
+
+
+    # =========================================
+    # CONTEXTO
+    # =========================================
+
+    context = {
+
+        "atleta":
+            atleta,
+
+        "año_seleccionado":
+            año_seleccionado,
+
+        "años_disponibles":
+            años_disponibles,
+
+        "periodos":
+            periodos,
+
+        "estado_anual":
+            estado_anual,
+
+        "estado_anual_codigo":
+            estado_anual_codigo,
+
+        "meses_gestionados":
+            meses_gestionados,
+
+        "meses_cubiertos":
+            meses_cubiertos,
+
+        "al_dia":
+            al_dia,
+
+        "parciales":
+            parciales,
+
+        "pendientes":
+            pendientes,
+
+        "exonerados":
+            exonerados,
+
+        "sin_registro":
+            sin_registro,
+
+        "sin_tarifa":
+            sin_tarifa,
+
+        "proximos":
+            proximos,
+
+        "total_pagado_usd":
+            total_usd.quantize(
+                Decimal("0.01")
+            ),
+
+        "total_pagado_bs":
+            total_bs.quantize(
+                Decimal("0.01")
+            ),
+
+        "fecha_hoy":
+            hoy,
+
+    }
+
+
+    return render(
+        request,
+        "atletas/detalle_financiero_atleta.html",
+        context,
+    )
 
 @user_passes_test(es_admin)
 def administracion(request):
-    mes_actual = timezone.localdate().month
-    año_actual = int(request.GET.get("año", timezone.localdate().year))
-    mes_filtro = int(request.GET.get("mes", mes_actual))
-    categoria_filtro = request.GET.get("categoria", "")
+    """
+    Panel principal de mensualidades.
 
-    # Filtrar atletas
-    atletas = Atleta.objects.all()
+    Solo crea automáticamente la mensualidad correspondiente
+    al período que se está visualizando.
+
+    Los meses históricos adicionales únicamente se crean
+    cuando realmente se registra un pago para ellos.
+    """
+
+    hoy = timezone.localdate()
+
+    mes_actual = hoy.month
+    año_hoy = hoy.year
+
+    # =========================================
+    # FILTROS
+    # =========================================
+
+    try:
+
+        año_seleccionado = int(
+            request.GET.get(
+                "año",
+                año_hoy
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        año_seleccionado = año_hoy
+
+    try:
+
+        mes_filtro = int(
+            request.GET.get(
+                "mes",
+                mes_actual
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        mes_filtro = mes_actual
+
+    if not 1 <= mes_filtro <= 12:
+        mes_filtro = mes_actual
+
+    if not 2000 <= año_seleccionado <= 2100:
+        año_seleccionado = año_hoy
+
+    categoria_filtro = (
+        request.GET
+        .get(
+            "categoria",
+            ""
+        )
+        .strip()
+    )
+
+    # =========================================
+    # ATLETAS
+    # =========================================
+
+    atletas = (
+        Atleta.objects
+        .all()
+    )
+
     if categoria_filtro:
-        atletas = atletas.filter(categoria=categoria_filtro)
 
-    # Asegurar que existan mensualidades para el año actual y siguiente
-    for atleta in atletas:
-        for mes in range(1, 13):
-            Mensualidad.objects.get_or_create(
-                atleta=atleta,
-                mes=mes,
-                año=año_actual,
-                defaults={"monto_pagado": 0.00, "exonerado": False}
+        atletas = atletas.filter(
+            categoria=categoria_filtro
+        )
+
+    atletas = atletas.order_by(
+        "apellido",
+        "nombre",
+        "id"
+    )
+
+    atleta_ids = list(
+        atletas.values_list(
+            "id",
+            flat=True
+        )
+    )
+
+    # =========================================
+    # TARIFA DEL PERÍODO
+    # =========================================
+
+    tarifa_periodo = (
+        obtener_tarifa_mensual(
+            año_seleccionado,
+            mes_filtro,
+        )
+    )
+
+    tarifa_vigente = (
+        obtener_tarifa_mensual(
+            año_hoy,
+            mes_actual,
+        )
+    )
+
+    # =========================================
+    # PREPARAR EL PERÍODO CONSULTADO
+    # =========================================
+    #
+    # REGLAS:
+    #
+    # - El mes actual entra automáticamente
+    #   al control para TODOS los atletas.
+    #
+    # - Consultar un mes histórico puede crear
+    #   el registro técnico, pero NO lo convierte
+    #   automáticamente en deuda.
+    #
+    # =========================================
+
+    es_periodo_actual = (
+        año_seleccionado == año_hoy
+        and mes_filtro == mes_actual
+    )
+
+    if tarifa_periodo:
+
+        # Para el mes actual trabajamos con todos
+        # los atletas, aunque exista un filtro
+        # visual por categoría.
+        if es_periodo_actual:
+
+            ids_periodo = list(
+                Atleta.objects.values_list(
+                    "id",
+                    flat=True
+                )
             )
 
-    siguiente_año = año_actual + 1
-    for atleta in atletas:
-        for mes in range(1, 13):
-            Mensualidad.objects.get_or_create(
-                atleta=atleta,
-                mes=mes,
-                año=siguiente_año,
-                defaults={"monto_pagado": 0.00, "exonerado": False}
+        else:
+
+            ids_periodo = atleta_ids
+
+
+        if ids_periodo:
+
+            existentes = set(
+                Mensualidad.objects
+                .filter(
+                    atleta_id__in=ids_periodo,
+                    año=año_seleccionado,
+                    mes=mes_filtro,
+                )
+                .values_list(
+                    "atleta_id",
+                    flat=True
+                )
             )
 
-    # Preparar registros para la tabla
-    registros = []
-    for atleta in atletas:
-        mensualidad = Mensualidad.objects.filter(
-            atleta=atleta, mes=mes_filtro, año=año_actual
-        ).first()
-        registros.append({
-            "atleta": atleta,
-            "mensualidad": mensualidad
-        })
 
-    # ✅ Cálculos del resumen mensual
-    mensualidades_mes = Mensualidad.objects.filter(mes=mes_filtro, año=año_actual)
-    if categoria_filtro:
-        mensualidades_mes = mensualidades_mes.filter(atleta__categoria=categoria_filtro)
+            nuevas = [
 
-    total_recaudado = mensualidades_mes.aggregate(total=Sum("monto_pagado"))["total"] or 0
-    total_atletas = mensualidades_mes.count()
+                Mensualidad(
+                    atleta_id=atleta_id,
+                    año=año_seleccionado,
+                    mes=mes_filtro,
+                    monto_pagado=Decimal("0.00"),
+                    exonerado=False,
+                    en_control=es_periodo_actual,
+                )
 
-    al_dia = 0
-    exonerados = 0
-    for m in mensualidades_mes:
-        if m.estado() == "Al día":
-            al_dia += 1
-        elif m.estado() == "Exonerado":
-            exonerados += 1
+                for atleta_id
+                in ids_periodo
 
-    deudores = total_atletas - al_dia - exonerados
+                if atleta_id
+                not in existentes
+            ]
 
-    # Paginación
-    paginator = Paginator(registros, 20)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
 
-    # Meses y categorías para filtros
-    meses = [(i, date_format(date(1900, i, 1), 'F')) for i in range(1, 13)]
-    categorias = Atleta.objects.values_list("categoria", flat=True).distinct()
+            if nuevas:
 
-    context = {
-        "page_obj": page_obj,
-        "mes_filtro": mes_filtro,
-        "mes_actual": mes_actual,
-        "año_actual": año_actual,
-        "categorias": categorias,
-        "categoria_filtro": categoria_filtro,
-        "meses": meses,
-        "total_recaudado": total_recaudado,
-        "al_dia": al_dia,
-        "exonerados": exonerados,
-        "deudores": deudores,
-        "total_atletas": total_atletas,
+                Mensualidad.objects.bulk_create(
+                    nuevas,
+                    ignore_conflicts=True,
+                )
+
+
+            # Si estamos viendo el mes actual,
+            # también activamos registros técnicos
+            # que ya existían por la señal.
+            if es_periodo_actual:
+
+                Mensualidad.objects.filter(
+                    atleta_id__in=ids_periodo,
+                    año=año_seleccionado,
+                    mes=mes_filtro,
+                    en_control=False,
+                ).update(
+                    en_control=True
+                )
+
+    # =========================================
+    # TASA BCV
+    # =========================================
+
+    tasa_actual = None
+    tasa_disponible = False
+
+    try:
+
+        tasa_actual = (
+            obtener_tasa_actual()
+        )
+
+        tasa_disponible = (
+            tasa_actual is not None
+        )
+
+    except TasaCambioNoDisponible:
+
+        tasa_actual = None
+        tasa_disponible = False
+
+    # =========================================
+    # PERÍODOS DISPONIBLES PARA PAGOS
+    # =========================================
+    #
+    # Esto NO crea mensualidades antiguas.
+    #
+    # Solo genera las opciones que podrán
+    # seleccionarse en el modal.
+    # =========================================
+
+    tarifas_por_mes = {}
+
+    for mes in range(
+        1,
+        mes_filtro + 1
+    ):
+
+        tarifa = (
+            obtener_tarifa_mensual(
+                año_seleccionado,
+                mes
+            )
+        )
+
+        if tarifa:
+            tarifas_por_mes[
+                mes
+            ] = tarifa
+
+    meses_validos = list(
+        tarifas_por_mes.keys()
+    )
+
+    # =========================================
+    # MENSUALIDADES YA EXISTENTES
+    # =========================================
+
+    mensualidades_existentes = (
+        Mensualidad.objects
+        .filter(
+            atleta_id__in=
+                atleta_ids,
+            año=año_seleccionado,
+            mes__in=
+                meses_validos,
+        )
+        .select_related(
+            "atleta"
+        )
+        .prefetch_related(
+            Prefetch(
+                "pagos",
+                queryset=(
+                    PagoMensualidad.objects
+                    .select_related("pago")
+                ),
+            )
+        )
+        .order_by(
+            "año",
+            "mes",
+            "atleta_id",
+        )
+    )
+
+    mapa_mensualidades = {
+
+        (
+            mensualidad.atleta_id,
+            mensualidad.mes,
+        ):
+        mensualidad
+
+        for mensualidad
+        in mensualidades_existentes
     }
 
-    return render(request, 'atletas/administracion.html', context)
+    # =========================================
+    # TABLA PRINCIPAL
+    # =========================================
+
+    registros = []
+
+    al_dia = 0
+    parciales = 0
+    pendientes = 0
+    exonerados = 0
+    sin_tarifa = 0
+    sin_registro = 0
+
+    for atleta in atletas:
+
+        mensualidad = (
+            mapa_mensualidades
+            .get(
+                (
+                    atleta.id,
+                    mes_filtro,
+                )
+            )
+        )
+
+        if mensualidad:
+
+            estado_codigo = (
+                mensualidad.estado_codigo
+            )
+
+            estado_nombre = (
+                mensualidad.estado()
+            )
+
+            cuota_usd = (
+                mensualidad.cuota_usd
+            )
+
+            total_pagado_usd = (
+                mensualidad
+                .total_pagado_usd
+            )
+
+            saldo_pendiente_usd = (
+                mensualidad
+                .saldo_pendiente_usd
+            )
+
+        elif tarifa_periodo:
+
+            cuota_usd = (
+                tarifa_periodo
+                .monto_usd
+            )
+
+            total_pagado_usd = (
+                Decimal("0.00")
+            )
+
+            # El período actual sí forma parte
+            # del control y, si no tiene pago,
+            # debe aparecer como pendiente.
+            if es_periodo_actual:
+
+                estado_codigo = (
+                    "pendiente"
+                )
+
+                estado_nombre = (
+                    "Pendiente"
+                )
+
+                saldo_pendiente_usd = (
+                    tarifa_periodo
+                    .monto_usd
+                )
+
+            # Un período histórico que nunca
+            # entró al control no es una deuda.
+            else:
+
+                estado_codigo = (
+                    "sin_registro"
+                )
+
+                estado_nombre = (
+                    "Sin registro"
+                )
+
+                saldo_pendiente_usd = None
+
+        else:
+
+            estado_codigo = (
+                "sin_tarifa"
+            )
+
+            estado_nombre = (
+                "Sin tarifa"
+            )
+
+            cuota_usd = None
+
+            total_pagado_usd = (
+                Decimal("0.00")
+            )
+
+            saldo_pendiente_usd = None
+
+        if estado_codigo == "al_dia":
+            al_dia += 1
+
+        elif estado_codigo == "parcial":
+            parciales += 1
+
+        elif estado_codigo == "pendiente":
+            pendientes += 1
+
+        elif estado_codigo == "exonerado":
+            exonerados += 1
+
+        elif estado_codigo == "sin_tarifa":
+            sin_tarifa += 1
+
+        elif estado_codigo == "sin_registro":
+            sin_registro += 1
+
+        # =====================================
+        # MESES QUE PODRÁ PAGAR ESTE ATLETA
+        # =====================================
+
+        periodos_pago = []
+
+        for mes in meses_validos:
+
+            tarifa_mes = (
+                tarifas_por_mes[
+                    mes
+                ]
+            )
+
+            mensualidad_mes = (
+                mapa_mensualidades
+                .get(
+                    (
+                        atleta.id,
+                        mes,
+                    )
+                )
+            )
+
+            nombre_mes = (
+                date_format(
+                    date(
+                        1900,
+                        mes,
+                        1
+                    ),
+                    "F"
+                )
+            )
+
+            if mensualidad_mes:
+
+                codigo = (
+                    mensualidad_mes
+                    .estado_codigo
+                )
+
+                nombre_estado = (
+                    mensualidad_mes
+                    .estado()
+                )
+
+                pagado = (
+                    mensualidad_mes
+                    .total_pagado_usd
+                )
+
+
+                # Un mes "Sin registro" todavía no
+                # genera deuda, pero sí puede ser
+                # seleccionado voluntariamente para
+                # registrar un pago antiguo.
+                if codigo == "sin_registro":
+
+                    saldo = (
+                        tarifa_mes
+                        .monto_usd
+                    )
+
+                    seleccionable = True
+
+                else:
+
+                    saldo = (
+                        mensualidad_mes
+                        .saldo_pendiente_usd
+                    )
+
+                    seleccionable = (
+                        codigo
+                        in {
+                            "pendiente",
+                            "parcial",
+                        }
+                    )
+
+            else:
+
+                codigo = (
+                    "sin_registro"
+                )
+
+                nombre_estado = (
+                    "Sin registro"
+                )
+
+                pagado = (
+                    Decimal("0.00")
+                )
+
+                saldo = (
+                    tarifa_mes
+                    .monto_usd
+                )
+
+                # Puede seleccionarse:
+                # al hacerlo se creará
+                # la mensualidad.
+                seleccionable = True
+
+            periodos_pago.append(
+                {
+                    "mes":
+                        mes,
+
+                    "año":
+                        año_seleccionado,
+
+                    "valor":
+                        (
+                            f"{año_seleccionado}-"
+                            f"{mes:02d}"
+                        ),
+
+                    "nombre_mes":
+                        nombre_mes,
+
+                    "mensualidad":
+                        mensualidad_mes,
+
+                    "estado_codigo":
+                        codigo,
+
+                    "estado_nombre":
+                        nombre_estado,
+
+                    "cuota_usd":
+                        tarifa_mes
+                        .monto_usd,
+
+                    "total_pagado_usd":
+                        pagado,
+
+                    "saldo_pendiente_usd":
+                        saldo,
+
+                    "seleccionable":
+                        seleccionable,
+                }
+            )
+
+        registros.append(
+            {
+                "atleta":
+                    atleta,
+
+                "mensualidad":
+                    mensualidad,
+
+                "estado_codigo":
+                    estado_codigo,
+
+                "estado_nombre":
+                    estado_nombre,
+
+                "cuota_usd":
+                    cuota_usd,
+
+                "total_pagado_usd":
+                    total_pagado_usd,
+
+                "saldo_pendiente_usd":
+                    saldo_pendiente_usd,
+
+                "periodos_pago":
+                    periodos_pago,
+
+                "tiene_periodos_pendientes":
+                    any(
+                        periodo[
+                            "seleccionable"
+                        ]
+                        for periodo
+                        in periodos_pago
+                    ),
+            }
+        )
+
+    total_atletas = len(
+        registros
+    )
+
+    # =========================================
+    # RECAUDACIÓN DEL PERÍODO
+    # =========================================
+
+    mensualidades_periodo = (
+        Mensualidad.objects
+        .filter(
+            atleta_id__in=
+                atleta_ids,
+            año=año_seleccionado,
+            mes=mes_filtro,
+        )
+    )
+
+    total_antiguo_usd = (
+        mensualidades_periodo
+        .aggregate(
+            total=Sum(
+                "monto_pagado"
+            )
+        )["total"]
+        or Decimal("0.00")
+    )
+
+    aplicaciones_mes = list(
+        PagoMensualidad.objects
+        .filter(
+            mensualidad__atleta_id__in=atleta_ids,
+            mensualidad__año=año_seleccionado,
+            mensualidad__mes=mes_filtro,
+            pago__isnull=False,
+            pago__estado="activo",
+        )
+        .select_related(
+            "pago",
+            "mensualidad",
+        )
+    )
+
+    total_nuevo_usd = sum(
+        (
+            Decimal(
+                str(
+                    aplicacion
+                    .monto_aplicado_usd
+                )
+            )
+            for aplicacion
+            in aplicaciones_mes
+        ),
+        Decimal("0.00"),
+    )
+
+    total_recaudado_usd = (
+        Decimal(
+            str(
+                total_antiguo_usd
+            )
+        )
+        + total_nuevo_usd
+    ).quantize(
+        Decimal("0.01")
+    )
+
+    # =========================================
+    # BOLÍVARES REALES RECIBIDOS
+    # =========================================
+
+    total_recaudado_bs = (
+        Decimal("0.00")
+    )
+
+    for aplicacion in aplicaciones_mes:
+
+        pago = aplicacion.pago
+
+        if (
+            pago
+            and pago.moneda == "VES"
+            and pago.equivalente_usd
+            and pago.equivalente_usd
+            > Decimal("0.00")
+        ):
+
+            proporcion = (
+                aplicacion
+                .monto_aplicado_usd
+                / pago.equivalente_usd
+            )
+
+            total_recaudado_bs += (
+                pago.monto_total
+                * proporcion
+            )
+
+    total_recaudado_bs = (
+        total_recaudado_bs
+        .quantize(
+            Decimal("0.01")
+        )
+    )
+
+    # =========================================
+    # FILTROS
+    # =========================================
+
+    meses = [
+
+        (
+            i,
+            date_format(
+                date(
+                    1900,
+                    i,
+                    1
+                ),
+                "F"
+            )
+        )
+
+        for i
+        in range(
+            1,
+            13
+        )
+    ]
+
+    categorias = (
+        Atleta.objects
+        .values_list(
+            "categoria",
+            flat=True
+        )
+        .distinct()
+        .order_by(
+            "categoria"
+        )
+    )
+
+    context = {
+
+        "registros":
+            registros,
+
+        "mes_filtro":
+            mes_filtro,
+
+        "mes_actual":
+            mes_actual,
+
+        "año_actual":
+            año_seleccionado,
+
+        "año_hoy":
+            año_hoy,
+
+        "categorias":
+            categorias,
+
+        "categoria_filtro":
+            categoria_filtro,
+
+        "meses":
+            meses,
+
+        "tarifa_periodo":
+            tarifa_periodo,
+
+        "tarifa_vigente":
+            tarifa_vigente,
+
+        "tasa_actual":
+            tasa_actual,
+
+        "tasa_disponible":
+            tasa_disponible,
+
+        "total_recaudado_usd":
+            total_recaudado_usd,
+
+        "total_recaudado_bs":
+            total_recaudado_bs,
+
+        "al_dia":
+            al_dia,
+
+        "parciales":
+            parciales,
+
+        "pendientes":
+            pendientes,
+
+        "exonerados":
+            exonerados,
+
+        "sin_tarifa":
+            sin_tarifa,
+
+        "total_atletas":
+            total_atletas,
+
+        "fecha_hoy":
+            hoy,
+
+        "sin_registro":
+            sin_registro,
+    }
+
+    return render(
+        request,
+        "atletas/administracion.html",
+        context
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def lista_entrenadores(request):
@@ -1119,12 +3828,12 @@ def editar_estadistica(request, pk):
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def eliminar_estadistica(request, pk):
     estadistica = get_object_or_404(Estadistica, pk=pk)
-    
+
     if request.method == 'POST':
         atleta_id = estadistica.atleta.id
         estadistica.delete()
         return redirect('ver_estadisticas', atleta_id=atleta_id)
-    
+
     return render(request, 'estadisticas/eliminar_estadistica.html', {
         'estadistica': estadistica
     })
@@ -1167,7 +3876,7 @@ def resumen_estadisticas(request, atleta_id):
     def normalizar(valor, maximo=50):
         valor = valor or 0
         return min(round((valor / maximo) * 100), 10000000)
-    
+
     radar_datos = {
         'Remates': datos['remates'],
         'Bloqueo': datos['bloqueos'],
@@ -1305,7 +4014,7 @@ def estadisticas_individuales(request):
         'estadisticas/estadisticas_individuales.html',
         context
     )
-    
+
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def agregar_estadistica_general(request):
     atleta_encontrado = None
@@ -1658,405 +4367,4745 @@ def resumen_estadisticas_equipo_grafico(request, equipo_id):
 
     return render(request, 'estadisticas/resumen_equipo_grafico.html', context)
 
-@user_passes_test(es_admin)
-def reporte_pagos_view(request):
-    año_actual = timezone.localtime().year
-    año = int(request.GET.get('año', año_actual))
-    categoria = request.GET.get('categoria')
-    cedula = request.GET.get('cedula', '').strip()
-    nombre = request.GET.get('nombre', '').strip()
-    mes_inicio = int(request.GET.get('mes_inicio') or 1)
-    mes_fin = int(request.GET.get('mes_fin') or 12)
-    estado_filtro = request.GET.get('estado', '')
+# ============================================================
+# MOTOR FINANCIERO ÚNICO PARA REPORTES
+# ============================================================
 
-    atletas = Atleta.objects.all()
+_MESES_REPORTE = {
+    1: "Enero",
+    2: "Febrero",
+    3: "Marzo",
+    4: "Abril",
+    5: "Mayo",
+    6: "Junio",
+    7: "Julio",
+    8: "Agosto",
+    9: "Septiembre",
+    10: "Octubre",
+    11: "Noviembre",
+    12: "Diciembre",
+}
+
+
+_NOMBRES_ESTADO_REPORTE = {
+    "al_dia": "Al día",
+    "parcial": "Parcial",
+    "pendiente": "Pendiente",
+    "exonerado": "Exonerado",
+    "sin_registro": "Sin registro",
+    "sin_tarifa": "Sin tarifa",
+    "proximo": "Próximo",
+}
+
+
+# Permite recibir temporalmente los valores
+# utilizados por los filtros viejos del reporte.
+_ALIAS_ESTADOS_REPORTE = {
+    "pagado": "al_dia",
+    "no_pagado": "pendiente",
+    "al_dia": "al_dia",
+    "parcial": "parcial",
+    "pendiente": "pendiente",
+    "exonerado": "exonerado",
+    "sin_registro": "sin_registro",
+    "sin_tarifa": "sin_tarifa",
+    "proximo": "proximo",
+}
+
+
+def _normalizar_estado_reporte(
+    estado,
+):
+    """
+    Convierte los nombres antiguos de estados
+    al sistema financiero nuevo.
+    """
+
+    estado = (
+        estado
+        or ""
+    ).strip()
+
+
+    if not estado:
+        return ""
+
+
+    return (
+        _ALIAS_ESTADOS_REPORTE
+        .get(
+            estado,
+            "",
+        )
+    )
+
+
+
+def _construir_reporte_financiero(
+    *,
+    año,
+    mes_inicio=1,
+    mes_fin=12,
+    categoria="",
+    nombre="",
+    cedula="",
+    estado_filtro="",
+):
+    """
+    Construye toda la información financiera
+    utilizada por:
+
+    - reporte web;
+    - Excel;
+    - PDF.
+
+    Esta función NO modifica la base de datos.
+
+    Los estados y saldos utilizan exactamente
+    la misma lógica financiera de Mensualidad.
+    """
+
+    hoy = timezone.localdate()
+
+
+    # ========================================================
+    # VALIDAR AÑO
+    # ========================================================
+
+    try:
+
+        año = int(
+            año
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        año = hoy.year
+
+
+    if not (
+        2000
+        <= año
+        <= 2100
+    ):
+
+        año = hoy.year
+
+
+
+    # ========================================================
+    # VALIDAR RANGO DE MESES
+    # ========================================================
+
+    try:
+
+        mes_inicio = int(
+            mes_inicio
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        mes_inicio = 1
+
+
+    try:
+
+        mes_fin = int(
+            mes_fin
+        )
+
+    except (
+        TypeError,
+        ValueError,
+    ):
+
+        mes_fin = 12
+
+
+    mes_inicio = max(
+        1,
+        min(
+            mes_inicio,
+            12,
+        ),
+    )
+
+
+    mes_fin = max(
+        1,
+        min(
+            mes_fin,
+            12,
+        ),
+    )
+
+
+    if mes_inicio > mes_fin:
+
+        mes_inicio, mes_fin = (
+            mes_fin,
+            mes_inicio,
+        )
+
+
+
+    # ========================================================
+    # NORMALIZAR FILTROS
+    # ========================================================
+
+    categoria = (
+        categoria
+        or ""
+    ).strip()
+
+
+    nombre = (
+        nombre
+        or ""
+    ).strip()
+
+
+    cedula = (
+        cedula
+        or ""
+    ).strip()
+
+
+    estado_filtro = (
+        _normalizar_estado_reporte(
+            estado_filtro
+        )
+    )
+
+
+
+    # ========================================================
+    # ATLETAS
+    # ========================================================
+
+    atletas_qs = (
+        Atleta.objects
+        .all()
+    )
+
 
     if categoria:
-        atletas = atletas.filter(categoria=categoria)
+
+        atletas_qs = (
+            atletas_qs
+            .filter(
+                categoria=categoria
+            )
+        )
+
+
     if nombre:
-        atletas = atletas.filter(nombre__icontains=nombre)
 
-    atletas_filtrados_por_cedula = False
+        atletas_qs = (
+            atletas_qs
+            .filter(
+                Q(
+                    nombre__icontains=nombre
+                )
+                |
+                Q(
+                    apellido__icontains=nombre
+                )
+            )
+        )
+
+
     if cedula:
-        atletas = atletas.filter(cedula__icontains=cedula)
-        if atletas.count() == 1:
-            atletas_filtrados_por_cedula = True
 
-    resumen = []
+        atletas_qs = (
+            atletas_qs
+            .filter(
+                cedula__icontains=cedula
+            )
+        )
+
+
+    atletas = list(
+
+        atletas_qs
+        .order_by(
+            "apellido",
+            "nombre",
+            "id",
+        )
+
+    )
+
+
+    atleta_ids = [
+
+        atleta.id
+
+        for atleta
+        in atletas
+
+    ]
+
+
+
+    # ========================================================
+    # APLICACIONES DE PAGO
+    # ========================================================
+
+    aplicaciones_qs = (
+
+        PagoMensualidad.objects
+        .select_related(
+            "pago"
+        )
+        .order_by(
+            "pago__fecha_pago",
+            "pago__creado_en",
+            "id",
+        )
+
+    )
+
+
+
+    # ========================================================
+    # MENSUALIDADES
+    #
+    # Se cargan todas de una sola vez para evitar
+    # hacer una consulta por atleta y por mes.
+    # ========================================================
+
+    if atleta_ids:
+
+        mensualidades = (
+
+            Mensualidad.objects
+            .filter(
+                atleta_id__in=atleta_ids,
+                año=año,
+                mes__gte=mes_inicio,
+                mes__lte=mes_fin,
+            )
+            .prefetch_related(
+
+                Prefetch(
+                    "pagos",
+                    queryset=aplicaciones_qs,
+                )
+
+            )
+
+        )
+
+    else:
+
+        mensualidades = (
+            Mensualidad.objects.none()
+        )
+
+
+    mensualidades_por_clave = {
+
+        (
+            mensualidad.atleta_id,
+            mensualidad.mes,
+        ):
+            mensualidad
+
+        for mensualidad
+        in mensualidades
+
+    }
+
+
+
+    # ========================================================
+    # TARIFAS DEL RANGO
+    #
+    # Se resuelven una sola vez por mes.
+    # ========================================================
+
+    tarifas_por_mes = {
+
+        mes:
+            obtener_tarifa_mensual(
+                año,
+                mes,
+            )
+
+        for mes
+        in range(
+            mes_inicio,
+            mes_fin + 1,
+        )
+
+    }
+
+
+
+    # ========================================================
+    # DEFINICIÓN DE MESES
+    # ========================================================
+
+    meses = [
+
+        {
+            "numero":
+                mes,
+
+            "nombre":
+                _MESES_REPORTE[mes],
+
+            "abreviatura":
+                _MESES_REPORTE[mes][:3],
+        }
+
+        for mes
+        in range(
+            mes_inicio,
+            mes_fin + 1,
+        )
+
+    ]
+
+
+
+    # ========================================================
+    # RESULTADO
+    # ========================================================
+
+    filas = []
+
+
+    # Totales globales.
+    total_pagado_usd = Decimal(
+        "0.0000"
+    )
+
+    total_pagado_bs = Decimal(
+        "0.00"
+    )
+
+    total_pendiente_usd = Decimal(
+        "0.00"
+    )
+
+
+    total_meses_gestionados = 0
+    total_meses_cubiertos = 0
+
+
+    conteo_estados = {
+
+        "al_dia": 0,
+        "parcial": 0,
+        "pendiente": 0,
+        "exonerado": 0,
+        "sin_registro": 0,
+        "sin_tarifa": 0,
+        "proximo": 0,
+
+    }
+
+
+
+    # ========================================================
+    # RECORRER ATLETAS
+    # ========================================================
+
     for atleta in atletas:
-        pagos = []
-        total_pagado = 0
-        total_pendiente = 0
-        tiene_estado = False
 
-        for mes in range(mes_inicio, mes_fin + 1):
-            mensualidad = Mensualidad.objects.filter(atleta=atleta, año=año, mes=mes).first()
+
+        periodos = []
+
+
+        atleta_pagado_usd = Decimal(
+            "0.0000"
+        )
+
+        atleta_pagado_bs = Decimal(
+            "0.00"
+        )
+
+        atleta_pendiente_usd = Decimal(
+            "0.00"
+        )
+
+
+        atleta_meses_gestionados = 0
+        atleta_meses_cubiertos = 0
+
+
+        estados_atleta = {
+
+            "al_dia": 0,
+            "parcial": 0,
+            "pendiente": 0,
+            "exonerado": 0,
+            "sin_registro": 0,
+            "sin_tarifa": 0,
+            "proximo": 0,
+
+        }
+
+
+
+        # ====================================================
+        # MESES DEL ATLETA
+        # ====================================================
+
+        for mes in range(
+            mes_inicio,
+            mes_fin + 1,
+        ):
+
+
+            mensualidad = (
+                mensualidades_por_clave
+                .get(
+                    (
+                        atleta.id,
+                        mes,
+                    )
+                )
+            )
+
+
+            tarifa = (
+                tarifas_por_mes
+                .get(
+                    mes
+                )
+            )
+
+
+            es_futuro = (
+
+                (
+                    año,
+                    mes,
+                )
+
+                >
+
+                (
+                    hoy.year,
+                    hoy.month,
+                )
+
+            )
+
+
+
+            # ================================================
+            # DATOS INICIALES
+            # ================================================
+
+            cuota_usd = (
+
+                Decimal(
+                    str(
+                        tarifa.monto_usd
+                    )
+                )
+
+                if tarifa
+                else None
+
+            )
+
+
+            tolerancia_usd = (
+
+                Decimal(
+                    str(
+                        tarifa.tolerancia_usd
+                    )
+                )
+
+                if tarifa
+                else None
+
+            )
+
+
+            pagado_usd = Decimal(
+                "0.0000"
+            )
+
+
+            pagado_bs = Decimal(
+                "0.00"
+            )
+
+
+            saldo_usd = None
+
+
+            en_control = False
+
+
+            exonerado = False
+
+
+
+            # ================================================
+            # EXISTE MENSUALIDAD
+            # ================================================
+
             if mensualidad:
-                monto = float(mensualidad.monto_pagado)
-                if mensualidad.exonerado:
-                    estado = "exonerado"
-                elif monto >= 5.00:
-                    estado = "pagado"
-                elif monto > 0:
-                    estado = "parcial"
-                else:
-                    estado = "no_pagado"
+
+
+                en_control = bool(
+                    mensualidad.en_control
+                )
+
+
+                exonerado = bool(
+                    mensualidad.exonerado
+                )
+
+
+                pagado_usd = (
+
+                    mensualidad
+                    .total_pagado_usd
+
+                )
+
+
+                estado_codigo = (
+
+                    mensualidad
+                    .estado_codigo
+
+                )
+
+
+
+                # --------------------------------------------
+                # FUTURO NO GESTIONADO
+                # --------------------------------------------
+
+                if (
+
+                    es_futuro
+
+                    and not mensualidad.en_control
+
+                    and not mensualidad.exonerado
+
+                    and pagado_usd
+                        <= Decimal("0.00")
+
+                ):
+
+                    estado_codigo = (
+                        "proximo"
+                    )
+
+
+
+                # --------------------------------------------
+                # SALDO
+                # --------------------------------------------
+
+                if estado_codigo not in {
+                    "sin_registro",
+                    "proximo",
+                }:
+
+                    saldo_usd = (
+
+                        mensualidad
+                        .saldo_pendiente_usd
+
+                    )
+
+
+
+                # --------------------------------------------
+                # BOLÍVARES APLICADOS AL MES
+                # --------------------------------------------
+
+                for aplicacion in (
+                    mensualidad
+                    .pagos
+                    .all()
+                ):
+
+
+                    pago = (
+                        aplicacion.pago
+                    )
+
+
+                    if not pago:
+
+                        continue
+
+
+                    if (
+                        pago.estado
+                        != "activo"
+                    ):
+
+                        continue
+
+
+                    if (
+                        pago.moneda
+                        != "VES"
+                    ):
+
+                        continue
+
+
+                    if (
+                        not pago.equivalente_usd
+
+                        or pago.equivalente_usd
+                            <= Decimal("0.00")
+                    ):
+
+                        continue
+
+
+                    proporcion = (
+
+                        aplicacion
+                        .monto_aplicado_usd
+
+                        /
+
+                        pago.equivalente_usd
+
+                    )
+
+
+                    aplicado_bs = (
+
+                        proporcion
+                        *
+                        pago.monto_total
+
+                    ).quantize(
+
+                        Decimal("0.01"),
+
+                        rounding=(
+                            ROUND_HALF_UP
+                        ),
+
+                    )
+
+
+                    pagado_bs += (
+                        aplicado_bs
+                    )
+
+
+
+            # ================================================
+            # NO EXISTE MENSUALIDAD
+            # ================================================
+
             else:
-                monto = 0.00
-                estado = "no_pagado"
 
-            pagos.append({'mes': mes, 'monto': monto, 'estado': estado})
 
-            if estado != "exonerado":
-                total_pagado += monto
-                if monto < 5:
-                    total_pendiente += (5 - monto)
+                if es_futuro:
 
-            if estado == estado_filtro:
-                tiene_estado = True
+                    estado_codigo = (
+                        "proximo"
+                    )
 
-        if estado_filtro and not tiene_estado and not atletas_filtrados_por_cedula:
-            continue
 
-        resumen.append({
-            'id': atleta.id,
-            'nombre': atleta.nombre,
-            'apellido': atleta.apellido,
-            'cedula': atleta.cedula,
-            'categoria': atleta.categoria,
-            'pagos': pagos,
-            'total_pagado': total_pagado,
-            'total_pendiente': total_pendiente
-        })
+                elif tarifa is None:
 
-    paginator = Paginator(resumen, 15)
+                    estado_codigo = (
+                        "sin_tarifa"
+                    )
+
+
+                else:
+
+                    estado_codigo = (
+                        "sin_registro"
+                    )
+
+
+
+            # ================================================
+            # NOMBRE DEL ESTADO
+            # ================================================
+
+            estado_nombre = (
+
+                _NOMBRES_ESTADO_REPORTE
+                .get(
+                    estado_codigo,
+                    "Sin registro",
+                )
+
+            )
+
+
+
+            # ================================================
+            # MES GESTIONADO
+            # ================================================
+
+            gestionado = bool(
+
+                mensualidad
+
+                and (
+
+                    mensualidad.en_control
+
+                    or estado_codigo in {
+                        "al_dia",
+                        "parcial",
+                        "pendiente",
+                        "exonerado",
+                    }
+
+                )
+
+            )
+
+
+
+            # ================================================
+            # MES CUBIERTO
+            # ================================================
+
+            cubierto = (
+
+                estado_codigo
+                in {
+                    "al_dia",
+                    "exonerado",
+                }
+
+            )
+
+
+
+            # ================================================
+            # ACUMULAR ATLETA
+            # ================================================
+
+            atleta_pagado_usd += (
+                pagado_usd
+            )
+
+
+            atleta_pagado_bs += (
+                pagado_bs
+            )
+
+
+            if (
+                saldo_usd is not None
+
+                and saldo_usd
+                    > Decimal("0.00")
+            ):
+
+                atleta_pendiente_usd += (
+                    saldo_usd
+                )
+
+
+            if gestionado:
+
+                atleta_meses_gestionados += 1
+
+
+            if cubierto:
+
+                atleta_meses_cubiertos += 1
+
+
+            if (
+                estado_codigo
+                in estados_atleta
+            ):
+
+                estados_atleta[
+                    estado_codigo
+                ] += 1
+
+
+
+            # ================================================
+            # FILA DEL MES
+            # ================================================
+
+            periodos.append({
+
+                "mes":
+                    mes,
+
+                "nombre_mes":
+                    _MESES_REPORTE[
+                        mes
+                    ],
+
+                "abreviatura":
+                    _MESES_REPORTE[
+                        mes
+                    ][:3],
+
+                "año":
+                    año,
+
+                "mensualidad":
+                    mensualidad,
+
+                "estado_codigo":
+                    estado_codigo,
+
+                "estado_nombre":
+                    estado_nombre,
+
+                "cuota_usd":
+                    cuota_usd,
+
+                "tolerancia_usd":
+                    tolerancia_usd,
+
+                "pagado_usd":
+                    pagado_usd.quantize(
+                        Decimal("0.01")
+                    ),
+
+                "pagado_bs":
+                    pagado_bs.quantize(
+                        Decimal("0.01")
+                    ),
+
+                "saldo_usd":
+                    (
+                        saldo_usd.quantize(
+                            Decimal("0.01")
+                        )
+                        if saldo_usd is not None
+                        else None
+                    ),
+
+                "en_control":
+                    en_control,
+
+                "exonerado":
+                    exonerado,
+
+                "gestionado":
+                    gestionado,
+
+                "cubierto":
+                    cubierto,
+
+            })
+
+
+
+        # ====================================================
+        # FILTRO DE ESTADO
+        #
+        # El atleta aparece si al menos uno de los meses
+        # seleccionados tiene el estado buscado.
+        # ====================================================
+
+        if estado_filtro:
+
+            coincide_estado = any(
+
+                periodo[
+                    "estado_codigo"
+                ]
+                == estado_filtro
+
+                for periodo
+                in periodos
+
+            )
+
+
+            if not coincide_estado:
+
+                continue
+
+
+
+        # ====================================================
+        # AGREGAR ATLETA AL REPORTE
+        # ====================================================
+
+        fila = {
+
+            "id":
+                atleta.id,
+
+            "atleta":
+                atleta,
+
+            "nombre":
+                atleta.nombre,
+
+            "apellido":
+                atleta.apellido,
+
+            "nombre_completo":
+                (
+                    f"{atleta.nombre} "
+                    f"{atleta.apellido}"
+                ).strip(),
+
+            "cedula":
+                atleta.cedula,
+
+            "categoria":
+                atleta.categoria,
+
+            "periodos":
+                periodos,
+
+            # Compatibilidad temporal con
+            # algunas partes del reporte viejo.
+            "pagos":
+                periodos,
+
+            "total_pagado_usd":
+                atleta_pagado_usd.quantize(
+                    Decimal("0.01")
+                ),
+
+            "total_pagado_bs":
+                atleta_pagado_bs.quantize(
+                    Decimal("0.01")
+                ),
+
+            "total_pendiente_usd":
+                atleta_pendiente_usd.quantize(
+                    Decimal("0.01")
+                ),
+
+            "meses_gestionados":
+                atleta_meses_gestionados,
+
+            "meses_cubiertos":
+                atleta_meses_cubiertos,
+
+            "estados":
+                estados_atleta,
+
+        }
+
+
+        filas.append(
+            fila
+        )
+
+
+
+        # ====================================================
+        # TOTALES GENERALES
+        # ====================================================
+
+        total_pagado_usd += (
+            atleta_pagado_usd
+        )
+
+
+        total_pagado_bs += (
+            atleta_pagado_bs
+        )
+
+
+        total_pendiente_usd += (
+            atleta_pendiente_usd
+        )
+
+
+        total_meses_gestionados += (
+            atleta_meses_gestionados
+        )
+
+
+        total_meses_cubiertos += (
+            atleta_meses_cubiertos
+        )
+
+
+        for (
+            codigo,
+            cantidad,
+        ) in estados_atleta.items():
+
+            conteo_estados[
+                codigo
+            ] += cantidad
+
+
+
+    # ========================================================
+    # RESULTADO FINAL
+    # ========================================================
+
+    return {
+
+        "año":
+            año,
+
+        "mes_inicio":
+            mes_inicio,
+
+        "mes_fin":
+            mes_fin,
+
+        "meses":
+            meses,
+
+        "filas":
+            filas,
+
+        "total_atletas":
+            len(
+                filas
+            ),
+
+        "totales": {
+
+            "pagado_usd":
+                total_pagado_usd.quantize(
+                    Decimal("0.01")
+                ),
+
+            "pagado_bs":
+                total_pagado_bs.quantize(
+                    Decimal("0.01")
+                ),
+
+            "pendiente_usd":
+                total_pendiente_usd.quantize(
+                    Decimal("0.01")
+                ),
+
+            "meses_gestionados":
+                total_meses_gestionados,
+
+            "meses_cubiertos":
+                total_meses_cubiertos,
+
+            "estados":
+                conteo_estados,
+
+        },
+
+        "filtros": {
+
+            "categoria":
+                categoria,
+
+            "nombre":
+                nombre,
+
+            "cedula":
+                cedula,
+
+            "estado":
+                estado_filtro,
+
+        },
+
+    }
+
+@user_passes_test(es_admin)
+def reporte_pagos_view(request):
+    """
+    Reporte general de mensualidades.
+
+    Toda la lógica financiera proviene de
+    _construir_reporte_financiero().
+    """
+
+    hoy = timezone.localdate()
+
+    # ========================================================
+    # FILTROS
+    # ========================================================
+
+    año = request.GET.get("año") or hoy.year
+    mes_inicio = request.GET.get("mes_inicio") or 1
+    mes_fin = request.GET.get("mes_fin") or 12
+
+    categoria = request.GET.get("categoria", "").strip()
+    nombre = request.GET.get("nombre", "").strip()
+    cedula = request.GET.get("cedula", "").strip()
+    estado_filtro = request.GET.get("estado", "").strip()
+
+    # ========================================================
+    # FILAS POR PÁGINA
+    # ========================================================
+
+    try:
+        por_pagina = int(
+            request.GET.get(
+                "por_pagina",
+                15,
+            )
+        )
+    except (TypeError, ValueError):
+        por_pagina = 15
+
+    if por_pagina not in {15, 20, 50}:
+        por_pagina = 15
+
+    # ========================================================
+    # MOTOR FINANCIERO
+    # ========================================================
+
+    reporte = _construir_reporte_financiero(
+        año=año,
+        mes_inicio=mes_inicio,
+        mes_fin=mes_fin,
+        categoria=categoria,
+        nombre=nombre,
+        cedula=cedula,
+        estado_filtro=estado_filtro,
+    )
+
+    año_seleccionado = reporte["año"]
+    mes_inicio = reporte["mes_inicio"]
+    mes_fin = reporte["mes_fin"]
+    estado_filtro = reporte["filtros"]["estado"]
+
+    # ========================================================
+    # PAGINACIÓN
+    # ========================================================
+
+
+    paginator = Paginator(
+        reporte["filas"],
+        por_pagina,
+    )
+
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
-    categorias = Atleta.objects.values_list('categoria', flat=True).distinct()
+    # ========================================================
+    # PAGINACIÓN NUMÉRICA DESLIZANTE
+    #
+    # Se muestran como máximo 5 números.
+    #
+    # Ejemplos:
+    #
+    # Página 1:
+    # 1 2 3 4 5
+    #
+    # Página 4:
+    # 2 3 4 5 6
+    #
+    # Página 8:
+    # 6 7 8 9 10
+    #
+    # Cerca del final:
+    # 16 17 18 19 20
+    # ========================================================
+
+    total_paginas = paginator.num_pages
+    pagina_actual = page_obj.number
+
+    cantidad_paginas_visibles = 5
+
+
+    if total_paginas <= cantidad_paginas_visibles:
+
+        pagina_inicio = 1
+        pagina_fin = total_paginas
+
+    else:
+
+        pagina_inicio = pagina_actual - 2
+        pagina_fin = pagina_actual + 2
+
+
+        # Cerca del inicio
+        if pagina_inicio < 1:
+
+            pagina_inicio = 1
+            pagina_fin = cantidad_paginas_visibles
+
+
+        # Cerca del final
+        if pagina_fin > total_paginas:
+
+            pagina_fin = total_paginas
+
+            pagina_inicio = (
+                total_paginas
+                - cantidad_paginas_visibles
+                + 1
+            )
+
+
+    paginas_paginacion = list(
+        range(
+            pagina_inicio,
+            pagina_fin + 1,
+        )
+    )
+
+    # ========================================================
+    # QUERYSTRING SIN PAGE
+    # ========================================================
+
+    parametros_paginacion = request.GET.copy()
+    parametros_paginacion.pop("page", None)
+    querystring_sin_page = parametros_paginacion.urlencode()
+
+    # ========================================================
+    # CATEGORÍAS
+    # ========================================================
+
+    categorias = list(
+        Atleta.objects
+        .exclude(categoria__isnull=True)
+        .exclude(categoria="")
+        .values_list("categoria", flat=True)
+        .distinct()
+        .order_by("categoria")
+    )
+
+    # ========================================================
+    # AÑOS DISPONIBLES
+    # ========================================================
+
+    años_disponibles = set(
+        Mensualidad.objects
+        .values_list("año", flat=True)
+        .distinct()
+    )
+
+    años_disponibles.add(hoy.year)
+    años_disponibles.add(año_seleccionado)
+
+    años_disponibles = sorted(
+        años_disponibles,
+        reverse=True,
+    )
+
+    # ========================================================
+    # SELECTORES
+    # ========================================================
+
+    meses_selector = [
+        (mes, _MESES_REPORTE[mes])
+        for mes in range(1, 13)
+    ]
+
+    estados_disponibles = [
+        ("al_dia", "Al día"),
+        ("parcial", "Parcial"),
+        ("pendiente", "Pendiente"),
+        ("exonerado", "Exonerado"),
+        ("sin_registro", "Sin registro"),
+        ("proximo", "Próximo"),
+        ("sin_tarifa", "Sin tarifa"),
+    ]
+
+    # ========================================================
+    # CONTEXTO
+    # ========================================================
 
     context = {
-        'resumen': page_obj,
-        'categorias': categorias,
-        'año_actual': año_actual,
-        'año_seleccionado': año,
-        'categoria_seleccionada': categoria,
-        'cedula': cedula,
-        'nombre': nombre,
-        'mes_inicio': mes_inicio,
-        'mes_fin': mes_fin,
-        'estado': estado_filtro,
-        'meses': meses,
-        'page_obj': page_obj,
+        "resumen": page_obj,
+        "page_obj": page_obj,
+        "reporte": reporte,
+        "totales": reporte["totales"],
+        "meses": reporte["meses"],
+
+        "año_actual": hoy.year,
+        "año_seleccionado": año_seleccionado,
+        "años_disponibles": años_disponibles,
+        "mes_inicio": mes_inicio,
+        "mes_fin": mes_fin,
+        "categoria_seleccionada": reporte["filtros"]["categoria"],
+        "nombre": reporte["filtros"]["nombre"],
+        "cedula": reporte["filtros"]["cedula"],
+        "estado": estado_filtro,
+
+        "categorias": categorias,
+        "meses_selector": meses_selector,
+        "estados_disponibles": estados_disponibles,
+
+        "por_pagina": por_pagina,
+        "paginas_paginacion": paginas_paginacion,
+        "querystring_sin_page": querystring_sin_page,
     }
 
-    return render(request, 'reportes/reporte_pagos.html', context)
+    return render(
+        request,
+        "reportes/reporte_pagos.html",
+        context,
+    )
 
 @user_passes_test(es_admin)
 def exportar_pagos_excel(request):
-    from openpyxl.styles import Font, Alignment, PatternFill
-    from openpyxl.utils import get_column_letter
-    from openpyxl.drawing.image import Image as XLImage
+    """
+    Exporta el reporte de mensualidades a Excel.
 
-    año = int(request.GET.get('año', timezone.localdate().year))
-    categoria = request.GET.get('categoria')
-    nombre = request.GET.get('nombre')
-    cedula = request.GET.get('cedula')
-    estado = request.GET.get('estado')  # pagado, pendiente, parcial, exonerado
-    mes_inicio = int(request.GET.get('mes_inicio', 1))
-    mes_fin = int(request.GET.get('mes_fin', 12))
+    Utiliza el mismo motor financiero que
+    el reporte web.
 
-    atletas = Atleta.objects.all()
-    if categoria:
-        atletas = atletas.filter(categoria=categoria)
-    if nombre:
-        atletas = atletas.filter(nombre__icontains=nombre)
+    Respeta:
+    - tarifas históricas;
+    - pagos activos;
+    - pagos anulados;
+    - pagos parciales;
+    - exoneraciones;
+    - sin registro;
+    - períodos próximos;
+    - filtros aplicados.
+    """
 
-    atletas_filtrados_por_cedula = False
-    if cedula:
-        atletas = atletas.filter(cedula__icontains=cedula)
-        if atletas.count() == 1:
-            atletas_filtrados_por_cedula = True
+    import io
+    import os
+
+    from django.conf import settings
+    from django.http import HttpResponse
+
+    from openpyxl import Workbook
+
+    from openpyxl.drawing.image import (
+        Image as XLImage,
+    )
+
+    from openpyxl.styles import (
+        Alignment,
+        Border,
+        Font,
+        PatternFill,
+        Side,
+    )
+
+    from openpyxl.utils import (
+        get_column_letter,
+    )
 
 
-    data = []
-    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
+    # ========================================================
+    # FILTROS
+    # ========================================================
 
-    for atleta in atletas:
-        fila = {
-            'Nombre': atleta.nombre,
-            'Cédula': atleta.cedula,
-            'Categoría': atleta.categoria,
-        }
-        total_pagado = 0
-        total_pendiente = 0
-        tiene_parcial = False
-        tiene_exonerado = False
-        todos_pagados = True
+    hoy = timezone.localdate()
 
-        for mes_num, mes_nombre in meses:
-            mensualidad = Mensualidad.objects.filter(atleta=atleta, año=año, mes=mes_num).first()
-            if mensualidad:
-                monto = float(mensualidad.monto_pagado)
-                if mensualidad.exonerado:
-                    fila[mes_nombre] = "E"
-                    tiene_exonerado = True
-                elif monto >= 5:
-                    fila[mes_nombre] = monto
-                elif monto > 0:
-                    fila[mes_nombre] = monto
-                    tiene_parcial = True
-                    todos_pagados = False
-                else:
-                    fila[mes_nombre] = 0
-                    todos_pagados = False
-                total_pagado += monto if not mensualidad.exonerado else 0
-                total_pendiente += 0 if (monto >= 5 or mensualidad.exonerado) else (5 - monto)
-            else:
-                fila[mes_nombre] = 0
-                total_pendiente += 5
-                todos_pagados = False
 
-        # Nueva lógica de filtro por estado (igual al PDF)
-        tiene_estado = False
+    año = (
+        request.GET.get("año")
+        or hoy.year
+    )
 
-        for mes_num, _ in meses:
-            mensualidad = Mensualidad.objects.filter(atleta=atleta, año=año, mes=mes_num).first()
-            if mensualidad:
-                monto = float(mensualidad.monto_pagado)
-                if mensualidad.exonerado:
-                    estado_mes = "exonerado"
-                elif monto >= 5:
-                    estado_mes = "pagado"
-                elif monto > 0:
-                    estado_mes = "parcial"
-                else:
-                    estado_mes = "no_pagado"
-            else:
-                estado_mes = "no_pagado"
 
-            if estado and estado_mes == estado:
-                tiene_estado = True
+    mes_inicio = (
+        request.GET.get("mes_inicio")
+        or 1
+    )
 
-        if estado and not tiene_estado and not atletas_filtrados_por_cedula:
-            continue
 
-        fila['Pagado'] = total_pagado
-        fila['Pendiente'] = total_pendiente
-        data.append(fila)
+    mes_fin = (
+        request.GET.get("mes_fin")
+        or 12
+    )
 
-    df = pd.DataFrame(data)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Pagos')
 
-    output.seek(0)
-    wb = load_workbook(output)
+    categoria = (
+        request.GET
+        .get(
+            "categoria",
+            "",
+        )
+        .strip()
+    )
+
+
+    nombre = (
+        request.GET
+        .get(
+            "nombre",
+            "",
+        )
+        .strip()
+    )
+
+
+    cedula = (
+        request.GET
+        .get(
+            "cedula",
+            "",
+        )
+        .strip()
+    )
+
+
+    estado = (
+        request.GET
+        .get(
+            "estado",
+            "",
+        )
+        .strip()
+    )
+
+
+    # ========================================================
+    # MOTOR FINANCIERO
+    # ========================================================
+
+    reporte = (
+        _construir_reporte_financiero(
+            año=año,
+            mes_inicio=mes_inicio,
+            mes_fin=mes_fin,
+            categoria=categoria,
+            nombre=nombre,
+            cedula=cedula,
+            estado_filtro=estado,
+        )
+    )
+
+
+    año = reporte["año"]
+
+    mes_inicio = reporte["mes_inicio"]
+
+    mes_fin = reporte["mes_fin"]
+
+    filas = reporte["filas"]
+
+    meses = reporte["meses"]
+
+    totales = reporte["totales"]
+
+
+    # ========================================================
+    # CREAR LIBRO
+    # ========================================================
+
+    wb = Workbook()
+
     ws = wb.active
-    ws.insert_rows(1, amount=4)
 
-    # Logo más grande
-    logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo-olympo.jpeg')
-    if os.path.exists(logo_path):
-        img = XLImage(logo_path)
-        img.width = 100
-        img.height = 100
-        ws.add_image(img, 'A1')
+    ws.title = "Mensualidades"
 
-    # Título y subtítulo
-    ws['C1'] = "Escuela Deportiva OLYMPO"
-    ws['C2'] = f"Reporte de Pagos - Año {año}"
-    ws['C1'].font = Font(size=14, bold=True)
-    ws['C2'].font = Font(size=12, bold=True)
-    ws['C1'].alignment = Alignment(vertical="center")
-    ws['C2'].alignment = Alignment(vertical="center")
-    ws.merge_cells('C1:H1')
-    ws.merge_cells('C2:H2')
-    ws.row_dimensions[1].height = 30
-    ws.row_dimensions[2].height = 24
+    ws.sheet_view.showGridLines = False
 
-    # Encabezado de tabla
-    header_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
-    for col in range(1, ws.max_column + 1):
-        cell = ws.cell(row=5, column=col)
-        cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.fill = header_fill
 
-    # Ancho personalizado: Categoría más estrecho
-    for col in range(1, ws.max_column + 1):
-        col_letter = get_column_letter(col)
-        header = ws[f'{col_letter}5'].value
-        if header == 'Categoría':
-            ws.column_dimensions[col_letter].width = 13
+    # ========================================================
+    # COLUMNAS
+    # ========================================================
+
+    encabezados = [
+        "Atleta",
+        "Cédula",
+        "Categoría",
+    ]
+
+
+    for mes in meses:
+
+        encabezados.append(
+            mes["nombre"]
+        )
+
+
+    encabezados += [
+        "Pagado Bs",
+        "Pagado USD",
+        "Pendiente USD",
+        "Cubiertos",
+    ]
+
+
+    total_columnas = len(
+        encabezados
+    )
+
+
+    ultima_columna = (
+        get_column_letter(
+            total_columnas
+        )
+    )
+
+
+    # Se mantiene un ancho visual mínimo
+    # para que la cabecera no quede corta
+    # si se exportan pocos meses.
+
+    total_columnas_visual = max(
+        total_columnas,
+        10,
+    )
+
+
+    ultima_columna_visual = (
+        get_column_letter(
+            total_columnas_visual
+        )
+    )
+
+
+    # ========================================================
+    # COLORES
+    # ========================================================
+
+    azul_oscuro = "2A73B6"
+
+    azul_olympo = "158EFF"
+
+    negro = "212529"
+
+    blanco = "FFFFFF"
+
+    gris_claro = "F8F9FA"
+
+    gris_borde = "DEE2E6"
+
+
+    color_al_dia = "D1E7DD"
+
+    color_parcial = "FFF3CD"
+
+    color_pendiente = "F8D7DA"
+
+    color_exonerado = "CFF4FC"
+
+    color_sin_registro = "E2E3E5"
+
+    color_proximo = "F8F9FA"
+
+    color_sin_tarifa = "343A40"
+
+
+    borde_fino = Side(
+        style="thin",
+        color=gris_borde,
+    )
+
+
+    borde_celda = Border(
+        left=borde_fino,
+        right=borde_fino,
+        top=borde_fino,
+        bottom=borde_fino,
+    )
+
+
+    # ========================================================
+    # CABECERA AZUL
+    # ========================================================
+
+    for fila_excel in range(
+        1,
+        3,
+    ):
+
+        for columna_excel in range(
+            1,
+            total_columnas_visual + 1,
+        ):
+
+            celda = ws.cell(
+                row=fila_excel,
+                column=columna_excel,
+            )
+
+
+            # Simulación del degradado OLYMPO
+            # utilizando los dos tonos principales.
+
+            if (
+                columna_excel
+                <= total_columnas_visual // 2
+            ):
+
+                color = azul_oscuro
+
+            else:
+
+                color = azul_olympo
+
+
+            celda.fill = PatternFill(
+                fill_type="solid",
+                fgColor=color,
+            )
+
+
+    # ========================================================
+    # LOGO
+    # ========================================================
+
+    logo_path = os.path.join(
+        settings.BASE_DIR,
+        "static",
+        "img",
+        "logo-olympo.jpeg",
+    )
+
+
+    if os.path.exists(
+        logo_path
+    ):
+
+        try:
+
+            logo = XLImage(
+                logo_path
+            )
+
+
+            # Logo aumentado
+
+            logo.width = 90
+
+            logo.height = 90
+
+
+            ws.add_image(
+                logo,
+                "A1",
+            )
+
+
+        except Exception:
+
+            # El reporte debe seguir
+            # generándose aunque el logo
+            # presente algún problema.
+
+            pass
+
+
+    # ========================================================
+    # TÍTULO
+    # ========================================================
+
+    ws.merge_cells(
+        start_row=1,
+        start_column=3,
+        end_row=1,
+        end_column=total_columnas_visual,
+    )
+
+
+    ws.merge_cells(
+        start_row=2,
+        start_column=3,
+        end_row=2,
+        end_column=total_columnas_visual,
+    )
+
+
+    ws["C1"] = (
+        "Escuela Deportiva OLYMPO"
+    )
+
+
+    ws["C2"] = (
+        f"Reporte de mensualidades · "
+        f"{_MESES_REPORTE[mes_inicio]} "
+        f"a {_MESES_REPORTE[mes_fin]} "
+        f"{año}"
+    )
+
+
+    ws["C1"].font = Font(
+        size=16,
+        bold=True,
+        color=blanco,
+    )
+
+
+    ws["C2"].font = Font(
+        size=11,
+        bold=True,
+        color=blanco,
+    )
+
+
+    ws["C1"].alignment = Alignment(
+        vertical="center",
+    )
+
+
+    ws["C2"].alignment = Alignment(
+        vertical="center",
+    )
+
+
+    # Más espacio para el logo grande
+
+    ws.row_dimensions[1].height = 42
+
+    ws.row_dimensions[2].height = 38
+
+
+    # ========================================================
+    # FILTROS UTILIZADOS
+    # ========================================================
+
+    filtros_texto = []
+
+
+    if categoria:
+
+        filtros_texto.append(
+            f"Categoría: {categoria}"
+        )
+
+
+    if nombre:
+
+        filtros_texto.append(
+            f"Nombre: {nombre}"
+        )
+
+
+    if cedula:
+
+        filtros_texto.append(
+            f"Cédula: {cedula}"
+        )
+
+
+    if reporte["filtros"]["estado"]:
+
+        nombre_estado = (
+            _NOMBRES_ESTADO_REPORTE
+            .get(
+                reporte["filtros"]["estado"],
+                reporte["filtros"]["estado"],
+            )
+        )
+
+
+        filtros_texto.append(
+            f"Estado: {nombre_estado}"
+        )
+
+
+    if filtros_texto:
+
+        texto_filtros = (
+            "Filtros: "
+            +
+            " · ".join(
+                filtros_texto
+            )
+        )
+
+    else:
+
+        texto_filtros = (
+            "Filtros: todos los atletas"
+        )
+
+
+    ws.merge_cells(
+        f"A3:{ultima_columna_visual}3"
+    )
+
+
+    ws["A3"] = texto_filtros
+
+
+    ws["A3"].font = Font(
+        italic=True,
+        color="5F6B76",
+        size=9,
+    )
+
+
+    ws["A3"].alignment = Alignment(
+        vertical="center",
+    )
+
+
+    ws.row_dimensions[3].height = 22
+
+
+    # ========================================================
+    # RESUMEN GENERAL
+    # ========================================================
+
+    resumen = [
+        (
+            "Atletas",
+            reporte["total_atletas"],
+        ),
+
+        (
+            "Recaudado Bs",
+            float(
+                totales["pagado_bs"]
+            ),
+        ),
+
+        (
+            "Equiv. USD",
+            float(
+                totales["pagado_usd"]
+            ),
+        ),
+
+        (
+            "Pendiente USD",
+            float(
+                totales["pendiente_usd"]
+            ),
+        ),
+
+        (
+            "Cubiertos / Gestionados",
+            (
+                f"{totales['meses_cubiertos']}"
+                f" / "
+                f"{totales['meses_gestionados']}"
+            ),
+        ),
+    ]
+
+
+    columna_resumen = 1
+
+
+    for (
+        etiqueta,
+        valor,
+    ) in resumen:
+
+        celda_etiqueta = (
+            ws.cell(
+                row=5,
+                column=columna_resumen,
+            )
+        )
+
+
+        celda_valor = (
+            ws.cell(
+                row=5,
+                column=columna_resumen + 1,
+            )
+        )
+
+
+        celda_etiqueta.value = (
+            etiqueta
+        )
+
+
+        celda_valor.value = (
+            valor
+        )
+
+
+        celda_etiqueta.fill = (
+            PatternFill(
+                fill_type="solid",
+                fgColor="EAF3FB",
+            )
+        )
+
+
+        celda_valor.fill = (
+            PatternFill(
+                fill_type="solid",
+                fgColor="FFFFFF",
+            )
+        )
+
+
+        celda_etiqueta.font = Font(
+            bold=True,
+            color=azul_oscuro,
+            size=9,
+        )
+
+
+        celda_valor.font = Font(
+            bold=True,
+            color=negro,
+            size=10,
+        )
+
+
+        celda_etiqueta.alignment = (
+            Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True,
+            )
+        )
+
+
+        celda_valor.alignment = (
+            Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True,
+            )
+        )
+
+
+        celda_etiqueta.border = (
+            borde_celda
+        )
+
+
+        celda_valor.border = (
+            borde_celda
+        )
+
+
+        columna_resumen += 2
+
+
+    # ========================================================
+    # FORMATOS MONETARIOS DEL RESUMEN
+    # ========================================================
+
+    ws["D5"].number_format = (
+        '#,##0.00'
+    )
+
+
+    ws["F5"].number_format = (
+        '$#,##0.00'
+    )
+
+
+    ws["H5"].number_format = (
+        '$#,##0.00'
+    )
+
+
+    ws.row_dimensions[5].height = 35
+
+
+    # ========================================================
+    # CONTEO DE ESTADOS
+    # ========================================================
+
+    estados_texto = (
+        f"Al día: "
+        f"{totales['estados']['al_dia']}"
+        f"   |   Parcial: "
+        f"{totales['estados']['parcial']}"
+        f"   |   Pendiente: "
+        f"{totales['estados']['pendiente']}"
+        f"   |   Exonerado: "
+        f"{totales['estados']['exonerado']}"
+        f"   |   Sin registro: "
+        f"{totales['estados']['sin_registro']}"
+        f"   |   Próximo: "
+        f"{totales['estados']['proximo']}"
+        f"   |   Sin tarifa: "
+        f"{totales['estados']['sin_tarifa']}"
+    )
+
+
+    ws.merge_cells(
+        f"A6:{ultima_columna_visual}6"
+    )
+
+
+    ws["A6"] = (
+        estados_texto
+    )
+
+
+    ws["A6"].fill = PatternFill(
+        fill_type="solid",
+        fgColor=gris_claro,
+    )
+
+
+    ws["A6"].font = Font(
+        size=9,
+        color="495057",
+    )
+
+
+    ws["A6"].alignment = (
+        Alignment(
+            horizontal="center",
+            vertical="center",
+            wrap_text=True,
+        )
+    )
+
+
+    ws.row_dimensions[6].height = 25
+
+
+    # ========================================================
+    # TABLA
+    # ========================================================
+
+    fila_encabezado = 8
+
+    fila_datos_inicio = 9
+
+
+    for (
+        numero_columna,
+        encabezado,
+    ) in enumerate(
+        encabezados,
+        start=1,
+    ):
+
+        celda = ws.cell(
+            row=fila_encabezado,
+            column=numero_columna,
+        )
+
+
+        celda.value = (
+            encabezado
+        )
+
+
+        celda.fill = PatternFill(
+            fill_type="solid",
+            fgColor=negro,
+        )
+
+
+        celda.font = Font(
+            bold=True,
+            color=blanco,
+            size=9,
+        )
+
+
+        celda.alignment = (
+            Alignment(
+                horizontal="center",
+                vertical="center",
+                wrap_text=True,
+            )
+        )
+
+
+        celda.border = (
+            borde_celda
+        )
+
+
+    ws.row_dimensions[
+        fila_encabezado
+    ].height = 30
+
+
+    # ========================================================
+    # COLORES POR ESTADO
+    # ========================================================
+
+    mapa_fill_estado = {
+
+        "al_dia":
+            color_al_dia,
+
+        "parcial":
+            color_parcial,
+
+        "pendiente":
+            color_pendiente,
+
+        "exonerado":
+            color_exonerado,
+
+        "sin_registro":
+            color_sin_registro,
+
+        "proximo":
+            color_proximo,
+
+        "sin_tarifa":
+            color_sin_tarifa,
+
+    }
+
+
+    # ========================================================
+    # FILAS DE ATLETAS
+    # ========================================================
+
+    fila_excel = (
+        fila_datos_inicio
+    )
+
+
+    for fila in filas:
+
+
+        # ----------------------------------------
+        # DATOS PERSONALES
+        # ----------------------------------------
+
+        valores_iniciales = [
+
+            fila[
+                "nombre_completo"
+            ],
+
+            fila[
+                "cedula"
+            ] or "",
+
+            fila[
+                "categoria"
+            ] or "",
+
+        ]
+
+
+        for (
+            numero_columna,
+            valor,
+        ) in enumerate(
+            valores_iniciales,
+            start=1,
+        ):
+
+            celda = ws.cell(
+                row=fila_excel,
+                column=numero_columna,
+            )
+
+
+            celda.value = (
+                valor
+            )
+
+
+            celda.alignment = (
+                Alignment(
+                    horizontal=(
+                        "left"
+                        if numero_columna == 1
+                        else "center"
+                    ),
+                    vertical="center",
+                    wrap_text=True,
+                )
+            )
+
+
+            celda.border = (
+                borde_celda
+            )
+
+
+        # ----------------------------------------
+        # MESES
+        # ----------------------------------------
+
+        columna_mes = 4
+
+
+        for periodo in fila[
+            "periodos"
+        ]:
+
+            codigo = (
+                periodo[
+                    "estado_codigo"
+                ]
+            )
+
+
+            if codigo == "al_dia":
+
+                valor_mes = (
+                    "Al día\n"
+                    f"${periodo['pagado_usd']:.2f}"
+                )
+
+
+            elif codigo == "parcial":
+
+                valor_mes = (
+                    "Parcial\n"
+                    f"${periodo['pagado_usd']:.2f}"
+                    f" / "
+                    f"${periodo['cuota_usd']:.2f}"
+                )
+
+
+            elif codigo == "pendiente":
+
+                valor_mes = (
+                    "Pendiente\n"
+                    f"Saldo "
+                    f"${periodo['saldo_usd']:.2f}"
+                )
+
+
+            elif codigo == "exonerado":
+
+                valor_mes = (
+                    "Exonerado"
+                )
+
+
+            elif codigo == "sin_registro":
+
+                valor_mes = (
+                    "Sin registro"
+                )
+
+
+            elif codigo == "proximo":
+
+                valor_mes = (
+                    "Próximo"
+                )
+
+
+            else:
+
+                valor_mes = (
+                    "Sin tarifa"
+                )
+
+
+            celda = ws.cell(
+                row=fila_excel,
+                column=columna_mes,
+            )
+
+
+            celda.value = (
+                valor_mes
+            )
+
+
+            celda.fill = (
+                PatternFill(
+                    fill_type="solid",
+                    fgColor=(
+                        mapa_fill_estado[
+                            codigo
+                        ]
+                    ),
+                )
+            )
+
+
+            celda.font = Font(
+                size=8,
+                bold=True,
+                color=(
+                    blanco
+                    if codigo
+                    == "sin_tarifa"
+                    else negro
+                ),
+            )
+
+
+            celda.alignment = (
+                Alignment(
+                    horizontal="center",
+                    vertical="center",
+                    wrap_text=True,
+                )
+            )
+
+
+            celda.border = (
+                borde_celda
+            )
+
+
+            columna_mes += 1
+
+
+        # ----------------------------------------
+        # TOTALES
+        # ----------------------------------------
+
+        columna_pagado_bs = (
+            4
+            +
+            len(
+                fila[
+                    "periodos"
+                ]
+            )
+        )
+
+
+        columna_pagado_usd = (
+            columna_pagado_bs + 1
+        )
+
+
+        columna_pendiente = (
+            columna_pagado_bs + 2
+        )
+
+
+        columna_cubiertos = (
+            columna_pagado_bs + 3
+        )
+
+
+        # Bs
+
+        celda_bs = ws.cell(
+            row=fila_excel,
+            column=columna_pagado_bs,
+        )
+
+
+        celda_bs.value = float(
+            fila[
+                "total_pagado_bs"
+            ]
+        )
+
+
+        celda_bs.number_format = (
+            '#,##0.00'
+        )
+
+
+        # USD
+
+        celda_usd = ws.cell(
+            row=fila_excel,
+            column=columna_pagado_usd,
+        )
+
+
+        celda_usd.value = float(
+            fila[
+                "total_pagado_usd"
+            ]
+        )
+
+
+        celda_usd.number_format = (
+            '$#,##0.00'
+        )
+
+
+        # Pendiente
+
+        celda_pendiente = ws.cell(
+            row=fila_excel,
+            column=columna_pendiente,
+        )
+
+
+        celda_pendiente.value = float(
+            fila[
+                "total_pendiente_usd"
+            ]
+        )
+
+
+        celda_pendiente.number_format = (
+            '$#,##0.00'
+        )
+
+
+        # Cubiertos
+
+        celda_cubiertos = ws.cell(
+            row=fila_excel,
+            column=columna_cubiertos,
+        )
+
+
+        celda_cubiertos.value = (
+            f"{fila['meses_cubiertos']}"
+            f" / "
+            f"{fila['meses_gestionados']}"
+        )
+
+
+        # Estilos
+
+        for columna in range(
+            columna_pagado_bs,
+            columna_cubiertos + 1,
+        ):
+
+            celda = ws.cell(
+                row=fila_excel,
+                column=columna,
+            )
+
+
+            celda.alignment = (
+                Alignment(
+                    horizontal="center",
+                    vertical="center",
+                    wrap_text=True,
+                )
+            )
+
+
+            celda.border = (
+                borde_celda
+            )
+
+
+        celda_bs.font = Font(
+            color="198754",
+            bold=True,
+            size=8,
+        )
+
+
+        celda_usd.font = Font(
+            color="0D6EFD",
+            bold=True,
+            size=8,
+        )
+
+
+        if (
+            fila[
+                "total_pendiente_usd"
+            ]
+            > 0
+        ):
+
+            celda_pendiente.font = (
+                Font(
+                    color="DC3545",
+                    bold=True,
+                    size=8,
+                )
+            )
+
         else:
-            ws.column_dimensions[col_letter].width = 13
 
-    # Estilo para celdas especiales
-    for row in ws.iter_rows(min_row=6, max_row=ws.max_row):
-        for cell in row:
-            if cell.value == "E":
-                cell.font = Font(bold=True, color="0000FF")
-                cell.alignment = Alignment(horizontal="center")
-            elif isinstance(cell.value, (int, float)):
-                cell.alignment = Alignment(horizontal="center")
+            celda_pendiente.font = (
+                Font(
+                    color="198754",
+                    bold=True,
+                    size=8,
+                )
+            )
 
-    final_output = io.BytesIO()
-    wb.save(final_output)
-    final_output.seek(0)
+
+        celda_cubiertos.font = Font(
+            bold=True,
+            size=8,
+        )
+
+
+        ws.row_dimensions[
+            fila_excel
+        ].height = 42
+
+
+        fila_excel += 1
+
+
+    # ========================================================
+    # ANCHOS
+    # ========================================================
+
+    ws.column_dimensions[
+        "A"
+    ].width = 28
+
+
+    ws.column_dimensions[
+        "B"
+    ].width = 15
+
+
+    ws.column_dimensions[
+        "C"
+    ].width = 14
+
+
+    for indice_mes in range(
+        len(
+            meses
+        )
+    ):
+
+        letra = (
+            get_column_letter(
+                4 + indice_mes
+            )
+        )
+
+
+        ws.column_dimensions[
+            letra
+        ].width = 15
+
+
+    indice_totales = (
+        4
+        +
+        len(
+            meses
+        )
+    )
+
+
+    ws.column_dimensions[
+        get_column_letter(
+            indice_totales
+        )
+    ].width = 17
+
+
+    ws.column_dimensions[
+        get_column_letter(
+            indice_totales + 1
+        )
+    ].width = 14
+
+
+    ws.column_dimensions[
+        get_column_letter(
+            indice_totales + 2
+        )
+    ].width = 16
+
+
+    ws.column_dimensions[
+        get_column_letter(
+            indice_totales + 3
+        )
+    ].width = 14
+
+
+    # ========================================================
+    # SCROLL NORMAL
+    # ========================================================
+
+    # No congelamos ninguna fila ni columna.
+    #
+    # De esta manera, al desplazarse hacia abajo
+    # en Excel, se mueve toda la hoja de forma normal:
+    #
+    # - logo;
+    # - cabecera azul;
+    # - resumen;
+    # - encabezados de la tabla;
+    # - filas.
+    #
+    # Antes utilizábamos:
+    #
+    # ws.freeze_panes = f"D{fila_datos_inicio}"
+    #
+    # y por eso la parte superior permanecía fija.
+
+    ws.freeze_panes = None
+
+
+    # ========================================================
+    # AUTOFILTRO
+    # ========================================================
+
+    ultima_fila_datos = max(
+        fila_encabezado,
+        fila_excel - 1,
+    )
+
+
+    ws.auto_filter.ref = (
+        f"A{fila_encabezado}:"
+        f"{ultima_columna}"
+        f"{ultima_fila_datos}"
+    )
+
+
+    # ========================================================
+    # LEYENDA
+    # ========================================================
+
+    fila_leyenda = (
+        ultima_fila_datos
+        + 2
+    )
+
+
+    celda_leyenda = ws.cell(
+        row=fila_leyenda,
+        column=1,
+        value="Leyenda",
+    )
+
+
+    celda_leyenda.font = Font(
+        bold=True,
+        color=azul_oscuro,
+    )
+
+
+    leyenda = [
+
+        (
+            "Al día",
+            color_al_dia,
+            negro,
+        ),
+
+        (
+            "Parcial",
+            color_parcial,
+            negro,
+        ),
+
+        (
+            "Pendiente",
+            color_pendiente,
+            negro,
+        ),
+
+        (
+            "Exonerado",
+            color_exonerado,
+            negro,
+        ),
+
+        (
+            "Sin registro",
+            color_sin_registro,
+            negro,
+        ),
+
+        (
+            "Próximo",
+            color_proximo,
+            negro,
+        ),
+
+        (
+            "Sin tarifa",
+            color_sin_tarifa,
+            blanco,
+        ),
+
+    ]
+
+
+    columna_leyenda = 2
+
+
+    for (
+        nombre_estado,
+        color,
+        color_texto,
+    ) in leyenda:
+
+        celda = ws.cell(
+            row=fila_leyenda,
+            column=columna_leyenda,
+        )
+
+
+        celda.value = (
+            nombre_estado
+        )
+
+
+        celda.fill = (
+            PatternFill(
+                fill_type="solid",
+                fgColor=color,
+            )
+        )
+
+
+        celda.font = Font(
+            bold=True,
+            color=color_texto,
+            size=8,
+        )
+
+
+        celda.alignment = (
+            Alignment(
+                horizontal="center",
+                vertical="center",
+            )
+        )
+
+
+        celda.border = (
+            borde_celda
+        )
+
+
+        columna_leyenda += 1
+
+
+    # ========================================================
+    # PIE
+    # ========================================================
+
+    fila_exportacion = (
+        fila_leyenda + 2
+    )
+
+
+    ws.merge_cells(
+        start_row=fila_exportacion,
+        start_column=1,
+        end_row=fila_exportacion,
+        end_column=total_columnas_visual,
+    )
+
+
+    celda_exportacion = ws.cell(
+        row=fila_exportacion,
+        column=1,
+    )
+
+
+    celda_exportacion.value = (
+        "Exportado el "
+        +
+        timezone.localtime()
+        .strftime(
+            "%d/%m/%Y %H:%M"
+        )
+    )
+
+
+    celda_exportacion.font = Font(
+        italic=True,
+        color="6C757D",
+        size=8,
+    )
+
+
+    celda_exportacion.alignment = (
+        Alignment(
+            horizontal="right",
+        )
+    )
+
+
+    # ========================================================
+    # CONFIGURACIÓN DE IMPRESIÓN
+    # ========================================================
+
+    ws.page_setup.orientation = (
+        "landscape"
+    )
+
+
+    ws.page_setup.fitToWidth = 1
+
+    ws.page_setup.fitToHeight = 0
+
+
+    ws.sheet_properties.pageSetUpPr.fitToPage = (
+        True
+    )
+
+
+    # Esto solo aplica al imprimir.
+    # NO congela filas durante el uso normal
+    # del archivo Excel.
+
+    ws.print_title_rows = (
+        f"{fila_encabezado}:"
+        f"{fila_encabezado}"
+    )
+
+
+    ws.print_area = (
+        f"A1:"
+        f"{ultima_columna_visual}"
+        f"{fila_exportacion}"
+    )
+
+
+    ws.page_margins.left = 0.25
+
+    ws.page_margins.right = 0.25
+
+    ws.page_margins.top = 0.5
+
+    ws.page_margins.bottom = 0.5
+
+
+    # ========================================================
+    # GUARDAR
+    # ========================================================
+
+    output = io.BytesIO()
+
+
+    wb.save(
+        output
+    )
+
+
+    output.seek(
+        0
+    )
+
+
+    nombre_archivo = (
+        f"reporte_mensualidades_"
+        f"{año}_"
+        f"{mes_inicio:02d}-"
+        f"{mes_fin:02d}.xlsx"
+    )
+
 
     response = HttpResponse(
-        final_output,
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
     )
-    response['Content-Disposition'] = 'attachment; filename="reporte_pagos.xlsx"'
+
+
+    response[
+        "Content-Disposition"
+    ] = (
+        f'attachment; '
+        f'filename="{nombre_archivo}"'
+    )
+
+
     return response
 
 @user_passes_test(es_admin)
 def exportar_pagos_pdf(request):
-    from datetime import datetime
-    año = int(request.GET.get('año', timezone.localdate().year))
-    categoria = request.GET.get('categoria')
-    nombre = request.GET.get('nombre')
-    cedula = request.GET.get('cedula')
-    estado = request.GET.get('estado')  # 'pagado', 'pendiente', 'parcial', 'exonerado'
-    mes_inicio = int(request.GET.get('mes_inicio', 1))
-    mes_fin = int(request.GET.get('mes_fin', 12))
+    """
+    Exporta el reporte de mensualidades a PDF.
 
-    atletas = Atleta.objects.all()
-    if categoria:
-        atletas = atletas.filter(categoria=categoria)
-    if nombre:
-        atletas = atletas.filter(nombre__icontains=nombre)
-    if cedula:
-        atletas = atletas.filter(cedula__icontains=cedula)
+    Utiliza exactamente el mismo motor financiero
+    del reporte web y del Excel.
 
-    atletas_filtrados_por_cedula = False
-    if cedula and atletas.count() == 1:
-        atletas_filtrados_por_cedula = True
+    Respeta:
+    - tarifas históricas;
+    - pagos activos;
+    - pagos anulados;
+    - pagos parciales;
+    - exoneraciones;
+    - períodos sin registro;
+    - períodos próximos;
+    - filtros aplicados.
+    """
 
-    meses = [(i, date_format(date(1900, i, 1), 'M')) for i in range(mes_inicio, mes_fin + 1)]
+    import io
+    import os
+
+    from django.conf import settings
+    from django.http import FileResponse
+
+    from reportlab.lib import colors
+
+    from reportlab.lib.enums import (
+        TA_CENTER,
+        TA_LEFT,
+        TA_RIGHT,
+    )
+
+    from reportlab.lib.pagesizes import (
+        landscape,
+        letter,
+    )
+
+    from reportlab.lib.styles import (
+        ParagraphStyle,
+        getSampleStyleSheet,
+    )
+
+    from reportlab.platypus import (
+        Image,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
+
+    from xml.sax.saxutils import escape
+
+
+    # ========================================================
+    # FILTROS
+    # ========================================================
+
+    hoy = timezone.localdate()
+
+
+    año = (
+        request.GET.get("año")
+        or hoy.year
+    )
+
+
+    mes_inicio = (
+        request.GET.get("mes_inicio")
+        or 1
+    )
+
+
+    mes_fin = (
+        request.GET.get("mes_fin")
+        or 12
+    )
+
+
+    categoria = (
+        request.GET
+        .get(
+            "categoria",
+            "",
+        )
+        .strip()
+    )
+
+
+    nombre = (
+        request.GET
+        .get(
+            "nombre",
+            "",
+        )
+        .strip()
+    )
+
+
+    cedula = (
+        request.GET
+        .get(
+            "cedula",
+            "",
+        )
+        .strip()
+    )
+
+
+    estado = (
+        request.GET
+        .get(
+            "estado",
+            "",
+        )
+        .strip()
+    )
+
+
+    # ========================================================
+    # MOTOR FINANCIERO
+    # ========================================================
+
+    reporte = (
+        _construir_reporte_financiero(
+            año=año,
+            mes_inicio=mes_inicio,
+            mes_fin=mes_fin,
+            categoria=categoria,
+            nombre=nombre,
+            cedula=cedula,
+            estado_filtro=estado,
+        )
+    )
+
+
+    año = reporte["año"]
+
+    mes_inicio = reporte["mes_inicio"]
+
+    mes_fin = reporte["mes_fin"]
+
+    filas = reporte["filas"]
+
+    meses = reporte["meses"]
+
+    totales = reporte["totales"]
+
+
+    # ========================================================
+    # HELPERS
+    # ========================================================
+
+    def formato_numero(
+        valor,
+    ):
+        """
+        Formato visual con separador de miles
+        y dos decimales.
+        """
+
+        try:
+
+            return (
+                f"{valor:,.2f}"
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ):
+
+            return "0.00"
+
+
+    def texto_seguro(
+        valor,
+    ):
+        """
+        Escapa texto para utilizarlo
+        dentro de Paragraph de ReportLab.
+        """
+
+        if valor is None:
+
+            return ""
+
+        return escape(
+            str(
+                valor
+            )
+        )
+
+
+    # ========================================================
+    # BUFFER Y DOCUMENTO
+    # ========================================================
+
     buffer = io.BytesIO()
-    p = canvas.Canvas(buffer, pagesize=landscape(letter))
-    width, height = landscape(letter)
 
-    # Para numerar páginas
-    page_number = 1
 
-    headers = ["Nombre", "Cédula", "Categoría"] + [m[1][:3] for m in meses] + ["Pagado", "Pendiente"]
-    # Ajuste dinámico: si hay 12 meses, reduce un poco las columnas
-    if len(meses) == 12:
-        col_width = max(42, min(55, (width - 80) // len(headers)))
+    pagina = landscape(
+        letter
+    )
+
+
+    ancho_pagina, alto_pagina = (
+        pagina
+    )
+
+
+    margen_izquierdo = 22
+
+    margen_derecho = 22
+
+    margen_superior = 24
+
+    margen_inferior = 34
+
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=pagina,
+        rightMargin=margen_derecho,
+        leftMargin=margen_izquierdo,
+        topMargin=margen_superior,
+        bottomMargin=margen_inferior,
+        title=(
+            f"Reporte de mensualidades "
+            f"{año}"
+        ),
+        author="Escuela Deportiva OLYMPO",
+    )
+
+
+    ancho_util = (
+        ancho_pagina
+        - margen_izquierdo
+        - margen_derecho
+    )
+
+
+    # ========================================================
+    # COLORES
+    # ========================================================
+
+    azul_oscuro = colors.HexColor(
+        "#2A73B6"
+    )
+
+    azul_olympo = colors.HexColor(
+        "#158EFF"
+    )
+
+    negro = colors.HexColor(
+        "#212529"
+    )
+
+    gris_texto = colors.HexColor(
+        "#6C757D"
+    )
+
+    gris_borde = colors.HexColor(
+        "#DEE2E6"
+    )
+
+    gris_claro = colors.HexColor(
+        "#F8F9FA"
+    )
+
+
+    color_al_dia = colors.HexColor(
+        "#D1E7DD"
+    )
+
+    color_parcial = colors.HexColor(
+        "#FFF3CD"
+    )
+
+    color_pendiente = colors.HexColor(
+        "#F8D7DA"
+    )
+
+    color_exonerado = colors.HexColor(
+        "#CFF4FC"
+    )
+
+    color_sin_registro = colors.HexColor(
+        "#E2E3E5"
+    )
+
+    color_proximo = colors.HexColor(
+        "#F8F9FA"
+    )
+
+    color_sin_tarifa = colors.HexColor(
+        "#343A40"
+    )
+
+
+    # ========================================================
+    # ESTILOS
+    # ========================================================
+
+    estilos = getSampleStyleSheet()
+
+
+    estilo_titulo = ParagraphStyle(
+        "TituloOLYMPO",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=15,
+        leading=18,
+        textColor=colors.white,
+        alignment=TA_LEFT,
+        spaceAfter=0,
+    )
+
+
+    estilo_subtitulo = ParagraphStyle(
+        "SubtituloOLYMPO",
+        parent=estilos["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=12,
+        textColor=colors.white,
+        alignment=TA_LEFT,
+    )
+
+
+    estilo_filtro = ParagraphStyle(
+        "Filtro",
+        parent=estilos["Normal"],
+        fontName="Helvetica",
+        fontSize=7.5,
+        leading=10,
+        textColor=gris_texto,
+        alignment=TA_LEFT,
+    )
+
+
+    estilo_resumen_label = ParagraphStyle(
+        "ResumenLabel",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=6.5,
+        leading=8,
+        textColor=azul_oscuro,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_resumen_valor = ParagraphStyle(
+        "ResumenValor",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        textColor=negro,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_header_tabla = ParagraphStyle(
+        "HeaderTabla",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=6.4,
+        leading=7.2,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_nombre = ParagraphStyle(
+        "NombreAtleta",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=6.2,
+        leading=7.2,
+        textColor=negro,
+        alignment=TA_LEFT,
+    )
+
+
+    estilo_celda = ParagraphStyle(
+        "Celda",
+        parent=estilos["Normal"],
+        fontName="Helvetica",
+        fontSize=6,
+        leading=7,
+        textColor=negro,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_estado = ParagraphStyle(
+        "Estado",
+        parent=estilos["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=6,
+        leading=6.8,
+        textColor=negro,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_estado_blanco = ParagraphStyle(
+        "EstadoBlanco",
+        parent=estilo_estado,
+        textColor=colors.white,
+    )
+
+
+    estilo_leyenda = ParagraphStyle(
+        "Leyenda",
+        parent=estilos["Normal"],
+        fontName="Helvetica",
+        fontSize=6.3,
+        leading=7.5,
+        textColor=negro,
+        alignment=TA_CENTER,
+    )
+
+
+    estilo_vacio = ParagraphStyle(
+        "Vacio",
+        parent=estilos["Normal"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        textColor=gris_texto,
+        alignment=TA_CENTER,
+    )
+
+
+    # ========================================================
+    # STORY
+    # ========================================================
+
+    elementos = []
+
+
+    # ========================================================
+    # CABECERA PRINCIPAL
+    # ========================================================
+
+    logo_path = os.path.join(
+        settings.BASE_DIR,
+        "static",
+        "img",
+        "logo-olympo.jpeg",
+    )
+
+
+    logo = ""
+
+
+    if os.path.exists(
+        logo_path
+    ):
+
+        try:
+
+            logo = Image(
+                logo_path,
+                width=72,
+                height=72,
+            )
+
+        except Exception:
+
+            logo = ""
+
+
+    titulo = Paragraph(
+        (
+            "Escuela Deportiva OLYMPO"
+            "<br/>"
+            f"<font size='9'>"
+            f"Reporte de mensualidades - "
+            f"{texto_seguro(_MESES_REPORTE[mes_inicio])} "
+            f"a "
+            f"{texto_seguro(_MESES_REPORTE[mes_fin])} "
+            f"{año}"
+            f"</font>"
+        ),
+        estilo_titulo,
+    )
+
+
+    header = Table(
+        [
+            [
+                logo,
+                titulo,
+            ]
+        ],
+        colWidths=[
+            82,
+            ancho_util - 82,
+        ],
+        rowHeights=[
+            78,
+        ],
+    )
+
+
+    header.setStyle(
+        TableStyle(
+            [
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, 0),
+                    azul_oscuro,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (1, 0),
+                    (1, 0),
+                    azul_olympo,
+                ),
+
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "MIDDLE",
+                ),
+
+                (
+                    "ALIGN",
+                    (0, 0),
+                    (0, 0),
+                    "CENTER",
+                ),
+
+                (
+                    "LEFTPADDING",
+                    (1, 0),
+                    (1, 0),
+                    14,
+                ),
+
+                (
+                    "RIGHTPADDING",
+                    (1, 0),
+                    (1, 0),
+                    10,
+                ),
+
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+            ]
+        )
+    )
+
+
+    elementos.append(
+        header
+    )
+
+
+    elementos.append(
+        Spacer(
+            1,
+            7,
+        )
+    )
+
+
+    # ========================================================
+    # FILTROS APLICADOS
+    # ========================================================
+
+    filtros = []
+
+
+    if categoria:
+
+        filtros.append(
+            f"Categoría: "
+            f"{texto_seguro(categoria)}"
+        )
+
+
+    if nombre:
+
+        filtros.append(
+            f"Nombre: "
+            f"{texto_seguro(nombre)}"
+        )
+
+
+    if cedula:
+
+        filtros.append(
+            f"Cédula: "
+            f"{texto_seguro(cedula)}"
+        )
+
+
+    if reporte["filtros"]["estado"]:
+
+        estado_nombre = (
+            _NOMBRES_ESTADO_REPORTE
+            .get(
+                reporte["filtros"]["estado"],
+                reporte["filtros"]["estado"],
+            )
+        )
+
+
+        filtros.append(
+            f"Estado: "
+            f"{texto_seguro(estado_nombre)}"
+        )
+
+
+    if filtros:
+
+        texto_filtros = (
+            "<b>Filtros:</b> "
+            +
+            " | ".join(
+                filtros
+            )
+        )
+
     else:
-        col_width = max(45, min(60, (width - 100) // len(headers)))
+
+        texto_filtros = (
+            "<b>Filtros:</b> "
+            "todos los atletas"
+        )
 
 
-    def imprimir_encabezado(pagina_inicial=False):
-        nonlocal y
-        y = height - 40
-        x = 40
-        if pagina_inicial:
-            # Logo solo en la primera página
-            logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo-olympo.jpeg')
-            if os.path.exists(logo_path):
-                logo = ImageReader(logo_path)
-                p.drawImage(logo, x, y - 40, width=80, height=80)
+    elementos.append(
+        Paragraph(
+            texto_filtros,
+            estilo_filtro,
+        )
+    )
 
-            # Título
-            p.setFont("Helvetica-Bold", 16)
-            p.drawString(x + 90, y, "Escuela Deportiva OLYMPO")
-            p.setFont("Helvetica", 12)
-            p.drawString(x + 90, y - 20, f"Reporte de Pagos - Año {año}")
-            y -= 60
-        else:
-            y = height - 40
-            p.setFont("Helvetica", 7)
 
-        # Encabezado de tabla
-        p.setFont("Helvetica-Bold", 8)
-        for i, h in enumerate(headers):
-            p.drawString(x + i * col_width, y, h)
-        y -= 18
-        p.setFont("Helvetica", 7)
+    elementos.append(
+        Spacer(
+            1,
+            7,
+        )
+    )
 
-    def imprimir_pie_pagina():
-        fecha_export = timezone.localtime().strftime("%d/%m/%Y %H:%M")
-        p.setFont("Helvetica", 8)
-        p.drawRightString(width - 60, 25, f"Página {page_number}")
-        p.drawString(40, 25, f"Exportado: {fecha_export}")
-        p.setFont("Helvetica", 7)
 
-    # Primera página con logo
-    imprimir_encabezado(pagina_inicial=True)
+    # ========================================================
+    # RESUMEN GENERAL
+    # ========================================================
 
-    y = height - 40 - 60 - 18  # Ajusta y para la primera fila de datos
+    resumen_labels = [
 
-    for atleta in atletas:
-        fila = [atleta.nombre, atleta.cedula, atleta.categoria]
-        total_pagado = 0
-        total_pendiente = 0
-        pagos_mes = []
-        tiene_estado = False
+        Paragraph(
+            "Atletas",
+            estilo_resumen_label,
+        ),
 
-        for mes_num, _ in meses:
-            mensualidad = Mensualidad.objects.filter(atleta=atleta, año=año, mes=mes_num).first()
-            if mensualidad:
-                monto = float(mensualidad.monto_pagado)
-                if mensualidad.exonerado:
-                    estado_mes = "exonerado"
-                    pagos_mes.append("E")
-                elif monto >= 5:
-                    estado_mes = "pagado"
-                    pagos_mes.append(f"{monto:.2f}")
-                elif monto > 0:
-                    estado_mes = "parcial"
-                    pagos_mes.append(f"{monto:.2f}")
-                else:
-                    estado_mes = "no_pagado"
-                    pagos_mes.append("—")
-                if estado_mes == estado:
-                    tiene_estado = True
-                if estado_mes != "exonerado":
-                    total_pagado += monto
-                    if monto < 5:
-                        total_pendiente += (5 - monto)
+        Paragraph(
+            "Recaudado Bs",
+            estilo_resumen_label,
+        ),
+
+        Paragraph(
+            "Equiv. USD",
+            estilo_resumen_label,
+        ),
+
+        Paragraph(
+            "Pendiente USD",
+            estilo_resumen_label,
+        ),
+
+        Paragraph(
+            "Cubiertos / Gestionados",
+            estilo_resumen_label,
+        ),
+
+    ]
+
+
+    resumen_valores = [
+
+        Paragraph(
+            str(
+                reporte[
+                    "total_atletas"
+                ]
+            ),
+            estilo_resumen_valor,
+        ),
+
+        Paragraph(
+            (
+                "Bs "
+                f"{formato_numero(totales['pagado_bs'])}"
+            ),
+            estilo_resumen_valor,
+        ),
+
+        Paragraph(
+            (
+                "$"
+                f"{formato_numero(totales['pagado_usd'])}"
+            ),
+            estilo_resumen_valor,
+        ),
+
+        Paragraph(
+            (
+                "$"
+                f"{formato_numero(totales['pendiente_usd'])}"
+            ),
+            estilo_resumen_valor,
+        ),
+
+        Paragraph(
+            (
+                f"{totales['meses_cubiertos']}"
+                f" / "
+                f"{totales['meses_gestionados']}"
+            ),
+            estilo_resumen_valor,
+        ),
+
+    ]
+
+
+    tabla_resumen = Table(
+        [
+            resumen_labels,
+            resumen_valores,
+        ],
+        colWidths=[
+            ancho_util / 5
+        ] * 5,
+    )
+
+
+    tabla_resumen.setStyle(
+        TableStyle(
+            [
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (-1, 0),
+                    colors.HexColor(
+                        "#EAF3FB"
+                    ),
+                ),
+
+                (
+                    "BACKGROUND",
+                    (0, 1),
+                    (-1, 1),
+                    colors.white,
+                ),
+
+                (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.5,
+                    gris_borde,
+                ),
+
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "MIDDLE",
+                ),
+
+                (
+                    "ALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "CENTER",
+                ),
+
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+            ]
+        )
+    )
+
+
+    elementos.append(
+        tabla_resumen
+    )
+
+
+    elementos.append(
+        Spacer(
+            1,
+            7,
+        )
+    )
+
+
+    # ========================================================
+    # RESUMEN DE ESTADOS
+    # ========================================================
+
+    estados_resumen = [
+
+        (
+            "AD",
+            "Al día",
+            totales[
+                "estados"
+            ][
+                "al_dia"
+            ],
+            color_al_dia,
+            negro,
+        ),
+
+        (
+            "PA",
+            "Parcial",
+            totales[
+                "estados"
+            ][
+                "parcial"
+            ],
+            color_parcial,
+            negro,
+        ),
+
+        (
+            "PE",
+            "Pendiente",
+            totales[
+                "estados"
+            ][
+                "pendiente"
+            ],
+            color_pendiente,
+            negro,
+        ),
+
+        (
+            "EX",
+            "Exonerado",
+            totales[
+                "estados"
+            ][
+                "exonerado"
+            ],
+            color_exonerado,
+            negro,
+        ),
+
+        (
+            "SR",
+            "Sin registro",
+            totales[
+                "estados"
+            ][
+                "sin_registro"
+            ],
+            color_sin_registro,
+            negro,
+        ),
+
+        (
+            "PR",
+            "Próximo",
+            totales[
+                "estados"
+            ][
+                "proximo"
+            ],
+            color_proximo,
+            negro,
+        ),
+
+        (
+            "ST",
+            "Sin tarifa",
+            totales[
+                "estados"
+            ][
+                "sin_tarifa"
+            ],
+            color_sin_tarifa,
+            colors.white,
+        ),
+
+    ]
+
+
+    fila_estados = []
+
+
+    for (
+        codigo,
+        etiqueta,
+        cantidad,
+        color_fondo,
+        color_texto,
+    ) in estados_resumen:
+
+        estilo_temporal = ParagraphStyle(
+            f"estado_{codigo}",
+            parent=estilo_leyenda,
+            textColor=color_texto,
+            fontName="Helvetica-Bold",
+        )
+
+
+        fila_estados.append(
+            Paragraph(
+                (
+                    f"<b>{codigo}</b> "
+                    f"{texto_seguro(etiqueta)}"
+                    f"<br/>"
+                    f"<font size='7'>"
+                    f"{cantidad}"
+                    f"</font>"
+                ),
+                estilo_temporal,
+            )
+        )
+
+
+    tabla_estados = Table(
+        [
+            fila_estados
+        ],
+        colWidths=[
+            ancho_util / 7
+        ] * 7,
+    )
+
+
+    estilo_tabla_estados = [
+        (
+            "GRID",
+            (0, 0),
+            (-1, -1),
+            0.4,
+            gris_borde,
+        ),
+
+        (
+            "VALIGN",
+            (0, 0),
+            (-1, -1),
+            "MIDDLE",
+        ),
+
+        (
+            "ALIGN",
+            (0, 0),
+            (-1, -1),
+            "CENTER",
+        ),
+
+        (
+            "TOPPADDING",
+            (0, 0),
+            (-1, -1),
+            4,
+        ),
+
+        (
+            "BOTTOMPADDING",
+            (0, 0),
+            (-1, -1),
+            4,
+        ),
+    ]
+
+
+    for indice, estado_resumen in enumerate(
+        estados_resumen
+    ):
+
+        estilo_tabla_estados.append(
+            (
+                "BACKGROUND",
+                (indice, 0),
+                (indice, 0),
+                estado_resumen[3],
+            )
+        )
+
+
+    tabla_estados.setStyle(
+        TableStyle(
+            estilo_tabla_estados
+        )
+    )
+
+
+    elementos.append(
+        tabla_estados
+    )
+
+
+    elementos.append(
+        Spacer(
+            1,
+            9,
+        )
+    )
+
+
+    # ========================================================
+    # TABLA PRINCIPAL
+    # ========================================================
+
+    encabezados = [
+        "Atleta",
+        "C.I.",
+        "Cat.",
+    ]
+
+
+    for mes in meses:
+
+        encabezados.append(
+            mes[
+                "abreviatura"
+            ].title()
+        )
+
+
+    encabezados += [
+        "Bs",
+        "USD",
+        "Pend.",
+        "Cob.",
+    ]
+
+
+    datos_tabla = [
+        [
+            Paragraph(
+                texto_seguro(
+                    encabezado
+                ),
+                estilo_header_tabla,
+            )
+
+            for encabezado
+            in encabezados
+        ]
+    ]
+
+
+    # ========================================================
+    # ANCHOS DINÁMICOS
+    # ========================================================
+
+    ancho_nombre = 92
+
+    ancho_cedula = 50
+
+    ancho_categoria = 43
+
+    ancho_bs = 60
+
+    ancho_usd = 38
+
+    ancho_pendiente = 42
+
+    ancho_cobertura = 38
+
+
+    ancho_fijo = (
+        ancho_nombre
+        + ancho_cedula
+        + ancho_categoria
+        + ancho_bs
+        + ancho_usd
+        + ancho_pendiente
+        + ancho_cobertura
+    )
+
+
+    cantidad_meses = max(
+        1,
+        len(
+            meses
+        ),
+    )
+
+
+    ancho_disponible_meses = (
+        ancho_util
+        - ancho_fijo
+    )
+
+
+    ancho_mes = (
+        ancho_disponible_meses
+        / cantidad_meses
+    )
+
+
+    # Evita meses gigantes al exportar
+    # solamente uno o dos meses.
+
+    ancho_mes = min(
+        46,
+        ancho_mes,
+    )
+
+
+    anchos_columnas = [
+        ancho_nombre,
+        ancho_cedula,
+        ancho_categoria,
+    ]
+
+
+    anchos_columnas += [
+        ancho_mes
+    ] * len(
+        meses
+    )
+
+
+    anchos_columnas += [
+        ancho_bs,
+        ancho_usd,
+        ancho_pendiente,
+        ancho_cobertura,
+    ]
+
+
+    # ========================================================
+    # ESTILOS INDIVIDUALES DE ESTADO
+    # ========================================================
+
+    mapa_colores_estado = {
+
+        "al_dia":
+            color_al_dia,
+
+        "parcial":
+            color_parcial,
+
+        "pendiente":
+            color_pendiente,
+
+        "exonerado":
+            color_exonerado,
+
+        "sin_registro":
+            color_sin_registro,
+
+        "proximo":
+            color_proximo,
+
+        "sin_tarifa":
+            color_sin_tarifa,
+
+    }
+
+
+    comandos_estilo = [
+
+        (
+            "BACKGROUND",
+            (0, 0),
+            (-1, 0),
+            negro,
+        ),
+
+        (
+            "GRID",
+            (0, 0),
+            (-1, -1),
+            0.35,
+            gris_borde,
+        ),
+
+        (
+            "VALIGN",
+            (0, 0),
+            (-1, -1),
+            "MIDDLE",
+        ),
+
+        (
+            "ALIGN",
+            (1, 1),
+            (-1, -1),
+            "CENTER",
+        ),
+
+        (
+            "LEFTPADDING",
+            (0, 0),
+            (-1, -1),
+            2,
+        ),
+
+        (
+            "RIGHTPADDING",
+            (0, 0),
+            (-1, -1),
+            2,
+        ),
+
+        (
+            "TOPPADDING",
+            (0, 0),
+            (-1, -1),
+            3,
+        ),
+
+        (
+            "BOTTOMPADDING",
+            (0, 0),
+            (-1, -1),
+            3,
+        ),
+    ]
+
+
+    # ========================================================
+    # DATOS
+    # ========================================================
+
+    for indice_fila, fila in enumerate(
+        filas,
+        start=1,
+    ):
+
+        fila_pdf = [
+
+            Paragraph(
+                texto_seguro(
+                    fila[
+                        "nombre_completo"
+                    ]
+                ),
+                estilo_nombre,
+            ),
+
+            Paragraph(
+                texto_seguro(
+                    fila[
+                        "cedula"
+                    ] or "-"
+                ),
+                estilo_celda,
+            ),
+
+            Paragraph(
+                texto_seguro(
+                    fila[
+                        "categoria"
+                    ] or "-"
+                ),
+                estilo_celda,
+            ),
+
+        ]
+
+
+        # ----------------------------------------
+        # MESES
+        # ----------------------------------------
+
+        for indice_mes, periodo in enumerate(
+            fila[
+                "periodos"
+            ]
+        ):
+
+            codigo_estado = (
+                periodo[
+                    "estado_codigo"
+                ]
+            )
+
+
+            if codigo_estado == "al_dia":
+
+                contenido = (
+                    "<b>AD</b>"
+                    "<br/>"
+                    f"<font size='5'>"
+                    f"${periodo['pagado_usd']:.2f}"
+                    f"</font>"
+                )
+
+
+            elif codigo_estado == "parcial":
+
+                contenido = (
+                    "<b>PA</b>"
+                    "<br/>"
+                    f"<font size='5'>"
+                    f"${periodo['pagado_usd']:.2f}"
+                    f"</font>"
+                )
+
+
+            elif codigo_estado == "pendiente":
+
+                contenido = (
+                    "<b>PE</b>"
+                    "<br/>"
+                    f"<font size='5'>"
+                    f"${periodo['saldo_usd']:.2f}"
+                    f"</font>"
+                )
+
+
+            elif codigo_estado == "exonerado":
+
+                contenido = (
+                    "<b>EX</b>"
+                )
+
+
+            elif codigo_estado == "sin_registro":
+
+                contenido = (
+                    "<b>SR</b>"
+                )
+
+
+            elif codigo_estado == "proximo":
+
+                contenido = (
+                    "<b>PR</b>"
+                )
+
+
             else:
-                pagos_mes.append("—")
-                total_pendiente += 5
-                if estado == "no_pagado":
-                    tiene_estado = True
 
-            # Si no hay ninguna mensualidad creada y estamos filtrando por pendiente,
-            # igual debemos considerar que está pendiente.
-            if not Mensualidad.objects.filter(atleta=atleta, año=año, mes__gte=mes_inicio, mes__lte=mes_fin).exists():
-                if estado == "no_pagado":
-                    tiene_estado = True
+                contenido = (
+                    "<b>ST</b>"
+                )
 
-        if estado and not tiene_estado and not atletas_filtrados_por_cedula:
-            continue
 
-        fila.extend(pagos_mes)
-        fila.append(f"{total_pagado:.2f}")
-        fila.append(f"{total_pendiente:.2f}")
+            if (
+                codigo_estado
+                == "sin_tarifa"
+            ):
 
-        for i, val in enumerate(fila):
-            p.drawString(40 + i * col_width, y, str(val))
-        y -= 14
+                estilo_periodo = (
+                    estilo_estado_blanco
+                )
 
-        if y < 50:
-            imprimir_pie_pagina()
-            p.showPage()
-            page_number += 1
-            imprimir_encabezado(pagina_inicial=False)
-            y -= 18  # Ajuste para la siguiente fila de datos
+            else:
 
-    # Pie de página en la última página
-    imprimir_pie_pagina()
+                estilo_periodo = (
+                    estilo_estado
+                )
 
-    p.save()
-    buffer.seek(0)
-    return FileResponse(buffer, as_attachment=True, filename='reporte_pagos.pdf')
+
+            fila_pdf.append(
+                Paragraph(
+                    contenido,
+                    estilo_periodo,
+                )
+            )
+
+
+            columna_estado = (
+                3
+                + indice_mes
+            )
+
+
+            comandos_estilo.append(
+                (
+                    "BACKGROUND",
+                    (
+                        columna_estado,
+                        indice_fila,
+                    ),
+                    (
+                        columna_estado,
+                        indice_fila,
+                    ),
+                    mapa_colores_estado[
+                        codigo_estado
+                    ],
+                )
+            )
+
+
+        # ----------------------------------------
+        # TOTALES
+        # ----------------------------------------
+
+        fila_pdf += [
+
+            Paragraph(
+                (
+                    "Bs "
+                    f"{formato_numero(fila['total_pagado_bs'])}"
+                ),
+                estilo_celda,
+            ),
+
+            Paragraph(
+                (
+                    "$"
+                    f"{formato_numero(fila['total_pagado_usd'])}"
+                ),
+                estilo_celda,
+            ),
+
+            Paragraph(
+                (
+                    "$"
+                    f"{formato_numero(fila['total_pendiente_usd'])}"
+                ),
+                estilo_celda,
+            ),
+
+            Paragraph(
+                (
+                    f"{fila['meses_cubiertos']}"
+                    f"/"
+                    f"{fila['meses_gestionados']}"
+                ),
+                estilo_celda,
+            ),
+
+        ]
+
+
+        datos_tabla.append(
+            fila_pdf
+        )
+
+
+    # ========================================================
+    # MOSTRAR TABLA O MENSAJE VACÍO
+    # ========================================================
+
+    if filas:
+
+        tabla_principal = Table(
+            datos_tabla,
+            colWidths=anchos_columnas,
+            repeatRows=1,
+            hAlign="CENTER",
+            splitByRow=1,
+        )
+
+
+        tabla_principal.setStyle(
+            TableStyle(
+                comandos_estilo
+            )
+        )
+
+
+        elementos.append(
+            tabla_principal
+        )
+
+
+    else:
+
+        elementos.append(
+            Spacer(
+                1,
+                25,
+            )
+        )
+
+
+        elementos.append(
+            Paragraph(
+                (
+                    "No se encontraron atletas "
+                    "que coincidan con los filtros seleccionados."
+                ),
+                estilo_vacio,
+            )
+        )
+
+
+    # ========================================================
+    # LEYENDA
+    # ========================================================
+
+    elementos.append(
+        Spacer(
+            1,
+            10,
+        )
+    )
+
+
+    leyenda_datos = [
+        [
+            Paragraph(
+                "<b>AD</b> Al día",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>PA</b> Parcial",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>PE</b> Pendiente",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>EX</b> Exonerado",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>SR</b> Sin registro",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>PR</b> Próximo",
+                estilo_leyenda,
+            ),
+
+            Paragraph(
+                "<b>ST</b> Sin tarifa",
+                estilo_estado_blanco,
+            ),
+        ]
+    ]
+
+
+    tabla_leyenda = Table(
+        leyenda_datos,
+        colWidths=[
+            ancho_util / 7
+        ] * 7,
+    )
+
+
+    tabla_leyenda.setStyle(
+        TableStyle(
+            [
+                (
+                    "BACKGROUND",
+                    (0, 0),
+                    (0, 0),
+                    color_al_dia,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (1, 0),
+                    (1, 0),
+                    color_parcial,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (2, 0),
+                    (2, 0),
+                    color_pendiente,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (3, 0),
+                    (3, 0),
+                    color_exonerado,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (4, 0),
+                    (4, 0),
+                    color_sin_registro,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (5, 0),
+                    (5, 0),
+                    color_proximo,
+                ),
+
+                (
+                    "BACKGROUND",
+                    (6, 0),
+                    (6, 0),
+                    color_sin_tarifa,
+                ),
+
+                (
+                    "GRID",
+                    (0, 0),
+                    (-1, -1),
+                    0.4,
+                    gris_borde,
+                ),
+
+                (
+                    "VALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "MIDDLE",
+                ),
+
+                (
+                    "ALIGN",
+                    (0, 0),
+                    (-1, -1),
+                    "CENTER",
+                ),
+
+                (
+                    "TOPPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+
+                (
+                    "BOTTOMPADDING",
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+            ]
+        )
+    )
+
+
+    elementos.append(
+        tabla_leyenda
+    )
+
+
+    # ========================================================
+    # PIE DE PÁGINA
+    # ========================================================
+
+    fecha_exportacion = (
+        timezone.localtime()
+        .strftime(
+            "%d/%m/%Y %H:%M"
+        )
+    )
+
+
+    def pie_pagina(
+        canvas_pdf,
+        documento,
+    ):
+
+        canvas_pdf.saveState()
+
+
+        # Línea superior del pie
+
+        canvas_pdf.setStrokeColor(
+            gris_borde
+        )
+
+        canvas_pdf.setLineWidth(
+            0.5
+        )
+
+        canvas_pdf.line(
+            margen_izquierdo,
+            25,
+            ancho_pagina
+            - margen_derecho,
+            25,
+        )
+
+
+        # Fecha
+
+        canvas_pdf.setFont(
+            "Helvetica",
+            6.5,
+        )
+
+        canvas_pdf.setFillColor(
+            gris_texto
+        )
+
+        canvas_pdf.drawString(
+            margen_izquierdo,
+            14,
+            (
+                f"Exportado: "
+                f"{fecha_exportacion}"
+            ),
+        )
+
+
+        # Página
+
+        canvas_pdf.drawRightString(
+            ancho_pagina
+            - margen_derecho,
+            14,
+            (
+                f"Página "
+                f"{canvas_pdf.getPageNumber()}"
+            ),
+        )
+
+
+        # Marca central
+
+        canvas_pdf.setFillColor(
+            azul_oscuro
+        )
+
+        canvas_pdf.setFont(
+            "Helvetica-Bold",
+            6.5,
+        )
+
+        canvas_pdf.drawCentredString(
+            ancho_pagina / 2,
+            14,
+            "OLYMPO",
+        )
+
+
+        canvas_pdf.restoreState()
+
+
+    # ========================================================
+    # GENERAR PDF
+    # ========================================================
+
+    doc.build(
+        elementos,
+        onFirstPage=pie_pagina,
+        onLaterPages=pie_pagina,
+    )
+
+
+    buffer.seek(
+        0
+    )
+
+
+    # ========================================================
+    # RESPUESTA
+    # ========================================================
+
+    nombre_archivo = (
+        f"reporte_mensualidades_"
+        f"{año}_"
+        f"{mes_inicio:02d}-"
+        f"{mes_fin:02d}.pdf"
+    )
+
+
+    return FileResponse(
+        buffer,
+        as_attachment=True,
+        filename=nombre_archivo,
+        content_type="application/pdf",
+    )
 
 @user_passes_test(lambda u: es_admin(u) or es_entrenador(u))
 def reporte_atletas_view(request):
@@ -2193,7 +9242,7 @@ def reporte_atletas_excel(request):
     from openpyxl import load_workbook
 
     atletas = aplicar_filtros(request)
-    
+
     data = []
     for a in atletas:
         data.append({
@@ -3531,7 +10580,7 @@ def reporte_campeonatos_pdf(request):
     page_number = 1
 
     # Ajuste de columnas (incluyendo descripción)
-    col_widths = [120, 70, 50, 80, 150]  
+    col_widths = [120, 70, 50, 80, 150]
     headers = ["Nombre", "Tipo", "Año", "Fecha Inicio", "Descripción"]
 
     def encabezado(pagina_inicial=False):
@@ -4016,7 +11065,7 @@ def detalle_administrador(request, pk):
 @user_passes_test(es_admin)
 def editar_administrador(request, administrador_id):
     administrador = get_object_or_404(Administrador, id=administrador_id)
-    usuario = administrador.usuario  
+    usuario = administrador.usuario
 
     if request.method == "POST":
         form = AdministradorForm(request.POST, instance=administrador)

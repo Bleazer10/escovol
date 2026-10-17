@@ -6,18 +6,61 @@ from django.utils import timezone
 from .models import Atleta, Mensualidad, Entrenador, Equipo, Campeonato, Partido, Estadistica
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from decimal import Decimal
 
 @receiver(post_save, sender=Atleta)
-def crear_mensualidades_para_nuevo_atleta(sender, instance, created, **kwargs):
-    if created:
-        año_actual = timezone.localdate().year
-        for mes in range(1, 13):
-            Mensualidad.objects.get_or_create(
-                atleta=instance,
-                año=año_actual,
-                mes=mes,
-                defaults={"monto_pagado": 0.00, "exonerado": False}
-            )
+def crear_mensualidades_para_nuevo_atleta(
+    sender,
+    instance,
+    created,
+    **kwargs
+):
+    """
+    Crea los registros técnicos de mensualidades
+    del año actual para un atleta nuevo.
+
+    Estos registros NO representan deuda
+    automáticamente.
+
+    Se crean con:
+    - monto_pagado legado en 0;
+    - sin exoneración;
+    - fuera del control financiero.
+
+    El período solamente entra al control cuando
+    corresponde según la lógica de Administración,
+    un pago real o una exoneración.
+    """
+
+    if not created:
+        return
+
+
+    año_actual = (
+        timezone.localdate().year
+    )
+
+
+    for mes in range(
+        1,
+        13
+    ):
+
+        Mensualidad.objects.get_or_create(
+            atleta=instance,
+            año=año_actual,
+            mes=mes,
+            defaults={
+                "monto_pagado":
+                    Decimal("0.00"),
+
+                "exonerado":
+                    False,
+
+                "en_control":
+                    False,
+            }
+        )
 
 @receiver(post_migrate)
 def crear_roles_y_permisos(sender, **kwargs):

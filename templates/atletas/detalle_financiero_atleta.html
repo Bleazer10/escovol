@@ -1,0 +1,3588 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+{% load l10n %}
+
+{% block extra_head %}
+
+<style>
+
+/* =========================================
+   FICHA FINANCIERA
+   ========================================= */
+
+.finanzas-atleta-page {
+    min-width: 0;
+}
+
+
+/* =========================================
+   CABECERA
+   ========================================= */
+
+.finanzas-header {
+    background: linear-gradient(
+        135deg,
+        #2A73B6,
+        #158EFF
+    );
+
+    border-radius: 1rem;
+    color: white;
+    overflow: hidden;
+}
+
+.finanzas-header h2 {
+    font-weight: 700;
+}
+
+.finanzas-header .datos-atleta {
+    opacity: 0.88;
+}
+
+.finanzas-header .selector-anio {
+    min-width: 145px;
+}
+
+.finanzas-header .form-select {
+    border: 0;
+    border-radius: 0.65rem;
+    font-weight: 600;
+}
+
+
+/* =========================================
+   TARJETAS RESUMEN
+   ========================================= */
+
+.resumen-financiero-card {
+    border: 0;
+    border-radius: 1rem;
+    height: 100%;
+}
+
+.resumen-financiero-card .card-body {
+    padding: 1.15rem;
+}
+
+.resumen-financiero-icono {
+    width: 44px;
+    height: 44px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 0.8rem;
+
+    font-size: 1.1rem;
+}
+
+.resumen-financiero-label {
+    color: #6c757d;
+
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.resumen-financiero-valor {
+    margin-top: 0.2rem;
+
+    font-size: 1.4rem;
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================
+   RESUMEN DE ESTADOS
+   ========================================= */
+
+.estados-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.estado-resumen-item {
+    display: inline-flex;
+    align-items: center;
+
+    gap: 0.4rem;
+
+    padding: 0.45rem 0.7rem;
+
+    border: 1px solid #e4e8ec;
+    border-radius: 0.65rem;
+
+    background: white;
+
+    font-size: 0.84rem;
+}
+
+.estado-resumen-item strong {
+    font-weight: 700;
+}
+
+
+/* =========================================
+   TABLA
+   ========================================= */
+
+.tabla-financiera-card {
+    border: 0;
+    border-radius: 1rem;
+    overflow: visible;
+}
+
+#tablaFinanciera {
+    width: 100%;
+}
+
+#tablaFinanciera th,
+#tablaFinanciera td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+#tablaFinanciera thead th {
+    white-space: nowrap;
+
+    font-size: 0.85rem;
+
+    text-align: center;
+}
+
+#tablaFinanciera tbody td {
+    font-size: 0.9rem;
+}
+
+.columna-mes {
+    text-align: center !important;
+}
+
+.nombre-mes {
+    font-weight: 700;
+}
+
+.badge-estado-financiero {
+    display: inline-flex;
+    justify-content: center;
+
+    min-width: 92px;
+
+    padding: 0.48rem 0.65rem;
+
+    font-weight: 600;
+}
+
+.movimientos-boton {
+    white-space: nowrap;
+    border-radius: 0.55rem;
+}
+
+
+/* =========================================
+   ACCIONES DE PERÍODO
+   ========================================= */
+
+.acciones-periodo {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 0.4rem;
+
+    flex-wrap: nowrap;
+}
+
+.acciones-periodo .btn {
+    white-space: nowrap;
+    border-radius: 0.55rem;
+}
+
+.btn-acciones-periodo {
+    width: 32px;
+    height: 32px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid #d8dee5;
+    border-radius: 0.55rem;
+
+    background: white;
+    color: #495057;
+}
+
+.btn-acciones-periodo:hover,
+.btn-acciones-periodo:focus,
+.btn-acciones-periodo.show {
+    background: #f8f9fa;
+
+    border-color: #adb5bd;
+
+    color: #212529;
+}
+
+.dropdown-menu-periodo {
+    min-width: 215px;
+
+    padding: 0.45rem;
+
+    border: 0;
+    border-radius: 0.75rem;
+
+    box-shadow:
+        0 0.65rem 1.8rem
+        rgba(33, 37, 41, 0.16);
+}
+
+.dropdown-menu-periodo .dropdown-item {
+    display: flex;
+
+    align-items: center;
+
+    gap: 0.65rem;
+
+    padding: 0.62rem 0.7rem;
+
+    border-radius: 0.5rem;
+
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.dropdown-menu-periodo .dropdown-item i {
+    width: 18px;
+
+    text-align: center;
+}
+
+.dropdown-menu-periodo .dropdown-item:hover,
+.dropdown-menu-periodo .dropdown-item:focus {
+    background: #f3f6f9;
+}
+
+.dropdown-menu-periodo
+.accion-exonerar-periodo i {
+    color: #0dcaf0;
+}
+
+.dropdown-menu-periodo
+.accion-quitar-exoneracion-periodo i {
+    color: #f0ad4e;
+}
+
+
+/* =========================================
+   MOVIMIENTOS
+   ========================================= */
+
+.movimiento-item {
+    border: 1px solid #e1e5e9;
+
+    border-radius: 0.85rem;
+
+    padding: 1rem;
+
+    background: #fff;
+}
+
+.movimiento-item + .movimiento-item {
+    margin-top: 0.85rem;
+}
+
+.movimiento-cabecera {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    margin-bottom: 0.9rem;
+}
+
+.movimiento-id {
+    font-weight: 700;
+}
+
+.movimiento-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 0.75rem 1rem;
+}
+
+.movimiento-dato {
+    min-width: 0;
+}
+
+.movimiento-dato-label {
+    color: #6c757d;
+
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    text-transform: uppercase;
+}
+
+.movimiento-dato-valor {
+    margin-top: 0.1rem;
+
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================
+   DISTRIBUCIÓN DEL PAGO
+   ========================================= */
+
+.distribucion-pago {
+    margin-top: 1rem;
+
+    border: 1px solid #dde3e8;
+    border-radius: 0.8rem;
+
+    overflow: hidden;
+
+    background: #f8f9fa;
+}
+
+.distribucion-pago-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding: 0.75rem 0.9rem;
+
+    background: #eef3f7;
+
+    border-bottom: 1px solid #dde3e8;
+}
+
+.distribucion-pago-titulo {
+    display: flex;
+    align-items: center;
+
+    gap: 0.45rem;
+
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.distribucion-pago-lista {
+    background: white;
+}
+
+.distribucion-pago-item {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding: 0.7rem 0.9rem;
+}
+
+.distribucion-pago-item
++ .distribucion-pago-item {
+    border-top: 1px solid #edf0f2;
+}
+
+.distribucion-periodo {
+    min-width: 0;
+}
+
+.distribucion-periodo-nombre {
+    font-weight: 600;
+}
+
+.distribucion-periodo-detalle {
+    margin-top: 0.1rem;
+
+    color: #6c757d;
+
+    font-size: 0.78rem;
+}
+
+.distribucion-monto {
+    flex-shrink: 0;
+
+    text-align: right;
+
+    font-weight: 700;
+}
+
+.distribucion-periodo-actual {
+    background: #f1f7ff;
+}
+
+.distribucion-total {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding: 0.75rem 0.9rem;
+
+    border-top: 1px solid #dde3e8;
+
+    background: #f8f9fa;
+
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+
+/* =========================================
+   ANULACIÓN
+   ========================================= */
+
+.acciones-movimiento {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-top: 1rem;
+}
+
+.panel-anulacion {
+    margin-top: 1rem;
+
+    padding: 1rem;
+
+    border: 1px solid #f1c2c7;
+    border-radius: 0.8rem;
+
+    background: #fff7f8;
+}
+
+.panel-anulacion-titulo {
+    display: flex;
+    align-items: center;
+
+    gap: 0.5rem;
+
+    margin-bottom: 0.5rem;
+
+    color: #b02a37;
+
+    font-weight: 700;
+}
+
+.panel-anulacion .form-label {
+    font-size: 0.85rem;
+}
+
+.detalle-anulacion {
+    margin-top: 1rem;
+
+    padding: 0.85rem;
+
+    border: 1px solid #f1c2c7;
+    border-radius: 0.75rem;
+
+    background: #fff5f5;
+}
+
+.detalle-anulacion-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 0.7rem 1rem;
+}
+
+
+/* =========================================
+   EXONERACIÓN
+   ========================================= */
+
+.exoneracion-detalle {
+    border-radius: 0.8rem;
+
+    background: #f5fbfd;
+
+    border: 1px solid #cfeaf1;
+
+    padding: 0.9rem;
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+.periodos-mobile {
+    display: none;
+}
+
+.periodo-mobile-card {
+    border: 1px solid #e1e5e9;
+
+    border-radius: 0.9rem;
+
+    background: white;
+
+    overflow: hidden;
+}
+
+.periodo-mobile-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 0.75rem;
+
+    padding: 0.85rem 1rem;
+
+    background: #f8f9fa;
+
+    border-bottom: 1px solid #e7eaed;
+}
+
+.periodo-mobile-body {
+    padding: 1rem;
+}
+
+.periodo-mobile-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 0.8rem;
+}
+
+.periodo-mobile-dato-label {
+    color: #6c757d;
+
+    font-size: 0.74rem;
+    font-weight: 600;
+
+    text-transform: uppercase;
+}
+
+.periodo-mobile-dato-valor {
+    margin-top: 0.15rem;
+
+    font-weight: 600;
+}
+
+.periodo-mobile-acciones {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 0.5rem;
+
+    margin-top: 1rem;
+}
+
+.periodo-mobile-acciones .btn {
+    flex: 1 1 auto;
+
+    border-radius: 0.55rem;
+}
+
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+
+@media (min-width: 992px) {
+
+    .tabla-financiera-card .table-responsive {
+        overflow: visible;
+    }
+
+}
+
+
+@media (max-width: 991.98px) {
+
+    .tabla-financiera-desktop {
+        display: none;
+    }
+
+    .periodos-mobile {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+}
+
+
+@media (max-width: 767.98px) {
+
+    .finanzas-header {
+        text-align: center;
+    }
+
+    .finanzas-header .acciones-header {
+        justify-content: center !important;
+    }
+
+    .finanzas-header .selector-anio {
+        width: 100%;
+    }
+
+    .finanzas-header .btn {
+        width: 100%;
+    }
+
+}
+
+
+@media (max-width: 575.98px) {
+
+    .finanzas-header {
+        border-radius: 0.85rem;
+    }
+
+    .finanzas-header h2 {
+        font-size: 1.35rem;
+    }
+
+    .resumen-financiero-card .card-body {
+        padding: 0.9rem;
+    }
+
+    .resumen-financiero-valor {
+        font-size: 1.15rem;
+    }
+
+    .periodo-mobile-grid,
+    .movimiento-grid,
+    .detalle-anulacion-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .acciones-movimiento .btn {
+        width: 100%;
+    }
+
+    .distribucion-pago-item {
+        align-items: flex-start;
+    }
+
+}
+
+</style>
+
+{% endblock %}
+
+
+
+{% block content %}
+
+<div class="finanzas-atleta-page">
+
+
+    <!-- =====================================
+         BREADCRUMB
+         ===================================== -->
+
+    <nav
+        aria-label="breadcrumb"
+        class="mb-4"
+    >
+
+        <ol class="breadcrumb mb-0">
+
+            <li class="breadcrumb-item">
+
+                <a
+                    href="{% url 'menu_principal' %}"
+                    class="link-body-emphasis"
+                >
+
+                    <i class="fa-solid fa-house"></i>
+
+                    <span class="visually-hidden">
+                        Inicio
+                    </span>
+
+                </a>
+
+            </li>
+
+
+            <li class="breadcrumb-item">
+
+                <a
+                    href="{% url 'administracion' %}"
+                    class="link-body-emphasis"
+                >
+                    Administración
+                </a>
+
+            </li>
+
+
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Ficha financiera
+            </li>
+
+        </ol>
+
+    </nav>
+
+
+
+    <!-- =====================================
+         MENSAJES
+         ===================================== -->
+
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div
+                class="
+                    alert
+
+                    {% if message.tags == 'error' %}
+                        alert-danger
+                    {% else %}
+                        alert-{{ message.tags|default:'info' }}
+                    {% endif %}
+
+                    alert-dismissible
+                    fade
+                    show
+                    shadow-sm
+                "
+                role="alert"
+            >
+
+                {{ message }}
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Cerrar"
+                ></button>
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+
+
+    <!-- =====================================
+         CABECERA
+         ===================================== -->
+
+    <section
+        class="
+            finanzas-header
+            shadow
+            p-4
+            mb-4
+        "
+    >
+
+        <div
+            class="
+                row
+                g-3
+                align-items-center
+            "
+        >
+
+
+            <div class="col-lg-6">
+
+                <div
+                    class="
+                        d-flex
+                        align-items-center
+                        gap-3
+                        justify-content-lg-start
+                        justify-content-center
+                    "
+                >
+
+                    <div>
+
+                        <i
+                            class="
+                                fa-solid
+                                fa-user
+                                fa-2x
+                            "
+                        ></i>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            text-lg-start
+                            text-center
+                        "
+                    >
+
+                        <div class="small opacity-75">
+                            Ficha financiera
+                        </div>
+
+                        <h2 class="mb-1">
+
+                            {{ atleta.nombre }}
+                            {{ atleta.apellido }}
+
+                        </h2>
+
+                        <div class="datos-atleta">
+
+                            {{ atleta.categoria }}
+
+                            {% if atleta.cedula %}
+
+                                · C.I. {{ atleta.cedula }}
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="col-lg-3">
+
+                <form
+                    method="get"
+                    class="
+                        d-flex
+                        align-items-center
+                        gap-2
+                        justify-content-lg-end
+                        justify-content-center
+                    "
+                >
+
+                    <label
+                        for="selectorAnio"
+                        class="
+                            small
+                            fw-semibold
+                            mb-0
+                        "
+                    >
+                        Año
+                    </label>
+
+
+                    <select
+                        name="año"
+                        id="selectorAnio"
+                        class="
+                            form-select
+                            selector-anio
+                        "
+                        onchange="this.form.submit()"
+                    >
+
+                        {% for año in años_disponibles %}
+
+                            <option
+                                value="{{ año }}"
+
+                                {% if año == año_seleccionado %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ año }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </form>
+
+            </div>
+
+
+
+            <div class="col-lg-3">
+
+                <div
+                    class="
+                        d-flex
+                        justify-content-lg-end
+                        justify-content-center
+                        acciones-header
+                    "
+                >
+
+                    <a
+                        href="{% url 'administracion' %}"
+                        class="
+                            btn
+                            btn-light
+                        "
+                    >
+
+                        <i
+                            class="
+                                fa-solid
+                                fa-arrow-left
+                                me-1
+                            "
+                        ></i>
+
+                        Administración
+
+                    </a>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================
+         RESUMEN GENERAL
+         ===================================== -->
+
+    <div class="row g-3 mb-4">
+
+
+        <!-- Estado anual -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div
+                class="
+                    card
+                    resumen-financiero-card
+                    shadow-sm
+                "
+            >
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-financiero-icono
+
+                            {% if estado_anual_codigo == 'al_dia' %}
+                                bg-success-subtle
+                                text-success
+
+                            {% elif estado_anual_codigo == 'pendiente' %}
+                                bg-warning-subtle
+                                text-warning-emphasis
+
+                            {% elif estado_anual_codigo == 'revision' %}
+                                bg-danger-subtle
+                                text-danger
+
+                            {% else %}
+                                bg-secondary-subtle
+                                text-secondary
+                            {% endif %}
+                        "
+                    >
+
+                        <i class="fa-solid fa-chart-line"></i>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-label
+                            mt-3
+                        "
+                    >
+                        Estado del año
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-valor
+
+                            {% if estado_anual_codigo == 'al_dia' %}
+                                text-success
+
+                            {% elif estado_anual_codigo == 'pendiente' %}
+                                text-warning-emphasis
+
+                            {% elif estado_anual_codigo == 'revision' %}
+                                text-danger
+                            {% endif %}
+                        "
+                    >
+
+                        {{ estado_anual }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Meses cubiertos -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div
+                class="
+                    card
+                    resumen-financiero-card
+                    shadow-sm
+                "
+            >
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-financiero-icono
+                            bg-primary-subtle
+                            text-primary
+                        "
+                    >
+
+                        <i class="fa-solid fa-calendar-check"></i>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-label
+                            mt-3
+                        "
+                    >
+                        Meses cubiertos
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-valor
+                            text-primary
+                        "
+                    >
+
+                        {{ meses_cubiertos }}
+                        /
+                        {{ meses_gestionados }}
+
+                    </div>
+
+
+                    <div class="small text-muted mt-1">
+                        Sobre períodos gestionados
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Bs -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div
+                class="
+                    card
+                    resumen-financiero-card
+                    shadow-sm
+                "
+            >
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-financiero-icono
+                            bg-success-subtle
+                            text-success
+                        "
+                    >
+
+                        <i class="fa-solid fa-bolivar-sign"></i>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-label
+                            mt-3
+                        "
+                    >
+                        Pagado en Bs
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-valor
+                            text-success
+                        "
+                    >
+
+                        Bs
+                        {{ total_pagado_bs|floatformat:2|intcomma }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- USD -->
+
+        <div class="col-xl-3 col-md-6">
+
+            <div
+                class="
+                    card
+                    resumen-financiero-card
+                    shadow-sm
+                "
+            >
+
+                <div class="card-body">
+
+                    <div
+                        class="
+                            resumen-financiero-icono
+                            bg-info-subtle
+                            text-info-emphasis
+                        "
+                    >
+
+                        <i class="fa-solid fa-dollar-sign"></i>
+
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-label
+                            mt-3
+                        "
+                    >
+                        Equiv. USD
+                    </div>
+
+
+                    <div
+                        class="
+                            resumen-financiero-valor
+                            text-info-emphasis
+                        "
+                    >
+
+                        $
+                        {{ total_pagado_usd|floatformat:2 }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+
+    <!-- =====================================
+         RESUMEN DE PERÍODOS
+         ===================================== -->
+
+    <div
+        class="
+            card
+            border-0
+            shadow-sm
+            rounded-4
+            mb-4
+        "
+    >
+
+        <div class="card-body">
+
+            <h5 class="mb-1 fw-bold">
+                Resumen de períodos
+            </h5>
+
+            <div class="small text-muted mb-3">
+                Distribución de estados durante {{ año_seleccionado }}
+            </div>
+
+
+            <div class="estados-resumen">
+
+
+                <div class="estado-resumen-item">
+
+                    <span class="badge bg-success">
+                        {{ al_dia }}
+                    </span>
+
+                    <strong>
+                        Al día
+                    </strong>
+
+                </div>
+
+
+                <div class="estado-resumen-item">
+
+                    <span
+                        class="
+                            badge
+                            bg-warning
+                            text-dark
+                        "
+                    >
+                        {{ parciales }}
+                    </span>
+
+                    <strong>
+                        Parciales
+                    </strong>
+
+                </div>
+
+
+                <div class="estado-resumen-item">
+
+                    <span class="badge bg-danger">
+                        {{ pendientes }}
+                    </span>
+
+                    <strong>
+                        Pendientes
+                    </strong>
+
+                </div>
+
+
+                <div class="estado-resumen-item">
+
+                    <span
+                        class="
+                            badge
+                            bg-info
+                            text-dark
+                        "
+                    >
+                        {{ exonerados }}
+                    </span>
+
+                    <strong>
+                        Exonerados
+                    </strong>
+
+                </div>
+
+
+                <div class="estado-resumen-item">
+
+                    <span class="badge bg-secondary">
+                        {{ sin_registro }}
+                    </span>
+
+                    <strong>
+                        Sin registro
+                    </strong>
+
+                </div>
+
+
+                <div class="estado-resumen-item">
+
+                    <span
+                        class="
+                            badge
+                            bg-light
+                            text-dark
+                            border
+                        "
+                    >
+                        {{ proximos }}
+                    </span>
+
+                    <strong>
+                        Próximos
+                    </strong>
+
+                </div>
+
+
+                {% if sin_tarifa > 0 %}
+
+                    <div class="estado-resumen-item">
+
+                        <span class="badge bg-dark">
+                            {{ sin_tarifa }}
+                        </span>
+
+                        <strong>
+                            Sin tarifa
+                        </strong>
+
+                    </div>
+
+                {% endif %}
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================
+         TABLA DESKTOP
+         ===================================== -->
+
+    <div
+        class="
+            card
+            tabla-financiera-card
+            shadow
+            mb-4
+            tabla-financiera-desktop
+        "
+    >
+
+        <div class="card-body p-3 p-xl-4">
+
+            <div class="table-responsive">
+
+                <table
+                    id="tablaFinanciera"
+                    class="
+                        table
+                        table-hover
+                        table-bordered
+                        align-middle
+                        mb-0
+                    "
+                >
+
+                    <thead class="table-dark">
+
+                        <tr>
+
+                            <th>Mes</th>
+
+                            <th>Estado</th>
+
+                            <th>Cuota</th>
+
+                            <th>Pagado Bs</th>
+
+                            <th>Equiv. USD</th>
+
+                            <th>Saldo</th>
+
+                            <th>Movimientos</th>
+
+                            <th>Acción</th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for periodo in periodos %}
+
+                            <tr>
+
+
+                                <!-- Mes -->
+
+                                <td class="columna-mes">
+
+                                    <div class="nombre-mes">
+                                        {{ periodo.nombre_mes }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ periodo.año }}
+                                    </small>
+
+                                </td>
+
+
+
+                                <!-- Estado -->
+
+                                <td>
+
+                                    {% if periodo.estado_codigo == "al_dia" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-success
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Al día
+                                        </span>
+
+
+                                    {% elif periodo.estado_codigo == "parcial" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-warning
+                                                text-dark
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Parcial
+                                        </span>
+
+
+                                    {% elif periodo.estado_codigo == "pendiente" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-danger
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Pendiente
+                                        </span>
+
+
+                                    {% elif periodo.estado_codigo == "exonerado" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-info
+                                                text-dark
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Exonerado
+                                        </span>
+
+
+                                    {% elif periodo.estado_codigo == "proximo" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-light
+                                                text-dark
+                                                border
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Próximo
+                                        </span>
+
+
+                                    {% elif periodo.estado_codigo == "sin_registro" %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-secondary
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Sin registro
+                                        </span>
+
+
+                                    {% else %}
+
+                                        <span
+                                            class="
+                                                badge
+                                                bg-dark
+                                                badge-estado-financiero
+                                            "
+                                        >
+                                            Sin tarifa
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- Cuota -->
+
+                                <td>
+
+                                    {% if periodo.cuota_usd is not None %}
+
+                                        $
+                                        {{ periodo.cuota_usd|floatformat:2 }}
+
+                                    {% else %}
+
+                                        —
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- Bs -->
+
+                                <td>
+
+                                    {% if periodo.pagado_bs > 0 %}
+
+                                        <span class="fw-semibold">
+
+                                            Bs
+                                            {{ periodo.pagado_bs|floatformat:2|intcomma }}
+
+                                        </span>
+
+                                    {% else %}
+
+                                        —
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- USD -->
+
+                                <td>
+
+                                    {% if periodo.pagado_usd > 0 %}
+
+                                        <span class="fw-semibold">
+
+                                            $
+                                            {{ periodo.pagado_usd|floatformat:2 }}
+
+                                        </span>
+
+                                    {% else %}
+
+                                        $0.00
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- Saldo -->
+
+                                <td>
+
+                                    {% if periodo.saldo_usd is not None %}
+
+                                        {% if periodo.saldo_usd > 0 %}
+
+                                            <span
+                                                class="
+                                                    text-danger
+                                                    fw-semibold
+                                                "
+                                            >
+
+                                                $
+                                                {{ periodo.saldo_usd|floatformat:2 }}
+
+                                            </span>
+
+                                        {% else %}
+
+                                            <span
+                                                class="
+                                                    text-success
+                                                    fw-semibold
+                                                "
+                                            >
+                                                $0.00
+                                            </span>
+
+                                        {% endif %}
+
+                                    {% else %}
+
+                                        —
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- Movimientos -->
+
+                                <td>
+
+                                    {% if periodo.cantidad_movimientos > 0 %}
+
+                                        <button
+                                            type="button"
+                                            class="
+                                                btn
+                                                btn-sm
+                                                btn-outline-secondary
+                                                movimientos-boton
+                                            "
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalMovimientos{{ periodo.mes }}"
+                                        >
+
+                                            <i
+                                                class="
+                                                    fa-solid
+                                                    fa-receipt
+                                                    me-1
+                                                "
+                                            ></i>
+
+                                            {{ periodo.cantidad_movimientos }}
+
+                                            {% if periodo.cantidad_movimientos == 1 %}
+                                                movimiento
+                                            {% else %}
+                                                movimientos
+                                            {% endif %}
+
+                                        </button>
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            —
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+
+
+                                <!-- Acción -->
+
+                                <td>
+
+                                    <div class="acciones-periodo">
+
+
+                                        {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "parcial" or periodo.estado_codigo == "sin_registro" %}
+
+                                            <a
+                                                href="{% url 'administracion' %}?mes={{ periodo.mes }}&amp;año={{ año_seleccionado }}"
+                                                class="
+                                                    btn
+                                                    btn-sm
+                                                    btn-primary
+                                                "
+                                            >
+
+                                                <i
+                                                    class="
+                                                        fa-solid
+                                                        fa-plus
+                                                        me-1
+                                                    "
+                                                ></i>
+
+                                                Pago
+
+                                            </a>
+
+                                        {% endif %}
+
+
+
+                                        {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "sin_registro" or periodo.estado_codigo == "exonerado" %}
+
+                                            <div class="dropdown">
+
+                                                <button
+                                                    type="button"
+                                                    class="
+                                                        btn
+                                                        btn-sm
+                                                        btn-acciones-periodo
+                                                    "
+                                                    data-bs-toggle="dropdown"
+                                                    data-bs-display="static"
+                                                    aria-expanded="false"
+                                                    aria-label="Más acciones"
+                                                    title="Más acciones"
+                                                >
+
+                                                    <i
+                                                        class="
+                                                            fa-solid
+                                                            fa-ellipsis-vertical
+                                                        "
+                                                    ></i>
+
+                                                </button>
+
+
+                                                <ul
+                                                    class="
+                                                        dropdown-menu
+                                                        dropdown-menu-end
+                                                        dropdown-menu-periodo
+                                                    "
+                                                >
+
+
+                                                    {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "sin_registro" %}
+
+                                                        <li>
+
+                                                            <button
+                                                                type="button"
+                                                                class="
+                                                                    dropdown-item
+                                                                    accion-exonerar-periodo
+                                                                "
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#modalExonerarPeriodo{{ periodo.mes }}"
+                                                            >
+
+                                                                <i
+                                                                    class="
+                                                                        fa-solid
+                                                                        fa-hand-holding-heart
+                                                                    "
+                                                                ></i>
+
+                                                                <span>
+                                                                    Exonerar mensualidad
+                                                                </span>
+
+                                                            </button>
+
+                                                        </li>
+
+
+                                                    {% elif periodo.estado_codigo == "exonerado" %}
+
+                                                        <li>
+
+                                                            <button
+                                                                type="button"
+                                                                class="
+                                                                    dropdown-item
+                                                                    accion-quitar-exoneracion-periodo
+                                                                "
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#modalQuitarExoneracionPeriodo{{ periodo.mes }}"
+                                                            >
+
+                                                                <i
+                                                                    class="
+                                                                        fa-solid
+                                                                        fa-rotate-left
+                                                                    "
+                                                                ></i>
+
+                                                                <span>
+                                                                    Quitar exoneración
+                                                                </span>
+
+                                                            </button>
+
+                                                        </li>
+
+                                                    {% endif %}
+
+
+                                                </ul>
+
+                                            </div>
+
+                                        {% endif %}
+
+
+
+                                        {% if periodo.estado_codigo == "al_dia" %}
+
+                                            <span
+                                                class="
+                                                    text-success
+                                                    fw-semibold
+                                                    small
+                                                "
+                                            >
+
+                                                <i
+                                                    class="
+                                                        fa-solid
+                                                        fa-circle-check
+                                                        me-1
+                                                    "
+                                                ></i>
+
+                                                Cubierto
+
+                                            </span>
+
+
+                                        {% elif periodo.estado_codigo == "proximo" %}
+
+                                            <span class="text-muted small">
+                                                Próximo
+                                            </span>
+
+
+                                        {% elif periodo.estado_codigo == "sin_tarifa" %}
+
+                                            <span class="text-muted">
+                                                —
+                                            </span>
+
+                                        {% endif %}
+
+
+                                    </div>
+
+                                </td>
+
+
+                            </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================
+         MOBILE
+         ===================================== -->
+
+    <div class="periodos-mobile mb-4">
+
+        {% for periodo in periodos %}
+
+            <div class="periodo-mobile-card shadow-sm">
+
+
+                <div class="periodo-mobile-header">
+
+                    <div>
+
+                        <div class="fw-bold">
+                            {{ periodo.nombre_mes }}
+                        </div>
+
+                        <small class="text-muted">
+                            {{ periodo.año }}
+                        </small>
+
+                    </div>
+
+
+                    <div>
+
+                        {% if periodo.estado_codigo == "al_dia" %}
+
+                            <span class="badge bg-success">
+                                Al día
+                            </span>
+
+                        {% elif periodo.estado_codigo == "parcial" %}
+
+                            <span
+                                class="
+                                    badge
+                                    bg-warning
+                                    text-dark
+                                "
+                            >
+                                Parcial
+                            </span>
+
+                        {% elif periodo.estado_codigo == "pendiente" %}
+
+                            <span class="badge bg-danger">
+                                Pendiente
+                            </span>
+
+                        {% elif periodo.estado_codigo == "exonerado" %}
+
+                            <span
+                                class="
+                                    badge
+                                    bg-info
+                                    text-dark
+                                "
+                            >
+                                Exonerado
+                            </span>
+
+                        {% elif periodo.estado_codigo == "proximo" %}
+
+                            <span
+                                class="
+                                    badge
+                                    bg-light
+                                    text-dark
+                                    border
+                                "
+                            >
+                                Próximo
+                            </span>
+
+                        {% elif periodo.estado_codigo == "sin_registro" %}
+
+                            <span class="badge bg-secondary">
+                                Sin registro
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge bg-dark">
+                                Sin tarifa
+                            </span>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="periodo-mobile-body">
+
+
+                    <div class="periodo-mobile-grid">
+
+
+                        <div>
+
+                            <div class="periodo-mobile-dato-label">
+                                Cuota
+                            </div>
+
+                            <div class="periodo-mobile-dato-valor">
+
+                                {% if periodo.cuota_usd is not None %}
+
+                                    $
+                                    {{ periodo.cuota_usd|floatformat:2 }}
+
+                                {% else %}
+
+                                    —
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div>
+
+                            <div class="periodo-mobile-dato-label">
+                                Pagado Bs
+                            </div>
+
+                            <div class="periodo-mobile-dato-valor">
+
+                                {% if periodo.pagado_bs > 0 %}
+
+                                    Bs
+                                    {{ periodo.pagado_bs|floatformat:2|intcomma }}
+
+                                {% else %}
+
+                                    —
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div>
+
+                            <div class="periodo-mobile-dato-label">
+                                Equiv. USD
+                            </div>
+
+                            <div class="periodo-mobile-dato-valor">
+
+                                $
+                                {{ periodo.pagado_usd|floatformat:2 }}
+
+                            </div>
+
+                        </div>
+
+
+
+                        <div>
+
+                            <div class="periodo-mobile-dato-label">
+                                Saldo
+                            </div>
+
+                            <div class="periodo-mobile-dato-valor">
+
+                                {% if periodo.saldo_usd is not None %}
+
+                                    {% if periodo.saldo_usd > 0 %}
+
+                                        <span class="text-danger">
+
+                                            $
+                                            {{ periodo.saldo_usd|floatformat:2 }}
+
+                                        </span>
+
+                                    {% else %}
+
+                                        <span class="text-success">
+                                            $0.00
+                                        </span>
+
+                                    {% endif %}
+
+                                {% else %}
+
+                                    —
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    {% if periodo.estado_codigo == "exonerado" %}
+
+                        <div
+                            class="
+                                exoneracion-detalle
+                                mt-3
+                            "
+                        >
+
+                            <div class="small fw-semibold mb-1">
+
+                                <i
+                                    class="
+                                        fa-solid
+                                        fa-hand-holding-heart
+                                        me-1
+                                    "
+                                ></i>
+
+                                Exoneración
+
+                            </div>
+
+                            <div class="small">
+
+                                {{ periodo.motivo_exoneracion|default:"Sin motivo registrado" }}
+
+                            </div>
+
+                        </div>
+
+                    {% endif %}
+
+
+
+                    <div class="periodo-mobile-acciones">
+
+
+                        {% if periodo.cantidad_movimientos > 0 %}
+
+                            <button
+                                type="button"
+                                class="
+                                    btn
+                                    btn-sm
+                                    btn-outline-secondary
+                                "
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalMovimientos{{ periodo.mes }}"
+                            >
+
+                                <i
+                                    class="
+                                        fa-solid
+                                        fa-receipt
+                                        me-1
+                                    "
+                                ></i>
+
+                                Ver movimientos
+
+                            </button>
+
+                        {% endif %}
+
+
+
+                        {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "parcial" or periodo.estado_codigo == "sin_registro" %}
+
+                            <a
+                                href="{% url 'administracion' %}?mes={{ periodo.mes }}&amp;año={{ año_seleccionado }}"
+                                class="
+                                    btn
+                                    btn-sm
+                                    btn-primary
+                                "
+                            >
+
+                                <i
+                                    class="
+                                        fa-solid
+                                        fa-plus
+                                        me-1
+                                    "
+                                ></i>
+
+                                Registrar pago
+
+                            </a>
+
+                        {% endif %}
+
+
+
+                        {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "sin_registro" %}
+
+                            <button
+                                type="button"
+                                class="
+                                    btn
+                                    btn-sm
+                                    btn-outline-info
+                                "
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalExonerarPeriodo{{ periodo.mes }}"
+                            >
+
+                                <i
+                                    class="
+                                        fa-solid
+                                        fa-hand-holding-heart
+                                        me-1
+                                    "
+                                ></i>
+
+                                Exonerar
+
+                            </button>
+
+
+                        {% elif periodo.estado_codigo == "exonerado" %}
+
+                            <button
+                                type="button"
+                                class="
+                                    btn
+                                    btn-sm
+                                    btn-outline-warning
+                                "
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalQuitarExoneracionPeriodo{{ periodo.mes }}"
+                            >
+
+                                <i
+                                    class="
+                                        fa-solid
+                                        fa-rotate-left
+                                        me-1
+                                    "
+                                ></i>
+
+                                Quitar exoneración
+
+                            </button>
+
+                        {% endif %}
+
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+
+
+    <!-- =====================================
+         MODALES EXONERACIÓN
+         ===================================== -->
+
+    {% for periodo in periodos %}
+
+
+        <!-- Exonerar -->
+
+        {% if periodo.estado_codigo == "pendiente" or periodo.estado_codigo == "sin_registro" %}
+
+            <div
+                class="modal fade"
+                id="modalExonerarPeriodo{{ periodo.mes }}"
+                tabindex="-1"
+                aria-hidden="true"
+            >
+
+                <div
+                    class="
+                        modal-dialog
+                        modal-dialog-centered
+                    "
+                >
+
+                    <div class="modal-content">
+
+
+                        <form
+                            method="post"
+                            action="{% url 'exonerar_periodo_financiero' atleta.id %}"
+                        >
+
+                            {% csrf_token %}
+
+
+                            <input
+                                type="hidden"
+                                name="año"
+                                value="{{ periodo.año }}"
+                            >
+
+
+                            <input
+                                type="hidden"
+                                name="mes"
+                                value="{{ periodo.mes }}"
+                            >
+
+
+                            <input
+                                type="hidden"
+                                name="next"
+                                value="{% url 'detalle_financiero_atleta' atleta.id %}?año={{ año_seleccionado }}"
+                            >
+
+
+
+                            <div class="modal-header">
+
+                                <div>
+
+                                    <h5 class="modal-title fw-bold">
+                                        Exonerar mensualidad
+                                    </h5>
+
+                                    <div class="small text-muted">
+
+                                        {{ atleta.nombre }}
+                                        {{ atleta.apellido }}
+
+                                        ·
+
+                                        {{ periodo.nombre_mes }}
+                                        {{ periodo.año }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <button
+                                    type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Cerrar"
+                                ></button>
+
+                            </div>
+
+
+
+                            <div class="modal-body">
+
+
+                                <div
+                                    class="
+                                        alert
+                                        alert-info
+                                        border
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-circle-info
+                                            me-1
+                                        "
+                                    ></i>
+
+                                    El período
+
+                                    <strong>
+                                        {{ periodo.nombre_mes }}
+                                        {{ periodo.año }}
+                                    </strong>
+
+                                    quedará como
+
+                                    <strong>
+                                        Exonerado
+                                    </strong>
+
+                                    y su saldo pendiente será
+
+                                    <strong>
+                                        $0.00
+                                    </strong>.
+
+                                </div>
+
+
+
+                                <label
+                                    for="motivoExoneracionPeriodo{{ periodo.mes }}"
+                                    class="
+                                        form-label
+                                        fw-semibold
+                                    "
+                                >
+                                    Motivo de la exoneración
+                                </label>
+
+
+                                <textarea
+                                    id="motivoExoneracionPeriodo{{ periodo.mes }}"
+                                    name="motivo_exoneracion"
+                                    class="form-control"
+                                    rows="3"
+                                    placeholder="Ej: Beca deportiva, autorización administrativa..."
+                                    required
+                                ></textarea>
+
+
+                                <div class="form-text">
+                                    El motivo es obligatorio y quedará registrado.
+                                </div>
+
+
+                            </div>
+
+
+
+                            <div class="modal-footer">
+
+                                <button
+                                    type="button"
+                                    class="
+                                        btn
+                                        btn-secondary
+                                    "
+                                    data-bs-dismiss="modal"
+                                >
+                                    Cancelar
+                                </button>
+
+
+                                <button
+                                    type="submit"
+                                    class="
+                                        btn
+                                        btn-info
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-hand-holding-heart
+                                            me-1
+                                        "
+                                    ></i>
+
+                                    Confirmar exoneración
+
+                                </button>
+
+                            </div>
+
+
+                        </form>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+
+
+        <!-- Quitar exoneración -->
+
+        {% if periodo.estado_codigo == "exonerado" and periodo.mensualidad %}
+
+            <div
+                class="modal fade"
+                id="modalQuitarExoneracionPeriodo{{ periodo.mes }}"
+                tabindex="-1"
+                aria-hidden="true"
+            >
+
+                <div
+                    class="
+                        modal-dialog
+                        modal-dialog-centered
+                    "
+                >
+
+                    <div class="modal-content">
+
+
+                        <form
+                            method="post"
+                            action="{% url 'quitar_exoneracion_administracion' periodo.mensualidad.id %}"
+                        >
+
+                            {% csrf_token %}
+
+
+                            <input
+                                type="hidden"
+                                name="next"
+                                value="{% url 'detalle_financiero_atleta' atleta.id %}?año={{ año_seleccionado }}"
+                            >
+
+
+
+                            <div class="modal-header">
+
+                                <div>
+
+                                    <h5 class="modal-title fw-bold">
+                                        Quitar exoneración
+                                    </h5>
+
+                                    <div class="small text-muted">
+
+                                        {{ atleta.nombre }}
+                                        {{ atleta.apellido }}
+
+                                        ·
+
+                                        {{ periodo.nombre_mes }}
+                                        {{ periodo.año }}
+
+                                    </div>
+
+                                </div>
+
+
+                                <button
+                                    type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Cerrar"
+                                ></button>
+
+                            </div>
+
+
+
+                            <div class="modal-body">
+
+
+                                {% if periodo.motivo_exoneracion %}
+
+                                    <div
+                                        class="
+                                            alert
+                                            alert-info
+                                            small
+                                        "
+                                    >
+
+                                        <strong>
+                                            Motivo registrado:
+                                        </strong>
+
+                                        {{ periodo.motivo_exoneracion }}
+
+                                    </div>
+
+                                {% endif %}
+
+
+                                <div
+                                    class="
+                                        alert
+                                        alert-warning
+                                        mb-0
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-triangle-exclamation
+                                            me-1
+                                        "
+                                    ></i>
+
+                                    Al quitar la exoneración,
+                                    este período volverá a calcular
+                                    su estado financiero normalmente.
+
+                                    {% if periodo.pagado_usd > 0 %}
+
+                                        El sistema utilizará los pagos
+                                        existentes para determinar
+                                        su nuevo estado.
+
+                                    {% else %}
+
+                                        Como no existen pagos activos,
+                                        quedará como
+
+                                        <strong>
+                                            Pendiente
+                                        </strong>.
+
+                                    {% endif %}
+
+                                </div>
+
+
+                            </div>
+
+
+
+                            <div class="modal-footer">
+
+                                <button
+                                    type="button"
+                                    class="
+                                        btn
+                                        btn-secondary
+                                    "
+                                    data-bs-dismiss="modal"
+                                >
+                                    Cancelar
+                                </button>
+
+
+                                <button
+                                    type="submit"
+                                    class="
+                                        btn
+                                        btn-warning
+                                    "
+                                >
+
+                                    <i
+                                        class="
+                                            fa-solid
+                                            fa-rotate-left
+                                            me-1
+                                        "
+                                    ></i>
+
+                                    Quitar exoneración
+
+                                </button>
+
+                            </div>
+
+
+                        </form>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+
+    {% endfor %}
+
+
+
+    <!-- =====================================
+         MODALES DE MOVIMIENTOS
+         ===================================== -->
+
+    {% for periodo in periodos %}
+
+        {% if periodo.cantidad_movimientos > 0 %}
+
+            <div
+                class="modal fade"
+                id="modalMovimientos{{ periodo.mes }}"
+                tabindex="-1"
+                aria-hidden="true"
+            >
+
+                <div
+                    class="
+                        modal-dialog
+                        modal-lg
+                        modal-dialog-scrollable
+                    "
+                >
+
+                    <div class="modal-content">
+
+
+                        <div class="modal-header">
+
+                            <div>
+
+                                <h5 class="modal-title fw-bold">
+
+                                    Movimientos de
+                                    {{ periodo.nombre_mes }}
+                                    {{ periodo.año }}
+
+                                </h5>
+
+                                <div class="small text-muted">
+
+                                    {{ atleta.nombre }}
+                                    {{ atleta.apellido }}
+
+                                </div>
+
+                            </div>
+
+
+                            <button
+                                type="button"
+                                class="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Cerrar"
+                            ></button>
+
+                        </div>
+
+
+
+                        <div class="modal-body">
+
+
+                            {% for movimiento in periodo.movimientos %}
+
+                                <div class="movimiento-item">
+
+
+                                    <!-- Cabecera -->
+
+                                    <div class="movimiento-cabecera">
+
+                                        <div>
+
+                                            <div class="movimiento-id">
+
+                                                Pago
+                                                #{{ movimiento.pago_id }}
+
+                                            </div>
+
+                                            <div class="small text-muted">
+
+                                                {{ movimiento.fecha_pago|date:"d/m/Y" }}
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div>
+
+                                            {% if movimiento.estado == "activo" %}
+
+                                                <span class="badge bg-success">
+                                                    Activo
+                                                </span>
+
+                                            {% else %}
+
+                                                <span class="badge bg-danger">
+                                                    Anulado
+                                                </span>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    </div>
+
+
+
+                                    <!-- Datos -->
+
+                                    <div class="movimiento-grid">
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Moneda
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+                                                {{ movimiento.moneda_nombre }}
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Monto recibido
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+
+                                                {% if movimiento.pago.moneda == "VES" %}
+
+                                                    Bs
+                                                    {{ movimiento.monto_total|floatformat:2|intcomma }}
+
+                                                {% else %}
+
+                                                    $
+                                                    {{ movimiento.monto_total|floatformat:2 }}
+
+                                                {% endif %}
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Aplicado a este mes
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+
+                                                $
+                                                {{ movimiento.monto_aplicado_usd|floatformat:2 }}
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Equiv. total USD
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+
+                                                $
+                                                {{ movimiento.equivalente_usd|floatformat:2 }}
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Método
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+                                                {{ movimiento.metodo }}
+                                            </div>
+
+                                        </div>
+
+
+
+                                        <div class="movimiento-dato">
+
+                                            <div class="movimiento-dato-label">
+                                                Referencia
+                                            </div>
+
+                                            <div class="movimiento-dato-valor">
+
+                                                {{ movimiento.referencia|default:"—" }}
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                        {% if movimiento.tasa %}
+
+                                            <div class="movimiento-dato">
+
+                                                <div class="movimiento-dato-label">
+                                                    Tasa utilizada
+                                                </div>
+
+                                                <div class="movimiento-dato-valor">
+
+                                                    Bs
+                                                    {{ movimiento.tasa|floatformat:6 }}
+                                                    / USD
+
+                                                </div>
+
+                                            </div>
+
+                                        {% endif %}
+
+
+
+                                        {% if movimiento.fecha_tasa %}
+
+                                            <div class="movimiento-dato">
+
+                                                <div class="movimiento-dato-label">
+                                                    Fecha de tasa
+                                                </div>
+
+                                                <div class="movimiento-dato-valor">
+
+                                                    {{ movimiento.fecha_tasa|date:"d/m/Y" }}
+
+                                                </div>
+
+                                            </div>
+
+                                        {% endif %}
+
+
+                                    </div>
+
+
+
+                                    <!-- Distribución -->
+
+                                    {% if movimiento.aplicaciones_pago %}
+
+                                        <div class="distribucion-pago">
+
+
+                                            <div class="distribucion-pago-header">
+
+                                                <div class="distribucion-pago-titulo">
+
+                                                    <i class="fa-solid fa-layer-group"></i>
+
+                                                    Distribución del pago
+
+                                                </div>
+
+
+                                                <span
+                                                    class="
+                                                        badge
+                                                        bg-secondary
+                                                    "
+                                                >
+
+                                                    {{ movimiento.cantidad_aplicaciones }}
+
+                                                    {% if movimiento.cantidad_aplicaciones == 1 %}
+                                                        período
+                                                    {% else %}
+                                                        períodos
+                                                    {% endif %}
+
+                                                </span>
+
+                                            </div>
+
+
+
+                                            <div class="distribucion-pago-lista">
+
+                                                {% for destino in movimiento.aplicaciones_pago %}
+
+                                                    <div
+                                                        class="
+                                                            distribucion-pago-item
+
+                                                            {% if destino.mes == periodo.mes and destino.año == periodo.año %}
+                                                                distribucion-periodo-actual
+                                                            {% endif %}
+                                                        "
+                                                    >
+
+
+                                                        <div class="distribucion-periodo">
+
+                                                            <div class="distribucion-periodo-nombre">
+
+                                                                {{ destino.nombre_mes }}
+                                                                {{ destino.año }}
+
+
+                                                                {% if destino.mes == periodo.mes and destino.año == periodo.año %}
+
+                                                                    <span
+                                                                        class="
+                                                                            badge
+                                                                            bg-primary-subtle
+                                                                            text-primary
+                                                                            ms-1
+                                                                        "
+                                                                    >
+                                                                        Este período
+                                                                    </span>
+
+                                                                {% endif %}
+
+                                                            </div>
+
+
+                                                            {% if movimiento.moneda == "VES" %}
+
+                                                                <div class="distribucion-periodo-detalle">
+
+                                                                    Aproximadamente
+
+                                                                    Bs
+                                                                    {{ destino.monto_aplicado_bs|floatformat:2|intcomma }}
+
+                                                                    aplicados
+
+                                                                </div>
+
+                                                            {% endif %}
+
+                                                        </div>
+
+
+
+                                                        <div class="distribucion-monto">
+
+                                                            $
+                                                            {{ destino.monto_aplicado_usd|floatformat:2 }}
+
+                                                        </div>
+
+
+                                                    </div>
+
+                                                {% endfor %}
+
+                                            </div>
+
+
+
+                                            <div class="distribucion-total">
+
+                                                <span>
+                                                    Total aplicado por este pago
+                                                </span>
+
+                                                <span>
+
+                                                    $
+                                                    {{ movimiento.equivalente_usd|floatformat:2 }}
+
+                                                </span>
+
+                                            </div>
+
+
+                                        </div>
+
+                                    {% endif %}
+
+
+
+                                    <!-- Observación -->
+
+                                    {% if movimiento.observacion %}
+
+                                        <div
+                                            class="
+                                                alert
+                                                alert-light
+                                                border
+                                                small
+                                                mt-3
+                                                mb-0
+                                            "
+                                        >
+
+                                            <strong>
+                                                Observación:
+                                            </strong>
+
+                                            {{ movimiento.observacion }}
+
+                                        </div>
+
+                                    {% endif %}
+
+
+
+                                    <!-- =================================
+                                         PAGO ACTIVO
+                                         ================================= -->
+
+                                    {% if movimiento.estado == "activo" %}
+
+
+                                        <div class="acciones-movimiento">
+
+                                            <button
+                                                type="button"
+                                                class="
+                                                    btn
+                                                    btn-sm
+                                                    btn-outline-danger
+                                                "
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#anularPago{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                                aria-expanded="false"
+                                                aria-controls="anularPago{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                            >
+
+                                                <i
+                                                    class="
+                                                        fa-solid
+                                                        fa-ban
+                                                        me-1
+                                                    "
+                                                ></i>
+
+                                                Anular pago
+
+                                            </button>
+
+                                        </div>
+
+
+
+                                        <div
+                                            class="collapse"
+                                            id="anularPago{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                        >
+
+                                            <div class="panel-anulacion">
+
+
+                                                <div class="panel-anulacion-titulo">
+
+                                                    <i class="fa-solid fa-triangle-exclamation"></i>
+
+                                                    Confirmar anulación
+
+                                                </div>
+
+
+                                                <p class="small mb-3">
+
+                                                    Vas a anular completamente el
+
+                                                    <strong>
+                                                        Pago #{{ movimiento.pago_id }}
+                                                    </strong>.
+
+                                                    Esta acción no elimina el registro.
+
+                                                    El pago permanecerá en el historial
+                                                    marcado como
+
+                                                    <strong>
+                                                        Anulado
+                                                    </strong>.
+
+                                                </p>
+
+
+
+                                                {% if movimiento.cantidad_aplicaciones > 1 %}
+
+                                                    <div
+                                                        class="
+                                                            alert
+                                                            alert-warning
+                                                            small
+                                                            py-2
+                                                        "
+                                                    >
+
+                                                        <i
+                                                            class="
+                                                                fa-solid
+                                                                fa-triangle-exclamation
+                                                                me-1
+                                                            "
+                                                        ></i>
+
+                                                        Este pago está distribuido entre
+
+                                                        <strong>
+                                                            {{ movimiento.cantidad_aplicaciones }}
+                                                            mensualidades.
+                                                        </strong>
+
+                                                        Al anularlo se retirará el dinero
+                                                        aplicado a:
+
+
+                                                        <div class="mt-2">
+
+                                                            {% for destino in movimiento.aplicaciones_pago %}
+
+                                                                <span
+                                                                    class="
+                                                                        badge
+                                                                        bg-warning-subtle
+                                                                        text-warning-emphasis
+                                                                        border
+                                                                        me-1
+                                                                        mb-1
+                                                                    "
+                                                                >
+
+                                                                    {{ destino.nombre_mes }}
+                                                                    {{ destino.año }}
+
+                                                                </span>
+
+                                                            {% endfor %}
+
+                                                        </div>
+
+                                                    </div>
+
+
+                                                {% else %}
+
+                                                    <div
+                                                        class="
+                                                            alert
+                                                            alert-light
+                                                            border
+                                                            small
+                                                            py-2
+                                                        "
+                                                    >
+
+                                                        <i
+                                                            class="
+                                                                fa-solid
+                                                                fa-circle-info
+                                                                me-1
+                                                            "
+                                                        ></i>
+
+                                                        Este pago solamente afecta a
+
+                                                        <strong>
+                                                            {{ periodo.nombre_mes }}
+                                                            {{ periodo.año }}.
+                                                        </strong>
+
+                                                    </div>
+
+                                                {% endif %}
+
+
+
+                                                <form
+                                                    method="post"
+                                                    action="{% url 'anular_pago_administracion' movimiento.pago_id %}"
+                                                >
+
+                                                    {% csrf_token %}
+
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="next"
+                                                        value="{% url 'detalle_financiero_atleta' atleta.id %}?año={{ año_seleccionado }}"
+                                                    >
+
+
+
+                                                    <div class="mb-3">
+
+                                                        <label
+                                                            for="motivoAnulacion{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                                            class="
+                                                                form-label
+                                                                fw-semibold
+                                                            "
+                                                        >
+                                                            Motivo de la anulación
+                                                        </label>
+
+
+                                                        <textarea
+                                                            id="motivoAnulacion{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                                            name="motivo_anulacion"
+                                                            class="form-control"
+                                                            rows="3"
+                                                            placeholder="Ej: Pago registrado por error, monto incorrecto..."
+                                                            required
+                                                        ></textarea>
+
+
+                                                        <div class="form-text">
+                                                            El motivo es obligatorio y quedará registrado en el historial.
+                                                        </div>
+
+                                                    </div>
+
+
+
+                                                    <div
+                                                        class="
+                                                            d-flex
+                                                            flex-wrap
+                                                            justify-content-end
+                                                            gap-2
+                                                        "
+                                                    >
+
+                                                        <button
+                                                            type="button"
+                                                            class="
+                                                                btn
+                                                                btn-sm
+                                                                btn-secondary
+                                                            "
+                                                            data-bs-toggle="collapse"
+                                                            data-bs-target="#anularPago{{ movimiento.pago_id }}Mes{{ periodo.mes }}"
+                                                        >
+                                                            Cancelar
+                                                        </button>
+
+
+                                                        <button
+                                                            type="submit"
+                                                            class="
+                                                                btn
+                                                                btn-sm
+                                                                btn-danger
+                                                            "
+                                                        >
+
+                                                            <i
+                                                                class="
+                                                                    fa-solid
+                                                                    fa-ban
+                                                                    me-1
+                                                                "
+                                                            ></i>
+
+                                                            Confirmar anulación
+
+                                                        </button>
+
+                                                    </div>
+
+
+                                                </form>
+
+
+                                            </div>
+
+                                        </div>
+
+
+
+                                    <!-- =================================
+                                         PAGO ANULADO
+                                         ================================= -->
+
+                                    {% else %}
+
+                                        <div class="detalle-anulacion">
+
+
+                                            <div
+                                                class="
+                                                    d-flex
+                                                    align-items-center
+                                                    gap-2
+                                                    text-danger
+                                                    fw-bold
+                                                    mb-3
+                                                "
+                                            >
+
+                                                <i class="fa-solid fa-ban"></i>
+
+                                                Información de la anulación
+
+                                            </div>
+
+
+                                            <div class="detalle-anulacion-grid">
+
+
+                                                <div>
+
+                                                    <div class="movimiento-dato-label">
+                                                        Motivo
+                                                    </div>
+
+                                                    <div class="movimiento-dato-valor">
+
+                                                        {{ movimiento.pago.motivo_anulacion|default:"Sin motivo registrado" }}
+
+                                                    </div>
+
+                                                </div>
+
+
+
+                                                <div>
+
+                                                    <div class="movimiento-dato-label">
+                                                        Fecha de anulación
+                                                    </div>
+
+                                                    <div class="movimiento-dato-valor">
+
+                                                        {% if movimiento.pago.anulado_en %}
+
+                                                            {{ movimiento.pago.anulado_en|date:"d/m/Y H:i" }}
+
+                                                        {% else %}
+
+                                                            —
+
+                                                        {% endif %}
+
+                                                    </div>
+
+                                                </div>
+
+
+
+                                                <div>
+
+                                                    <div class="movimiento-dato-label">
+                                                        Anulado por
+                                                    </div>
+
+                                                    <div class="movimiento-dato-valor">
+
+                                                        {% if movimiento.pago.anulado_por %}
+
+                                                            {{ movimiento.pago.anulado_por.username }}
+
+                                                        {% else %}
+
+                                                            —
+
+                                                        {% endif %}
+
+                                                    </div>
+
+                                                </div>
+
+
+                                            </div>
+
+
+
+                                            <div
+                                                class="
+                                                    alert
+                                                    alert-danger
+                                                    small
+                                                    mt-3
+                                                    mb-0
+                                                "
+                                            >
+
+                                                Este pago permanece en el historial
+                                                por motivos de auditoría, pero
+
+                                                <strong>
+                                                    no forma parte del total pagado,
+                                                    la recaudación ni el estado actual
+                                                    de las mensualidades.
+                                                </strong>
+
+                                            </div>
+
+
+                                        </div>
+
+                                    {% endif %}
+
+
+                                </div>
+
+                            {% endfor %}
+
+
+                        </div>
+
+
+
+                        <div class="modal-footer">
+
+                            <button
+                                type="button"
+                                class="
+                                    btn
+                                    btn-secondary
+                                "
+                                data-bs-dismiss="modal"
+                            >
+                                Cerrar
+                            </button>
+
+                        </div>
+
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    {% endfor %}
+
+
+</div>
+
+{% endblock %}
