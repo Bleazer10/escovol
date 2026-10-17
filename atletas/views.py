@@ -11181,6 +11181,7 @@ def lista_usuarios(request):
 
         usuarios.append({
             'id': entrenador.id,
+            'user_id': entrenador.user.id,
             'nombre': entrenador.nombre,
             'apellido': entrenador.apellido,
             'usuario': entrenador.user.username,
@@ -11200,6 +11201,7 @@ def lista_usuarios(request):
 
         usuarios.append({
             'id': atleta.id,
+            'user_id': atleta.user.id,
             'nombre': atleta.nombre,
             'apellido': atleta.apellido,
             'usuario': atleta.user.username,
@@ -11219,6 +11221,7 @@ def lista_usuarios(request):
 
         usuarios.append({
             'id': administrador.id,
+            'user_id': administrador.usuario.id,
             'nombre': administrador.nombre,
             'apellido': administrador.apellido,
             'usuario': administrador.usuario.username,
@@ -11276,4 +11279,147 @@ def lista_usuarios(request):
             'estado_filtro': estado_filtro,
             'nombre_filtro': nombre_filtro,
         }
+    )
+
+@user_passes_test(es_admin)
+@require_POST
+def cambiar_estado_usuario(request, user_id):
+    """
+    Activa o desactiva una cuenta de usuario desde
+    la pantalla general de Gestión de Usuarios.
+    """
+
+    usuario = get_object_or_404(
+        User,
+        pk=user_id,
+    )
+
+    accion = request.POST.get(
+        "accion",
+        ""
+    ).strip()
+
+
+    # =========================================
+    # PROTEGER AL USUARIO ACTUAL
+    # =========================================
+
+    if usuario.id == request.user.id:
+
+        messages.error(
+            request,
+            "No puedes desactivar tu propia cuenta."
+        )
+
+        siguiente = request.POST.get(
+            "next",
+            ""
+        )
+
+        if (
+            siguiente.startswith("/")
+            and not siguiente.startswith("//")
+        ):
+            return redirect(siguiente)
+
+        return redirect(
+            "lista_usuarios"
+        )
+
+
+    # =========================================
+    # PROTEGER SUPERUSUARIOS
+    # =========================================
+
+    if usuario.is_superuser:
+
+        messages.error(
+            request,
+            "El estado de una cuenta superusuario no puede modificarse desde esta pantalla."
+        )
+
+        siguiente = request.POST.get(
+            "next",
+            ""
+        )
+
+        if (
+            siguiente.startswith("/")
+            and not siguiente.startswith("//")
+        ):
+            return redirect(siguiente)
+
+        return redirect(
+            "lista_usuarios"
+        )
+
+
+    # =========================================
+    # CAMBIAR ESTADO
+    # =========================================
+
+    if accion == "activar":
+
+        usuario.is_active = True
+
+        usuario.save(
+            update_fields=[
+                "is_active"
+            ]
+        )
+
+        messages.success(
+            request,
+            (
+                f'El usuario "{usuario.username}" '
+                "fue activado correctamente."
+            )
+        )
+
+
+    elif accion == "desactivar":
+
+        usuario.is_active = False
+
+        usuario.save(
+            update_fields=[
+                "is_active"
+            ]
+        )
+
+        messages.success(
+            request,
+            (
+                f'El usuario "{usuario.username}" '
+                "fue desactivado correctamente."
+            )
+        )
+
+
+    else:
+
+        messages.error(
+            request,
+            "La acción solicitada no es válida."
+        )
+
+
+    # =========================================
+    # REGRESAR A LA LISTA
+    # =========================================
+
+    siguiente = request.POST.get(
+        "next",
+        ""
+    )
+
+    if (
+        siguiente.startswith("/")
+        and not siguiente.startswith("//")
+    ):
+        return redirect(siguiente)
+
+
+    return redirect(
+        "lista_usuarios"
     )

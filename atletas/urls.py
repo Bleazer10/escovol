@@ -113,6 +113,11 @@ urlpatterns = [
     path('reportes/partidos/pdf/', views.exportar_partidos_pdf, name='exportar_partidos_pdf'),
     path('reportes/partidos/excel/', views.exportar_partidos_excel, name='exportar_partidos_excel'),
     path('usuarios/', views.lista_usuarios, name='lista_usuarios'),
+    path(
+        'usuarios/<int:user_id>/cambiar-estado/',
+        views.cambiar_estado_usuario,
+        name='cambiar_estado_usuario',
+    ),
     path("administradores/", views.lista_administradores, name="lista_administradores"),
     path("administradores/agregar/", views.agregar_administrador, name="agregar_administrador"),
     path("administradores/editar/<int:administrador_id>/", views.editar_administrador, name="editar_administrador"),
