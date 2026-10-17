@@ -1,73 +1,707 @@
 {% extends 'base.html' %}
+
 {% block content %}
 
-  <!-- Migas de pan -->
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb mb-3">
-      <li class="breadcrumb-item">
-        <a href="{% url 'menu_principal' %}" class="text-dark"><i class="fa-solid fa-house"></i></a>
-      </li>
-      <li class="breadcrumb-item">
-        <a href="{% url 'lista_entrenadores' %}" class="text-dark">Entrenadores</a>
-      </li>
-      <li class="breadcrumb-item active" aria-current="page">Detalle</li>
-    </ol>
-  </nav>
+<style>
 
-  <div class="container mt-4">
-    <div class="card shadow border border-primary rounded-4 mb-4">
-      <div class="card-header bg-dark text-white text-center rounded-top-4">
-        <h4 class="mb-0">Entrenador: {{ entrenador.nombre }} {{ entrenador.apellido }}</h4>
-      </div>
-      <div class="card-body bg-light rounded-bottom-4">
+/* =========================================
+   DETALLE DEL ENTRENADOR
+   ========================================= */
 
-        <div class="row">
-          <div class="col-md-6 py-2">
-            <strong>Cédula:</strong> {{ entrenador.cedula }}
-          </div>
-          <div class="col-md-6 py-2">
-            <strong>Fecha de Nacimiento:</strong> {{ entrenador.fecha_nacimiento }}
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-6 py-2">
-            <strong>Teléfono:</strong> {{ entrenador.telefono }}
-          </div>
-          <div class="col-md-6 py-2">
-            <strong>Edad:</strong> {{ entrenador.edad }}
-          </div>
-        </div>
-        {% if usuario %}
-          <div class="row">
-            <div class="col-md-6 py-2"><strong>Usuario:</strong> {{ usuario.username }}</div>
-            <div class="col-md-6 py-2"><strong>Correo:</strong> {{ usuario.email }}</div>
-          </div>
-          <div class="row">
-            <div class="col-md-6 py-2">
-              <strong>Estado:</strong>
-              {% if usuario.is_active %}
-                <span class="badge bg-success">Activo</span>
-              {% else %}
-                <span class="badge bg-danger">Inactivo</span>
-              {% endif %}
+.detalle-entrenador-page {
+    width: 100%;
+    min-width: 0;
+}
+
+
+/* =========================================
+   CONTENEDOR
+   ========================================= */
+
+.detalle-entrenador-container {
+    width: 100%;
+    max-width: 900px;
+
+    margin: 0 auto;
+}
+
+
+/* =========================================
+   CARD
+   ========================================= */
+
+.detalle-entrenador-card {
+    width: 100%;
+
+    border: 1px solid #158EFF !important;
+    border-radius: 1rem !important;
+
+    overflow: hidden;
+
+    background: #fff;
+}
+
+
+/* =========================================
+   CABECERA
+   ========================================= */
+
+.detalle-entrenador-header {
+    padding: 1rem 1.25rem;
+
+    background: linear-gradient(
+        to right,
+        #2A73B6,
+        #158EFF,
+        #158EFF
+    );
+
+    color: #fff;
+
+    text-align: center;
+}
+
+
+.detalle-entrenador-header h4 {
+    margin: 0;
+
+    font-size: 1.25rem;
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================
+   CUERPO
+   ========================================= */
+
+.detalle-entrenador-body {
+    padding: 1.5rem;
+
+    background: #f8f9fa;
+}
+
+
+/* =========================================
+   DATOS
+   ========================================= */
+
+.detalle-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+
+    gap: 1rem 2rem;
+}
+
+
+.detalle-item {
+    min-width: 0;
+}
+
+
+.detalle-label {
+    display: block;
+
+    margin-bottom: 0.2rem;
+
+    color: #212529;
+
+    font-weight: 700;
+}
+
+
+.detalle-valor {
+    display: block;
+
+    min-width: 0;
+
+    color: #212529;
+
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+
+/* Para datos cortos puede verse todo en una sola línea */
+
+.detalle-item-linea {
+    display: flex;
+
+    align-items: baseline;
+
+    flex-wrap: wrap;
+
+    column-gap: 0.3rem;
+
+    min-width: 0;
+}
+
+
+.detalle-item-linea .detalle-label {
+    display: inline;
+
+    margin-bottom: 0;
+}
+
+
+.detalle-item-linea .detalle-valor {
+    display: inline;
+}
+
+
+/* =========================================
+   ESTADO
+   ========================================= */
+
+.estado-entrenador {
+    font-size: 0.76rem;
+    font-weight: 700;
+
+    padding: 0.38rem 0.58rem;
+
+    border-radius: 0.45rem;
+}
+
+
+/* =========================================
+   ACCIONES
+   ========================================= */
+
+.acciones-entrenador {
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+
+    gap: 0.85rem;
+
+    margin-top: 1.75rem;
+}
+
+
+.acciones-entrenador .btn {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 0.45rem;
+
+    width: 100%;
+    min-width: 0;
+
+    padding: 0.7rem 1rem;
+
+    border: 0;
+    border-radius: 0.8rem;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+}
+
+
+.acciones-entrenador .btn:hover {
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 0.35rem 0.8rem
+        rgba(0, 0, 0, 0.12);
+}
+
+
+.btn-editar-entrenador {
+    background: #4caf50;
+    color: #000;
+}
+
+
+.btn-editar-entrenador:hover,
+.btn-editar-entrenador:focus {
+    background: #43a047;
+    color: #000;
+}
+
+
+.btn-eliminar-entrenador {
+    background: #dc3545;
+    color: #000;
+}
+
+
+.btn-eliminar-entrenador:hover,
+.btn-eliminar-entrenador:focus {
+    background: #c82333;
+    color: #000;
+}
+
+
+.btn-volver-entrenador {
+    background: #f8b100;
+    color: #000;
+}
+
+
+.btn-volver-entrenador:hover,
+.btn-volver-entrenador:focus {
+    background: #e5a400;
+    color: #000;
+}
+
+
+/* =========================================
+   TABLET / MOBILE
+   ========================================= */
+
+@media (max-width: 767.98px) {
+
+    .detalle-entrenador-container {
+        max-width: 100%;
+    }
+
+
+    .detalle-entrenador-body {
+        padding: 1.25rem;
+    }
+
+
+    .detalle-grid {
+        grid-template-columns: 1fr;
+
+        gap: 1rem;
+    }
+
+
+    .acciones-entrenador {
+        grid-template-columns: 1fr;
+    }
+
+
+    .acciones-entrenador .btn {
+        min-height: 46px;
+    }
+
+}
+
+
+/* =========================================
+   MOBILE PEQUEÑO
+   ========================================= */
+
+@media (max-width: 575.98px) {
+
+    .detalle-entrenador-page {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+
+    .detalle-entrenador-header {
+        padding: 0.9rem 1rem;
+    }
+
+
+    .detalle-entrenador-header h4 {
+        font-size: 1.05rem;
+    }
+
+
+    .detalle-entrenador-body {
+        padding: 1rem;
+    }
+
+
+    .detalle-item-linea {
+        display: block;
+    }
+
+
+    .detalle-item-linea .detalle-label,
+    .detalle-item-linea .detalle-valor {
+        display: inline;
+    }
+
+
+    .acciones-entrenador {
+        gap: 0.65rem;
+
+        margin-top: 1.4rem;
+    }
+
+
+    .acciones-entrenador .btn {
+        width: 100%;
+
+        padding: 0.72rem 1rem;
+
+        white-space: normal;
+    }
+
+}
+
+</style>
+
+
+<div class="detalle-entrenador-page">
+
+
+    <!-- =====================================
+         MIGAS DE PAN
+         ===================================== -->
+
+    <nav
+        aria-label="breadcrumb"
+        class="mb-3"
+    >
+
+        <ol class="breadcrumb mb-0">
+
+            <li class="breadcrumb-item">
+
+                <a
+                    href="{% url 'menu_principal' %}"
+                    class="text-dark"
+                >
+
+                    <i class="fa-solid fa-house"></i>
+
+                    <span class="visually-hidden">
+                        Inicio
+                    </span>
+
+                </a>
+
+            </li>
+
+
+            <li class="breadcrumb-item">
+
+                <a
+                    href="{% url 'lista_entrenadores' %}"
+                    class="text-dark"
+                >
+                    Entrenadores
+                </a>
+
+            </li>
+
+
+            <li
+                class="breadcrumb-item active"
+                aria-current="page"
+            >
+                Detalle
+            </li>
+
+        </ol>
+
+    </nav>
+
+
+
+    <!-- =====================================
+         CONTENEDOR
+         ===================================== -->
+
+    <div class="detalle-entrenador-container">
+
+
+        <div
+            class="
+                card
+                detalle-entrenador-card
+                shadow-sm
+                mb-4
+            "
+        >
+
+
+            <!-- =================================
+                 CABECERA
+                 ================================= -->
+
+            <div class="detalle-entrenador-header">
+
+                <h4>
+
+                    Entrenador:
+
+                    {{ entrenador.nombre }}
+                    {{ entrenador.apellido }}
+
+                </h4>
+
             </div>
-            <div class="col-md-6 py-2"><strong>Contraseña:</strong> ********</div>
-          </div>
-        {% endif %}
 
-        <div class="d-flex justify-content-center gap-3 mt-4">
-          <a href="{% url 'editar_entrenador' entrenador.id %}" class="btn" style="background: #4caf50;">
-            <i class="fas fa-edit"></i> Editar
-          </a>
-          <a href="{% url 'eliminar_entrenador' entrenador.id %}" class="btn btn-danger">
-            <i class="fas fa-trash-alt"></i> Eliminar
-          </a>
-          <a href="{% url 'lista_entrenadores' %}" class="btn" style="background: #f8b100;">
-            <i class="fa-solid fa-arrow-left"></i> Volver
-          </a>
+
+
+            <!-- =================================
+                 CUERPO
+                 ================================= -->
+
+            <div class="detalle-entrenador-body">
+
+
+                <div class="detalle-grid">
+
+
+                    <!-- CÉDULA -->
+
+                    <div class="detalle-item detalle-item-linea">
+
+                        <span class="detalle-label">
+                            Cédula:
+                        </span>
+
+                        <span class="detalle-valor">
+                            {{ entrenador.cedula }}
+                        </span>
+
+                    </div>
+
+
+
+                    <!-- FECHA DE NACIMIENTO -->
+
+                    <div class="detalle-item">
+
+                        <span class="detalle-label">
+                            Fecha de Nacimiento:
+                        </span>
+
+                        <span class="detalle-valor">
+                            {{ entrenador.fecha_nacimiento }}
+                        </span>
+
+                    </div>
+
+
+
+                    <!-- TELÉFONO -->
+
+                    <div class="detalle-item detalle-item-linea">
+
+                        <span class="detalle-label">
+                            Teléfono:
+                        </span>
+
+                        <span class="detalle-valor">
+                            {{ entrenador.telefono }}
+                        </span>
+
+                    </div>
+
+
+
+                    <!-- EDAD -->
+
+                    <div class="detalle-item detalle-item-linea">
+
+                        <span class="detalle-label">
+                            Edad:
+                        </span>
+
+                        <span class="detalle-valor">
+                            {{ entrenador.edad }}
+                        </span>
+
+                    </div>
+
+
+
+                    {% if usuario %}
+
+
+                        <!-- USUARIO -->
+
+                        <div class="detalle-item detalle-item-linea">
+
+                            <span class="detalle-label">
+                                Usuario:
+                            </span>
+
+                            <span class="detalle-valor">
+                                {{ usuario.username }}
+                            </span>
+
+                        </div>
+
+
+
+                        <!-- CORREO -->
+
+                        <div class="detalle-item">
+
+                            <span class="detalle-label">
+                                Correo:
+                            </span>
+
+                            <span class="detalle-valor">
+                                {{ usuario.email }}
+                            </span>
+
+                        </div>
+
+
+
+                        <!-- ESTADO -->
+
+                        <div class="detalle-item detalle-item-linea">
+
+                            <span class="detalle-label">
+                                Estado:
+                            </span>
+
+                            <span class="detalle-valor">
+
+                                {% if usuario.is_active %}
+
+                                    <span
+                                        class="
+                                            badge
+                                            bg-success
+                                            estado-entrenador
+                                        "
+                                    >
+                                        Activo
+                                    </span>
+
+                                {% else %}
+
+                                    <span
+                                        class="
+                                            badge
+                                            bg-danger
+                                            estado-entrenador
+                                        "
+                                    >
+                                        Inactivo
+                                    </span>
+
+                                {% endif %}
+
+                            </span>
+
+                        </div>
+
+
+
+                        <!-- CONTRASEÑA -->
+
+                        <div class="detalle-item detalle-item-linea">
+
+                            <span class="detalle-label">
+                                Contraseña:
+                            </span>
+
+                            <span class="detalle-valor">
+                                ********
+                            </span>
+
+                        </div>
+
+
+                    {% endif %}
+
+
+                </div>
+
+
+
+                <!-- =================================
+                     ACCIONES
+                     ================================= -->
+
+                <div class="acciones-entrenador">
+
+
+                    <!-- EDITAR -->
+
+                    <a
+                        href="{% url 'editar_entrenador' entrenador.id %}"
+                        class="
+                            btn
+                            btn-editar-entrenador
+                        "
+                    >
+
+                        <i class="fas fa-edit"></i>
+
+                        <span>
+                            Editar
+                        </span>
+
+                    </a>
+
+
+
+                    <!-- ELIMINAR -->
+
+                    <a
+                        href="{% url 'eliminar_entrenador' entrenador.id %}"
+                        class="
+                            btn
+                            btn-eliminar-entrenador
+                        "
+                    >
+
+                        <i class="fas fa-trash-alt"></i>
+
+                        <span>
+                            Eliminar
+                        </span>
+
+                    </a>
+
+
+
+                    <!-- VOLVER -->
+
+                    <a
+                        href="{% url 'lista_entrenadores' %}"
+                        class="
+                            btn
+                            btn-volver-entrenador
+                        "
+                    >
+
+                        <i class="fa-solid fa-arrow-left"></i>
+
+                        <span>
+                            Volver
+                        </span>
+
+                    </a>
+
+
+                </div>
+
+
+            </div>
+
+
         </div>
 
-      </div>
+
     </div>
-  </div>
+
+
+</div>
+
 {% endblock %}
