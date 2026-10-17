@@ -65,24 +65,130 @@ class Atleta(models.Model):
 
     def calcular_edad_en_el_anio(self, year=None):
         """
-        Edad que cumple en el año (age-at-year-end).
-        Ej: si cumple 17 en octubre, en febrero devuelve 17 igual.
+        Devuelve la edad que el atleta cumple durante el año indicado.
+
+        La categoría deportiva se determina por año calendario,
+        no por la edad exacta que tenga hoy.
+
+        Ejemplo:
+        Un atleta nacido en octubre de 2009 cumple 17 durante 2026,
+        por lo tanto pertenece a U17 durante todo 2026.
         """
+
         if year is None:
             year = timezone.localdate().year
+
         return year - self.fecha_nacimiento.year
 
-    def get_categoria(self):
-        edad = self.calcular_edad_en_el_anio()
-        if edad < 9: return "U9"
-        elif edad < 11: return "U11"
-        elif edad < 13: return "U13"
-        elif edad < 15: return "U15"
-        elif edad < 17: return "U17"
-        elif edad < 19: return "U19"
-        elif edad < 21: return "U21"
-        elif edad < 23: return "U23"
-        else: return "Libre"
+
+    def get_categoria(self, year=None):
+        """
+        Calcula la categoría del atleta según la edad que cumple
+        durante el año calendario indicado.
+
+        Categorías:
+        - U9:  hasta 9 años.
+        - U11: hasta 11 años.
+        - U13: hasta 13 años.
+        - U15: hasta 15 años.
+        - U17: hasta 17 años.
+        - U19: hasta 19 años.
+        - U21: hasta 21 años.
+        - U23: hasta 23 años.
+        - Libre: 24 años o más.
+        """
+
+        edad = self.calcular_edad_en_el_anio(
+            year
+        )
+
+        if edad <= 9:
+            return "U9"
+
+        elif edad <= 11:
+            return "U11"
+
+        elif edad <= 13:
+            return "U13"
+
+        elif edad <= 15:
+            return "U15"
+
+        elif edad <= 17:
+            return "U17"
+
+        elif edad <= 19:
+            return "U19"
+
+        elif edad <= 21:
+            return "U21"
+
+        elif edad <= 23:
+            return "U23"
+
+        return "Libre"
+
+    @classmethod
+    def sincronizar_categorias(cls, year=None):
+        """
+        Actualiza las categorías almacenadas de todos los atletas
+        según el año calendario indicado.
+
+        Solo modifica los atletas cuya categoría haya cambiado.
+        """
+
+        if year is None:
+            year = timezone.localdate().year
+
+
+        atletas = list(
+            cls.objects.only(
+                "id",
+                "fecha_nacimiento",
+                "categoria",
+            )
+        )
+
+
+        atletas_por_actualizar = []
+
+
+        for atleta in atletas:
+
+            categoria_correcta = (
+                atleta.get_categoria(
+                    year
+                )
+            )
+
+
+            if (
+                atleta.categoria
+                != categoria_correcta
+            ):
+
+                atleta.categoria = (
+                    categoria_correcta
+                )
+
+                atletas_por_actualizar.append(
+                    atleta
+                )
+
+
+        if atletas_por_actualizar:
+
+            cls.objects.bulk_update(
+                atletas_por_actualizar,
+                [
+                    "categoria"
+                ],
+            )
+
+
+        return len(
+            atletas_por_actualizar
+        )
 
     def save(self, *args, **kwargs):
             self.categoria = self.get_categoria()
